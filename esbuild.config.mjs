@@ -1,17 +1,16 @@
-// esbuild.config.mjs
 import esbuild from 'esbuild';
 
 esbuild
-    .build({
-        entryPoints: ['server/index.ts'],
-        bundle: true,
-        platform: 'node',
-        target: 'node20',
-        outfile: 'dist-server/index.js',
-        format: 'esm',
-        external: ['express', 'openai', 'pg', 'dotenv'], // adicione mais se precisar
-        banner: {
-            js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
-        },
-    })
-    .catch(() => process.exit(1));
+  .build({
+    entryPoints: ['server/index.ts'],
+    bundle: true,
+    platform: 'node',
+    target: 'node20',
+    outfile: 'dist-server/index.js',
+    format: 'esm',
+    external: ['express', 'openai'],
+    banner: {
+      js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+    },
+  })
+  .catch(() => process.exit(1));
