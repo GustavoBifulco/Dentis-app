@@ -16,7 +16,7 @@ app.post('/checkin', zValidator('json', checkinSchema), async (c) => {
   const { cpf, kioskToken } = c.req.valid('json');
   const cpfDigits = cpf.replace(/\D/g, '');
 
-  let clinicId: string | null = null;
+  let clinicId: number | null = null;
   if (kioskToken) {
     const clinic = await db.query.clinics.findFirst({
       where: eq(clinics.kioskToken, kioskToken),
@@ -31,9 +31,9 @@ app.post('/checkin', zValidator('json', checkinSchema), async (c) => {
   const patient = await db.query.patients.findFirst({
     where: clinicId
       ? and(
-          eq(patients.clinicId, clinicId),
-          or(eq(patients.cpf, cpfDigits), eq(patients.cpf, cpf))
-        )
+        eq(patients.clinicId, clinicId),
+        or(eq(patients.cpf, cpfDigits), eq(patients.cpf, cpf))
+      )
       : or(eq(patients.cpf, cpfDigits), eq(patients.cpf, cpf)),
   });
 

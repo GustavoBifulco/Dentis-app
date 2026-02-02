@@ -79,5 +79,17 @@ export const useDentalVoice = () => {
     };
   }, []);
 
-  return { isListening, lastCommand, intent };
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop?.();
+    } else {
+      try {
+        recognitionRef.current?.start?.();
+      } catch (e) {
+        console.error("Erro ao iniciar reconhecimento:", e);
+      }
+    }
+  };
+
+  return { isListening, lastCommand, intent, toggleListening };
 };

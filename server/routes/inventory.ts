@@ -6,8 +6,9 @@ import { eq } from 'drizzle-orm';
 const inventoryRouter = new Hono();
 
 inventoryRouter.get('/', async (c) => {
-  const userId = c.req.header('x-user-id');
-  
+  const userIdRaw = c.req.header('x-user-id');
+  const userId = userIdRaw ? Number(userIdRaw) : 0;
+
   // LOG DE DEBUG: Vamos ver no terminal quem está pedindo os dados
   console.log(`🔍 [Inventory API] Buscando estoque para ID: [${userId}]`);
 

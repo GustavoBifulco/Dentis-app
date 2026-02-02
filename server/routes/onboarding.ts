@@ -12,7 +12,9 @@ const onboardingSchema = z.object({
   name: z.string().optional(),
   cpf: z.string().optional(),
   cro: z.string().optional(),
-  phone: z.string().optional()
+  phone: z.string().optional(),
+  orgId: z.string().optional(),
+  clinicName: z.string().optional(),
 });
 
 onboarding.post('/complete', zValidator('json', onboardingSchema), async (c) => {
@@ -22,7 +24,7 @@ onboarding.post('/complete', zValidator('json', onboardingSchema), async (c) => 
       publicMetadata: { onboardingComplete: true, role: data.role }
     });
     // Setup normal (sem forçar)
-    await setupNewUserEnvironment(data.userId, data.role, false);
+    await setupNewUserEnvironment(data.userId, data.role, false, data.orgId, data.clinicName);
     return c.json({ success: true });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
@@ -35,10 +37,10 @@ onboarding.post('/force-seed', async (c) => {
   if (!userId) return c.json({ error: 'Sem ID' }, 400);
 
   console.log(`🛠️ [FORCE SEED] Resetando dados para: ${userId}`);
-  
+
   // AQUI: Passamos 'true' para forçar a limpeza e reinserção
-  await setupNewUserEnvironment(userId, 'dentist', true); 
-  
+  await setupNewUserEnvironment(userId, 'dentist', true);
+
   return c.json({ success: true, message: "Dados resetados e importados!" });
 });
 

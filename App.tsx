@@ -10,6 +10,7 @@ import Finance from './components/Finance';
 import Landing from './components/Landing';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
+import OnboardingSuccess from './components/OnboardingSuccess';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
 import TreatmentJourney from './components/TreatmentJourney';
@@ -37,10 +38,10 @@ const App: React.FC = () => {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const hasCompletedOnboarding = user?.publicMetadata?.onboardingComplete === true;
-  
+
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  
+
   const [currentView, setCurrentView] = useState<ViewType>(ViewType.DASHBOARD);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -50,7 +51,7 @@ const App: React.FC = () => {
 
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>({
     mode: 'light',
-    accentColor: '#B59410', 
+    accentColor: '#B59410',
     useGradient: false
   });
 
@@ -69,7 +70,7 @@ const App: React.FC = () => {
   }, [themeConfig]);
 
   const adjustColor = (color: string, amount: number) => {
-    return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+    return '#' + color.replace(/^#/, '').replace(/../g, color => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
   }
 
   const handlePatientSelect = (patient: Patient) => {
@@ -81,9 +82,9 @@ const App: React.FC = () => {
     switch (currentView) {
       case ViewType.DASHBOARD: return <Dashboard userRole={userRole} onNavigate={setCurrentView} />;
       case ViewType.PATIENTS: return <Patients onSelectPatient={handlePatientSelect} />;
-      case ViewType.PATIENT_RECORD: 
-        return selectedPatient 
-          ? <PatientRecord patient={selectedPatient} onBack={() => setCurrentView(ViewType.PATIENTS)} /> 
+      case ViewType.PATIENT_RECORD:
+        return selectedPatient
+          ? <PatientRecord patient={selectedPatient} onBack={() => setCurrentView(ViewType.PATIENTS)} />
           : <Patients onSelectPatient={handlePatientSelect} />;
       case ViewType.SCHEDULE: return <Schedule />;
       case ViewType.FINANCE: return <Finance userRole={userRole} />;
@@ -136,95 +137,99 @@ const App: React.FC = () => {
     <>
       <SignedOut>
         {showAuth ? (
-          <Auth 
-            mode={authMode} 
-            onSwitchMode={setAuthMode} 
-            onBack={() => setShowAuth(false)} 
+          <Auth
+            mode={authMode}
+            onSwitchMode={setAuthMode}
+            onBack={() => setShowAuth(false)}
           />
         ) : (
-          <Landing 
-            onStart={() => { setAuthMode('register'); setShowAuth(true); }} 
-            onLogin={() => { setAuthMode('login'); setShowAuth(true); }} 
+          <Landing
+            onStart={() => { setAuthMode('register'); setShowAuth(true); }}
+            onLogin={() => { setAuthMode('login'); setShowAuth(true); }}
           />
         )}
       </SignedOut>
 
       <SignedIn>
         {!hasCompletedOnboarding ? (
+          window.location.search.includes('session_id=') ? (
+            <OnboardingSuccess onComplete={() => window.location.reload()} />
+          ) : (
             <Onboarding onComplete={() => window.location.reload()} />
+          )
         ) : (
-            <div className="flex h-screen overflow-hidden bg-lux-background text-lux-text transition-colors duration-500 selection:bg-lux-accent selection:text-lux-contrast">
-                <Sidebar 
-                    currentView={currentView} 
-                    setView={setCurrentView} 
-                    userRole={userRole}
-                    onLogout={() => signOut()}
-                    isOpen={isMobileMenuOpen}
-                    onClose={() => setIsMobileMenuOpen(false)}
-                    theme={themeConfig.mode}
-                />
-                <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-                    <header className="flex-shrink-0 z-30 px-8 py-5 glass-panel border-b border-lux-border flex justify-between items-center transition-all">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-lux-text hover:bg-lux-surface rounded-xl transition"><Menu size={24} strokeWidth={1.5} /></button>
-                        <div>
-                        <div className="flex items-center text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-0.5">
-                            <span className="opacity-70">Workspace</span>
-                            <span className="mx-2 opacity-30">/</span>
-                            <span className="text-lux-accent">{userRole === 'dentist' ? 'Clínico' : userRole === 'clinic_owner' ? 'Gestão' : 'Pessoal'}</span>
-                        </div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-lux-text">{getTitle()}</h1>
-                        </div>
+          <div className="flex h-screen overflow-hidden bg-lux-background text-lux-text transition-colors duration-500 selection:bg-lux-accent selection:text-lux-contrast">
+            <Sidebar
+              currentView={currentView}
+              setView={setCurrentView}
+              userRole={userRole}
+              onLogout={() => signOut()}
+              isOpen={isMobileMenuOpen}
+              onClose={() => setIsMobileMenuOpen(false)}
+              theme={themeConfig.mode}
+            />
+            <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+              <header className="flex-shrink-0 z-30 px-8 py-5 glass-panel border-b border-lux-border flex justify-between items-center transition-all">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-lux-text hover:bg-lux-surface rounded-xl transition"><Menu size={24} strokeWidth={1.5} /></button>
+                  <div>
+                    <div className="flex items-center text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-0.5">
+                      <span className="opacity-70">Workspace</span>
+                      <span className="mx-2 opacity-30">/</span>
+                      <span className="text-lux-accent">{userRole === 'dentist' ? 'Clínico' : userRole === 'clinic_owner' ? 'Gestão' : 'Pessoal'}</span>
                     </div>
-                    <div className="flex items-center gap-5">
-                        <div className="hidden md:flex items-center bg-lux-subtle border border-transparent hover:border-lux-border rounded-lg px-3 py-1.5 w-64 transition-all cursor-text group">
-                            <Search size={14} className="text-lux-text-secondary mr-2 group-hover:text-lux-text transition-colors" />
-                            <span className="text-sm text-lux-text-secondary font-medium">Buscar...</span>
-                            <div className="ml-auto flex items-center gap-1"><Command size={10} className="text-lux-text-secondary opacity-50"/><span className="text-[10px] text-lux-text-secondary font-bold opacity-50">K</span></div>
-                        </div>
-                        <div className="h-6 w-[1px] bg-lux-border mx-1"></div>
-                        <div className="relative">
-                        <button onClick={() => setShowNotifications(!showNotifications)} className="relative text-lux-text-secondary hover:text-lux-text transition p-1">
-                            <Bell size={20} strokeWidth={1.5} />
-                            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-lux-background"></span>
-                        </button>
-                        {showNotifications && (
-                            <>
-                            <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-                            <div className="absolute right-0 top-10 w-80 bg-lux-surface border border-lux-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                <div className="p-3 border-b border-lux-border bg-lux-subtle/50"><h4 className="text-xs font-bold text-lux-text uppercase tracking-wider">Notificações</h4></div>
-                                <div className="max-h-64 overflow-y-auto">
-                                    <div className="p-4 border-b border-lux-border last:border-0 hover:bg-lux-subtle cursor-pointer transition">
-                                    <p className="text-sm font-bold text-lux-text">Boas vindas!</p>
-                                    <p className="text-xs text-lux-text-secondary mt-1">Bem-vindo ao Dentis OS.</p>
-                                    </div>
-                                </div>
+                    <h1 className="text-2xl font-semibold tracking-tight text-lux-text">{getTitle()}</h1>
+                  </div>
+                </div>
+                <div className="flex items-center gap-5">
+                  <div className="hidden md:flex items-center bg-lux-subtle border border-transparent hover:border-lux-border rounded-lg px-3 py-1.5 w-64 transition-all cursor-text group">
+                    <Search size={14} className="text-lux-text-secondary mr-2 group-hover:text-lux-text transition-colors" />
+                    <span className="text-sm text-lux-text-secondary font-medium">Buscar...</span>
+                    <div className="ml-auto flex items-center gap-1"><Command size={10} className="text-lux-text-secondary opacity-50" /><span className="text-[10px] text-lux-text-secondary font-bold opacity-50">K</span></div>
+                  </div>
+                  <div className="h-6 w-[1px] bg-lux-border mx-1"></div>
+                  <div className="relative">
+                    <button onClick={() => setShowNotifications(!showNotifications)} className="relative text-lux-text-secondary hover:text-lux-text transition p-1">
+                      <Bell size={20} strokeWidth={1.5} />
+                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-lux-background"></span>
+                    </button>
+                    {showNotifications && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
+                        <div className="absolute right-0 top-10 w-80 bg-lux-surface border border-lux-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                          <div className="p-3 border-b border-lux-border bg-lux-subtle/50"><h4 className="text-xs font-bold text-lux-text uppercase tracking-wider">Notificações</h4></div>
+                          <div className="max-h-64 overflow-y-auto">
+                            <div className="p-4 border-b border-lux-border last:border-0 hover:bg-lux-subtle cursor-pointer transition">
+                              <p className="text-sm font-bold text-lux-text">Boas vindas!</p>
+                              <p className="text-xs text-lux-text-secondary mt-1">Bem-vindo ao Dentis OS.</p>
                             </div>
-                            </>
-                        )}
+                          </div>
                         </div>
-                        <button onClick={() => setCurrentView(ViewType.PROFILE)} className="w-9 h-9 rounded-full overflow-hidden border border-lux-border hover:ring-2 hover:ring-lux-accent transition-all duration-300">
-                            <img src={user?.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.firstName}`} alt="Avatar" className="w-full h-full object-cover" />
-                        </button>
-                    </div>
-                    </header>
-                    <div className="flex-1 overflow-y-auto p-8 relative">
-                    <div className="max-w-[1400px] mx-auto pb-20">
-                        <AnimatePresence mode='wait'>
-                        <motion.div
-                            key={currentView}
-                            initial={{ opacity: 0, scale: 0.99 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.99 }}
-                            transition={{ duration: 0.25, ease: "easeOut" }}
-                        >
-                            {renderContent()}
-                        </motion.div>
-                        </AnimatePresence>
-                    </div>
-                    </div>
-                </main>
-            </div>
+                      </>
+                    )}
+                  </div>
+                  <button onClick={() => setCurrentView(ViewType.PROFILE)} className="w-9 h-9 rounded-full overflow-hidden border border-lux-border hover:ring-2 hover:ring-lux-accent transition-all duration-300">
+                    <img src={user?.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.firstName}`} alt="Avatar" className="w-full h-full object-cover" />
+                  </button>
+                </div>
+              </header>
+              <div className="flex-1 overflow-y-auto p-8 relative">
+                <div className="max-w-[1400px] mx-auto pb-20">
+                  <AnimatePresence mode='wait'>
+                    <motion.div
+                      key={currentView}
+                      initial={{ opacity: 0, scale: 0.99 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.99 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                    >
+                      {renderContent()}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </div>
+            </main>
+          </div>
         )}
       </SignedIn>
     </>

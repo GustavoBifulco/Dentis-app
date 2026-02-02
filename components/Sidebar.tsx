@@ -3,6 +3,8 @@ import React from 'react';
 import { ViewType, UserRole } from '../types';
 import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, Sparkles, FileText, PieChart, Layers, ShoppingBag } from 'lucide-react';
 import Logo from './Logo';
+import { FeatureGate } from './guards/FeatureGate';
+import { FEATURE_FLAGS } from '../lib/feature-flags';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -15,10 +17,45 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userRole, onLogout, isOpen, onClose, theme }) => {
-  
+
   const handleNavigation = (view: ViewType) => {
     setView(view);
-    onClose(); 
+    onClose();
+  };
+
+  const renderMenuItem = (item: any) => {
+    const Icon = item.icon;
+    const isActive = currentView === item.type;
+    const button = (
+      <button
+        key={item.type} // Note: key needs to be on wrapper if wrapped
+        onClick={() => handleNavigation(item.type)}
+        className={`
+            w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group
+            ${isActive
+            ? 'bg-lux-accent text-lux-contrast font-medium shadow-md shadow-lux-accent/20'
+            : 'text-lux-text-secondary hover:text-lux-text hover:bg-lux-subtle'
+          }
+          `}
+      >
+        <Icon size={18} strokeWidth={isActive ? 2 : 1.5} className="transition-transform group-hover:scale-105" />
+        <span className="text-sm">{item.label}</span>
+        {item.type === ViewType.MARKETPLACE && (
+          <span className="text-[9px] bg-lux-subtle text-lux-text-secondary px-1.5 py-0.5 rounded ml-auto">Breve</span>
+        )}
+      </button>
+    );
+
+    // Restrict specific modules
+    if ([ViewType.SCHEDULE, ViewType.PATIENTS, ViewType.FINANCE].includes(item.type)) {
+      return (
+        <FeatureGate key={item.type} feature={FEATURE_FLAGS.CLINIC_MANAGEMENT}>
+          {button}
+        </FeatureGate>
+      );
+    }
+
+    return <React.Fragment key={item.type}>{button}</React.Fragment>;
   };
 
   const getMenus = () => {
@@ -30,9 +67,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userRole, onLog
       { type: ViewType.FINANCE, label: 'Financeiro', icon: DollarSign },
     ];
 
-    // Menu Paciente
+    // Menu Paciente... (rest stays same)
     if (userRole === 'patient') {
-      const hasOrtho = true; 
+      const hasOrtho = true;
       const patientItems = [
         { type: ViewType.DASHBOARD, label: 'Início', icon: LayoutDashboard },
         { type: ViewType.SCHEDULE, label: 'Agendar Consulta', icon: Calendar },
@@ -47,17 +84,23 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userRole, onLog
 
     // Menu Gestão/Dentista
     const mgmtItems = [
-        { title: 'Gestão', items: common },
-        { title: 'Operacional', items: [
+      { title: 'Gestão', items: common },
+      {
+        title: 'Operacional', items: [
           { type: ViewType.MANAGEMENT_HUB, label: 'Central Operacional', icon: Layers },
-        ]},
-        { title: 'Conexões', items: [
+        ]
+      },
+      {
+        title: 'Conexões', items: [
           { type: ViewType.LABS, label: 'Laboratório', icon: TestTube },
           { type: ViewType.MARKETPLACE, label: 'Marketplace', icon: ShoppingBag },
-        ]},
-        { title: 'Estratégico', items: [
-           { type: ViewType.FINANCIAL_SPLIT, label: 'Repasse & Split', icon: PieChart },
-        ]}
+        ]
+      },
+      {
+        title: 'Estratégico', items: [
+          { type: ViewType.FINANCIAL_SPLIT, label: 'Repasse & Split', icon: PieChart },
+        ]
+      }
     ];
 
     return mgmtItems;
@@ -87,30 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userRole, onLog
                 {section.title}
               </p>
               <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = currentView === item.type;
-                  
-                  return (
-                    <button
-                      key={item.type}
-                      onClick={() => handleNavigation(item.type)}
-                      className={`
-                        w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group
-                        ${isActive 
-                          ? 'bg-lux-accent text-lux-contrast font-medium shadow-md shadow-lux-accent/20' 
-                          : 'text-lux-text-secondary hover:text-lux-text hover:bg-lux-subtle'
-                        }
-                      `}
-                    >
-                      <Icon size={18} strokeWidth={isActive ? 2 : 1.5} className="transition-transform group-hover:scale-105" />
-                      <span className="text-sm">{item.label}</span>
-                      {item.type === ViewType.MARKETPLACE && (
-                         <span className="text-[9px] bg-lux-subtle text-lux-text-secondary px-1.5 py-0.5 rounded ml-auto">Breve</span>
-                      )}
-                    </button>
-                  );
-                })}
+                {section.items.map((item) => renderMenuItem(item))}
               </div>
             </div>
           ))}
@@ -137,30 +157,30 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userRole, onLog
 
           {/* Sistema & Ajustes */}
           {userRole !== 'patient' && (
-             <div>
-                <p className="px-3 text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-2 opacity-70">
-                    Sistema
-                </p>
-                <button
-                    onClick={() => handleNavigation(ViewType.SETTINGS)}
-                    className={`
+            <div>
+              <p className="px-3 text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-2 opacity-70">
+                Sistema
+              </p>
+              <button
+                onClick={() => handleNavigation(ViewType.SETTINGS)}
+                className={`
                     w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group
-                    ${currentView === ViewType.SETTINGS 
-                        ? 'bg-lux-accent text-lux-contrast font-medium shadow-md shadow-lux-accent/20' 
-                        : 'text-lux-text-secondary hover:text-lux-text hover:bg-lux-subtle'
-                    }
+                    ${currentView === ViewType.SETTINGS
+                    ? 'bg-lux-accent text-lux-contrast font-medium shadow-md shadow-lux-accent/20'
+                    : 'text-lux-text-secondary hover:text-lux-text hover:bg-lux-subtle'
+                  }
                     `}
-                >
-                    <SettingsIcon size={18} strokeWidth={currentView === ViewType.SETTINGS ? 2 : 1.5} className="transition-transform group-hover:scale-105" />
-                    <span className="text-sm">Ajustes</span>
-                </button>
-             </div>
+              >
+                <SettingsIcon size={18} strokeWidth={currentView === ViewType.SETTINGS ? 2 : 1.5} className="transition-transform group-hover:scale-105" />
+                <span className="text-sm">Ajustes</span>
+              </button>
+            </div>
           )}
 
         </nav>
 
         <div className="p-6 border-t border-lux-border">
-          <button 
+          <button
             onClick={onLogout}
             className="flex items-center gap-3 text-lux-text-secondary hover:text-red-500 transition-colors text-sm font-medium px-2"
           >

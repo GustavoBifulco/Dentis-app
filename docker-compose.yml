@@ -25,6 +25,8 @@ services:
       POSTGRES_DB: dentis_prod
     volumes:
       - dentis_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
       - dentis_net
 
@@ -39,6 +41,7 @@ services:
 volumes:
   dentis_db_data:
   dentis_uploads:
+
 
 networks:
   dentis_net:

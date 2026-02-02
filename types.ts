@@ -59,8 +59,8 @@ export interface ApiResponse<T> {
 }
 
 export interface Patient {
-  id: string;
-  clinicId: string;
+  id: number;
+  clinicId: number;
   name: string;
   surname?: string; // Adicionado
   cpf?: string; // Adicionado
@@ -75,9 +75,9 @@ export interface Patient {
 }
 
 export interface Appointment {
-  id: string;
-  clinicId: string;
-  patientId: string;
+  id: number;
+  clinicId: number;
+  patientId: number;
   patientName: string;
   startTime: string;
   endTime: string;
@@ -86,12 +86,13 @@ export interface Appointment {
 }
 
 export interface Procedure {
-  id: string;
-  clinicId: string;
+  id: number;
+  clinicId: number;
   name: string;
   code: string;
   price: number;
-  durationMinutes: number;
+  duration: number; // Duration in minutes
+  durationMinutes: number; // Alias
   category: string; // Adicionado para agrupamento nas ilhas
   description?: string;
   materialsCost?: number;
@@ -99,8 +100,8 @@ export interface Procedure {
 }
 
 export interface StockItem {
-  id: string;
-  clinicId: string;
+  id: number;
+  clinicId: number;
   name: string;
   category: string; // Ex: Ortodontia, Cirurgia...
   quantity: number;
@@ -120,8 +121,8 @@ export interface TeamMember {
 }
 
 export interface LabOrder {
-  id: string;
-  clinicId: string;
+  id: number;
+  clinicId: number;
   patientName: string;
   procedure: string;
   labName: string;
@@ -132,8 +133,8 @@ export interface LabOrder {
 }
 
 export interface FinancialEntry {
-  id: string;
-  clinicId: string;
+  id: number;
+  clinicId: number;
   type: 'income' | 'expense';
   description: string;
   amount: number;

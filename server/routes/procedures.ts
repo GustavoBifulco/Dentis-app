@@ -6,8 +6,9 @@ import { eq } from 'drizzle-orm';
 const proceduresRouter = new Hono();
 
 proceduresRouter.get('/', async (c) => {
-  const userId = c.req.header('x-user-id');
-  if (!userId) return c.json([]);
+  const userIdRaw = c.req.header('x-user-id');
+  if (!userIdRaw) return c.json([]);
+  const userId = Number(userIdRaw);
   const items = await db.select().from(procedures).where(eq(procedures.userId, userId));
   return c.json(items);
 });

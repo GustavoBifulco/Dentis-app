@@ -7,26 +7,26 @@ import { clinicalRecords } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { clinicId: string; userId: string } }>();
+const app = new Hono<{ Variables: { clinicId: number; userId: number } }>();
 
 app.use('*', authMiddleware);
 
 const recordSchema = z.object({
-  patientId: z.string().uuid(),
+  patientId: z.coerce.number(),
   type: z.enum(['ODONTOGRAM_STATE', 'EVOLUTION', 'PRESCRIPTION']),
   data: z.any(), // JSON estruturado
 });
 
 // GET /api/clinical/:patientId/odontogram
 app.get('/:patientId/odontogram', async (c) => {
-  const { patientId } = c.req.param();
+  const patientId = Number(c.req.param('patientId'));
   const clinicId = c.get('clinicId');
 
   const lastState = await db.query.clinicalRecords.findFirst({
     where: and(
-        eq(clinicalRecords.patientId, patientId),
-        eq(clinicalRecords.clinicId, clinicId),
-        eq(clinicalRecords.type, 'ODONTOGRAM_STATE')
+      eq(clinicalRecords.patientId, patientId),
+      eq(clinicalRecords.clinicId, clinicId),
+      eq(clinicalRecords.type, 'ODONTOGRAM_STATE')
     ),
     orderBy: [desc(clinicalRecords.createdAt)]
   });

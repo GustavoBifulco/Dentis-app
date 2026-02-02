@@ -22,7 +22,7 @@ const Labs: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <SectionHeader 
+      <SectionHeader
         title="Rede de Laboratórios"
         subtitle="Acompanhe próteses e trabalhos externos em tempo real."
         action={
@@ -47,11 +47,11 @@ const Labs: React.FC = () => {
       </div>
 
       {orders.length === 0 ? (
-        <EmptyState 
+        <EmptyState
           title="Nenhum pedido em andamento"
           description="Registre envios de moldagens ou arquivos digitais para laboratórios."
           actionLabel="Criar Pedido"
-          onAction={() => {}}
+          onAction={() => { }}
         />
       ) : (
         <div className="grid gap-4">
@@ -62,9 +62,8 @@ const Labs: React.FC = () => {
                 <p className="text-sm text-slate-500">Paciente: {order.patientName} • Lab: {order.labName}</p>
               </div>
               <div className="text-right">
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                  order.status === 'ready' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
-                }`}>
+                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${order.status === 'ready' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+                  }`}>
                   {order.status === 'ready' ? 'Pronto' : 'Produção'}
                 </span>
                 <p className="text-xs text-slate-400 mt-2 font-bold">Entrega: {order.deadline}</p>

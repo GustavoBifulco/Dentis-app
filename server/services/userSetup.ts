@@ -1,223 +1,120 @@
 import { db } from '../db';
-import { inventory, procedures, patients } from '../db/schema';
+import { users, inventory, procedures, clinics, clinicMembers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
-export const setupNewUserEnvironment = async (userId: string, role: string) => {
-  console.log(`🚀 Iniciando setup para usuário: ${userId} (${role})`);
+const seedDefaultData = async (clinicId: number, userId: number) => {
+    // 5. Inserir Itens de Inventário Padrão
+    const rawInventoryItems = [
+        { name: 'Luvas de Procedimento P', category: 'Descartáveis', quantity: 10, unit: 'Caixa', minLevel: 2, userId },
+        { name: 'Luvas de Procedimento M', category: 'Descartáveis', quantity: 10, unit: 'Caixa', minLevel: 2, userId },
+        { name: 'Luvas de Procedimento G', category: 'Descartáveis', quantity: 5, unit: 'Caixa', minLevel: 2, userId },
+        { name: 'Máscaras Descartáveis', category: 'Descartáveis', quantity: 10, unit: 'Caixa', minLevel: 2, userId },
+        { name: 'Sugadores Descartáveis', category: 'Descartáveis', quantity: 5, unit: 'Pacote', minLevel: 1, userId },
+        { name: 'Babadores', category: 'Descartáveis', quantity: 5, unit: 'Pacote', minLevel: 1, userId },
+        { name: 'Agulhas Gengivais Curtas', category: 'Anestesia', quantity: 5, unit: 'Caixa', minLevel: 1, userId },
+        { name: 'Agulhas Gengivais Longas', category: 'Anestesia', quantity: 5, unit: 'Caixa', minLevel: 1, userId },
+        { name: 'Anestésico Tópico', category: 'Anestesia', quantity: 2, unit: 'Frasco', minLevel: 1, userId },
+        { name: 'Lidocaína 2% com Vaso', category: 'Anestesia', quantity: 5, unit: 'Caixa', minLevel: 1, userId },
+        { name: 'Resina Composta A1', category: 'Restaurador', quantity: 3, unit: 'Seringa', minLevel: 1, userId },
+        { name: 'Resina Composta A2', category: 'Restaurador', quantity: 3, unit: 'Seringa', minLevel: 1, userId },
+        { name: 'Resina Composta A3', category: 'Restaurador', quantity: 3, unit: 'Seringa', minLevel: 1, userId },
+        { name: 'Adesivo Dentinário', category: 'Restaurador', quantity: 2, unit: 'Frasco', minLevel: 1, userId },
+        { name: 'Ácido Fosfórico 37%', category: 'Restaurador', quantity: 3, unit: 'Seringa', minLevel: 1, userId },
+    ];
 
-  // Se for Paciente, não precisa criar estoque nem procedimentos
-  if (role === 'patient') return;
+    await db.insert(inventory).values(rawInventoryItems.map(i => ({ ...i, clinicId })));
 
-  // 1. Criar Estoque Inicial (Baseado no seu Seed)
-  const inventoryItems = [
-    { name: 'Fio de Sutura Seda', category: 'Cirurgia', quantity: 0, unit: 'Caixa (24un)', minLevel: 0, userId },
-    { name: 'Papel Articular', category: 'Restaurador', quantity: 0, unit: 'Bloco', minLevel: 0, userId },
-    { name: 'Alveolótomo', category: 'Cirurgia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Alginato (454g)', category: 'Prótese & Moldagem', quantity: 0, unit: 'un (pacote)', minLevel: 0, userId },
-    { name: 'Gaze Estéril', category: 'Descartáveis', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Luva Cirúrgica Estéril', category: 'Biossegurança', quantity: 0, unit: 'par', minLevel: 0, userId },
-    { name: 'Cariostático', category: 'Preventivo', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Anestésico Tópico (Benzocaína)', category: 'Anestesia', quantity: 0, unit: 'Pote', minLevel: 0, userId },
-    { name: 'Selante Resinoso', category: 'Restaurador', quantity: 0, unit: 'seringa', minLevel: 0, userId },
-    { name: 'Indicador Biológico (Teste Autoclave)', category: 'Esterilização', quantity: 0, unit: 'Caixa (10un)', minLevel: 0, userId },
-    { name: 'Broca Diamantada Cilíndrica', category: 'Instrumentais Rotatórios', quantity: 0, unit: 'Unidade', minLevel: 0, userId },
-    { name: 'Mini-implante Ortodôntico', category: 'Ortodontia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Alginato', category: 'Prótese & Moldagem', quantity: 0, unit: 'Pacote', minLevel: 0, userId },
-    { name: 'Bráquetes Metálicos (Caso)', category: 'Ortodontia', quantity: 0, unit: 'Cartela', minLevel: 0, userId },
-    { name: 'Fio Dental Profissional', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'm', minLevel: 0, userId },
-    { name: 'Hipoclorito de Sódio 2.5% e 5%', category: 'Endodontia', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Selante Resinoso', category: 'Restaurador', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Soro Fisiológico 0.9%', category: 'Soluções', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Taça de Borracha / Escova Robson', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Ácido Fosfórico 37%', category: 'Restaurador', quantity: 0, unit: 'un (seringa)', minLevel: 0, userId },
-    { name: 'Broca Transmetal', category: 'Instrumentais Rotatórios', quantity: 0, unit: 'Unidade', minLevel: 0, userId },
-    { name: 'Gás Ozônio (Cilindro O3)', category: 'Equipamentos & Gases', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Silicone de Condensação (Kit)', category: 'Prótese & Moldagem', quantity: 0, unit: 'Kit', minLevel: 0, userId },
-    { name: 'Filme Periapical (Adulto/Infantil)', category: 'Radiologia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Pasta Profilática', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'Bisnaga', minLevel: 0, userId },
-    { name: 'Máscara N95/PFF2', category: 'Biossegurança', quantity: 0, unit: 'Unidade', minLevel: 0, userId },
-    { name: 'Seringa Insulina', category: 'Descartáveis', quantity: 0, unit: 'unidade', minLevel: 0, userId },
-    { name: 'Matriz de Poliéster', category: 'Restaurador', quantity: 0, unit: 'Caixa (50un)', minLevel: 0, userId },
-    { name: 'Posicionador Radiográfico', category: 'Radiologia', quantity: 0, unit: 'Kit', minLevel: 0, userId },
-    { name: 'Silano', category: 'Restaurador', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Arcos Ortodônticos (NiTi/Aço)', category: 'Ortodontia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Fio de Sutura Nylon', category: 'Cirurgia', quantity: 0, unit: 'Caixa (24un)', minLevel: 0, userId },
-    { name: 'Resina Ortodôntica (Transbond)', category: 'Ortodontia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Silano', category: 'Restaurador', quantity: 0, unit: 'Frasco', minLevel: 0, userId },
-    { name: 'Fita Indicadora de pH Salivar', category: 'Diagnóstico', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Bolinha de Algodão', category: 'Descartáveis', quantity: 0, unit: 'Pacote (500g)', minLevel: 0, userId },
-    { name: 'Cânulas de Preenchimento (22G/25G)', category: 'HOF', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Toxina Botulínica (50U/100U)', category: 'HOF', quantity: 0, unit: 'Frasco', minLevel: 0, userId },
-    { name: 'Fio Retrator Gengival', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'cm', minLevel: 0, userId },
-    { name: 'Filme Periapical Adulto', category: 'Radiologia', quantity: 0, unit: 'Caixa', minLevel: 0, userId },
-    { name: 'Resina Esmalte A1', category: 'Restaurador', quantity: 0, unit: 'Tubo 4g', minLevel: 0, userId },
-    { name: 'Silicone de Adição (Kit)', category: 'Prótese & Moldagem', quantity: 0, unit: 'Kit', minLevel: 0, userId },
-    { name: 'Papel Grau Cirúrgico 10cm', category: 'Esterilização', quantity: 0, unit: 'Rolo', minLevel: 0, userId },
-    { name: 'Seringas (1/3/5/10/20ml)', category: 'Descartáveis', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Peróxido (Hidrogênio/Carbamida)', category: 'Estética', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Silano', category: 'Restaurador', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Seringa Insulina/Aplicação', category: 'Descartáveis', quantity: 0, unit: 'Pacote', minLevel: 0, userId },
-    { name: 'Rolete de Algodão', category: 'Descartáveis', quantity: 0, unit: 'unidade', minLevel: 0, userId },
-    { name: 'Tira de Lixa (Aço/Poliéster)', category: 'Restaurador', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Vaselina Sólida', category: 'Auxiliares', quantity: 0, unit: 'g', minLevel: 0, userId },
-    { name: 'Luva de Procedimento (PP/P/M/G)', category: 'Biossegurança', quantity: 0, unit: 'par', minLevel: 0, userId },
-    { name: 'Resina Composta (Esm/Dent/Flow)', category: 'Restaurador', quantity: 0, unit: 'g', minLevel: 0, userId },
-    { name: 'Dessensibilizante Dentário', category: 'Restaurador', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Silicone Adição / Condensação', category: 'Prótese & Moldagem', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Ácido Deoxicólico (Enzima de Papada)', category: 'HOF', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Silicone de Adição', category: 'Prótese & Moldagem', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Agulha de Irrigação Endo', category: 'Endodontia', quantity: 0, unit: 'Pacote', minLevel: 0, userId },
-    { name: 'Ácido Hialurônico', category: 'HOF', quantity: 0, unit: 'Seringa', minLevel: 0, userId },
-    { name: 'Esponja Hemostática', category: 'Cirurgia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Flúor Verniz', category: 'Preventivo', quantity: 0, unit: 'Frasco/Dose', minLevel: 0, userId },
-    { name: 'Taça de Borracha', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'Unidade', minLevel: 0, userId },
-    { name: 'Resina Flow A2', category: 'Restaurador', quantity: 0, unit: 'Seringa 2g', minLevel: 0, userId },
-    { name: 'Soro Fisiológico 0.9% (Bolsa 250ml)', category: 'Soluções', quantity: 0, unit: 'Bolsa', minLevel: 0, userId },
-    { name: 'Adesivo Universal', category: 'Restaurador', quantity: 0, unit: 'Frasco (5ml)', minLevel: 0, userId },
-    { name: 'Resina Dentina DA2', category: 'Restaurador', quantity: 0, unit: 'Tubo 4g', minLevel: 0, userId },
-    { name: 'Placa de Acetato', category: 'Prótese & Moldagem', quantity: 0, unit: 'unidade', minLevel: 0, userId },
-    { name: 'Pino de Fibra de Vidro (Nº 0.5 a 3)', category: 'Restaurador', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Rolete de Algodão', category: 'Descartáveis', quantity: 0, unit: 'Pacote (100un)', minLevel: 0, userId },
-    { name: 'Broca Endo-Z', category: 'Instrumentais Rotatórios', quantity: 0, unit: 'Unidade', minLevel: 0, userId },
-    { name: 'Avental Descartável Manga Longa', category: 'Biossegurança', quantity: 0, unit: 'Pacote (10un)', minLevel: 0, userId },
-    { name: 'Ácido Fosfórico 37%', category: 'Restaurador', quantity: 0, unit: 'Kit (3 seringas)', minLevel: 0, userId },
-    { name: 'Sugador Descartável (Convencional)', category: 'Descartáveis', quantity: 0, unit: 'Pacote (40un)', minLevel: 0, userId },
-    { name: 'Resina Acrílica (Duralay)', category: 'Prótese & Moldagem', quantity: 0, unit: 'grama', minLevel: 0, userId },
-    { name: 'Óculos de Proteção', category: 'Biossegurança', quantity: 0, unit: 'Unidade', minLevel: 0, userId },
-    { name: 'Resina Esmalte', category: 'Restaurador', quantity: 0, unit: 'grama', minLevel: 0, userId },
-    { name: 'Cone de Papel', category: 'Endodontia', quantity: 0, unit: 'Caixa', minLevel: 0, userId },
-    { name: 'Taça de Borracha', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'unidade', minLevel: 0, userId },
-    { name: 'Copo Descartável', category: 'Descartáveis', quantity: 0, unit: 'Pacote (100un)', minLevel: 0, userId },
-    { name: 'Fio/Arco NiTi', category: 'Ortodontia', quantity: 0, unit: 'Pacote', minLevel: 0, userId },
-    { name: 'Membrana Colágeno', category: 'Cirurgia', quantity: 0, unit: 'Unidade', minLevel: 0, userId },
-    { name: 'Tira de Lixa de Aço', category: 'Restaurador', quantity: 0, unit: 'unidade', minLevel: 0, userId },
-    { name: 'Anestésico Articaína 4%', category: 'Anestesia', quantity: 0, unit: 'Caixa (50 tubetes)', minLevel: 0, userId },
-    { name: 'Bioestimulador de Colágeno', category: 'HOF', quantity: 0, unit: 'un (frasco)', minLevel: 0, userId },
-    { name: 'Seringa Carpule', category: 'Anestesia', quantity: 0, unit: 'unidade', minLevel: 0, userId },
-    { name: 'Torno Expansor', category: 'Ortodontia', quantity: 0, unit: 'unidade', minLevel: 0, userId },
-    { name: 'Enxerto Ósseo Bovino', category: 'Cirurgia', quantity: 0, unit: 'Frasco', minLevel: 0, userId },
-    { name: 'Matriz Metálica / Poliéster', category: 'Restaurador', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Fio/Arco Aço', category: 'Ortodontia', quantity: 0, unit: 'Pacote', minLevel: 0, userId },
-    { name: 'Lâmina de Bisturi (11/12/15/15C)', category: 'Cirurgia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Detergente Enzimático 5 Enzimas', category: 'Esterilização', quantity: 0, unit: 'Galão (5L)', minLevel: 0, userId },
-    { name: 'Clorexidina (0,12% / 2%)', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Limas (Manual/Rotatória/Reciproc.)', category: 'Endodontia', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Líquido Fixador', category: 'Radiologia', quantity: 0, unit: 'Frasco', minLevel: 0, userId },
-    { name: 'Verniz Fluoretado', category: 'Preventivo', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Hipoclorito de Sódio 2.5%', category: 'Endodontia', quantity: 0, unit: 'Frasco (1L)', minLevel: 0, userId },
-    { name: 'Formocresol', category: 'Endodontia', quantity: 0, unit: 'ml', minLevel: 0, userId },
-    { name: 'Cimento Endodôntico (Ah Plus/Eugenol)', category: 'Endodontia', quantity: 0, unit: 'Kit', minLevel: 0, userId },
-    { name: 'Cimento Ionômero de Vidro (Cimentação)', category: 'Restaurador', quantity: 0, unit: 'Kit', minLevel: 0, userId },
-    { name: 'Sugador (Convenc./Cirúrgico)', category: 'Descartáveis', quantity: 0, unit: 'un', minLevel: 0, userId },
-    { name: 'Água Destilada', category: 'Soluções', quantity: 0, unit: 'ml', minLevel: 0, userId },
-  ];
+    // 6. Inserir Procedimentos Padrão
+    const proceduresItems = [
+        { name: 'Consulta Inicial / Avaliação', code: '001', price: '150.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Consulta Inicial / Avaliação.', duration: 30, category: 'Diagnóstico', userId },
+        { name: 'Profilaxia (Limpeza)', code: '002', price: '200.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Profilaxia (Limpeza).', duration: 45, category: 'Profilaxia & Periodontia', userId },
+        { name: 'Restauração simples (1 face)', code: '003', price: '250.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Restauração simples (1 face).', duration: 45, category: 'Restaurador', userId },
+        { name: 'Restauração composta (2 faces)', code: '004', price: '350.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Restauração composta (2 faces).', duration: 60, category: 'Restaurador', userId },
+        { name: 'Restauração complexa (3+ faces)', code: '005', price: '450.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Restauração complexa (3+ faces).', duration: 60, category: 'Restaurador', userId },
+        { name: 'Exodontia simples', code: '006', price: '300.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Exodontia simples.', duration: 45, category: 'Cirurgia', userId },
+        { name: 'Exodontia complexa (Siso)', code: '007', price: '500.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Exodontia complexa (Siso).', duration: 90, category: 'Cirurgia', userId },
+        { name: 'Tratamento de Canal (Anterior)', code: '008', price: '600.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Tratamento de Canal (Anterior).', duration: 90, category: 'Endodontia', userId },
+        { name: 'Tratamento de Canal (Posterior)', code: '009', price: '900.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Tratamento de Canal (Posterior).', duration: 120, category: 'Endodontia', userId },
+        { name: 'Clareamento Consultório (Sessão)', code: '010', price: '500.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Clareamento Consultório (Sessão).', duration: 60, category: 'Estética', userId },
+        { name: 'Clareamento Caseiro (Kit)', code: '011', price: '800.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Clareamento Caseiro (Kit).', duration: 30, category: 'Estética', userId },
+    ];
 
-  await db.insert(inventory).values(inventoryItems);
-  console.log('✅ Estoque inicial criado.');
+    await db.insert(procedures).values(proceduresItems.map(i => ({ ...i, clinicId })));
+    console.log('✅ Procedimentos padrão criados.');
+}
 
-  // 2. Criar Lista de Procedimentos Padrão
-  const proceduresItems = [
-    { name: 'Ajuste Oclusal por Acréscimo', code: '001', price: '200.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Ajuste Oclusal por Acréscimo.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Ajuste Oclusal por desgaste', code: '002', price: '200.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Ajuste Oclusal por desgaste.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Alveoloplastia', code: '003', price: '300.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Alveoloplastia.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Aplicação de Cariostático', code: '004', price: '100.00', cost: '0.00', description: 'Procedimento preventivo para controle de placa, cárie e saúde bucal: Aplicação de Cariostático.', duration: 60, category: 'Preventivo', userId },
-    { name: 'Aplicação de Ozônio Intra-articular com PRP Gel', code: '005', price: '200.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Aplicação de Ozônio Intra-articular com PRP Gel.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Aplicação de Ozonoterapia em ATM', code: '006', price: '200.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Aplicação de Ozonoterapia em ATM.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Aplicação de selante', code: '007', price: '250.00', cost: '0.00', description: 'Procedimento preventivo para controle de placa, cárie e saúde bucal: Aplicação de selante.', duration: 60, category: 'Preventivo', userId },
-    { name: 'Aplicação de Verniz Fluoretado', code: '008', price: '150.00', cost: '0.00', description: 'Procedimento preventivo para controle de placa, cárie e saúde bucal: Aplicação de Verniz Fluoretado.', duration: 60, category: 'Preventivo', userId },
-    { name: 'Aprofundamento de vestíbulo', code: '009', price: '300.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Aprofundamento de vestíbulo.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Aprofundamento de sulco', code: '010', price: '300.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Aprofundamento de sulco.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Aumentar coroa clínica', code: '011', price: '300.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Aumentar coroa clínica.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Biópsia', code: '012', price: '450.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Biópsia.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Bruxismo - placa miorelaxante', code: '013', price: '650.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Bruxismo - placa miorelaxante.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Bruxismo - Aplicação Toxina Botulínica', code: '014', price: '1500.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Bruxismo - Aplicação Toxina Botulínica.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Bruxismo - Avaliação', code: '015', price: '150.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Bruxismo - Avaliação.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Capeamento pulpar', code: '016', price: '250.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Capeamento pulpar.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Carvão ativado - Clareamento', code: '017', price: '250.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Carvão ativado - Clareamento.', duration: 60, category: 'Estética', userId },
-    { name: 'Cirurgia de retração gengival', code: '018', price: '450.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Cirurgia de retração gengival.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Cirurgia de retalho', code: '019', price: '450.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Cirurgia de retalho.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Cirurgia periodontal', code: '020', price: '450.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Cirurgia periodontal.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Clareamento consultório', code: '021', price: '650.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Clareamento consultório.', duration: 60, category: 'Estética', userId },
-    { name: 'Clareamento caseiro', code: '022', price: '550.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Clareamento caseiro.', duration: 60, category: 'Estética', userId },
-    { name: 'Coroa cerâmica', code: '023', price: '1600.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Coroa cerâmica.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Coroa provisória', code: '024', price: '250.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Coroa provisória.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Coroa total metalocerâmica', code: '025', price: '1200.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Coroa total metalocerâmica.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Coroa total metalopástica', code: '026', price: '950.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Coroa total metalopástica.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Coroa total zircônia', code: '027', price: '1800.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Coroa total zircônia.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Curativo endodôntico', code: '028', price: '150.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Curativo endodôntico.', duration: 60, category: 'Endodontia', userId },
-    { name: 'Dente do siso - extração', code: '029', price: '450.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Dente do siso - extração.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Dente do siso incluso - extração', code: '030', price: '650.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Dente do siso incluso - extração.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Dentística - restauração com resina 1 face', code: '031', price: '250.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina 1 face.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração com resina 2 faces', code: '032', price: '300.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina 2 faces.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração com resina 3 faces', code: '033', price: '350.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina 3 faces.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração com resina 4 faces', code: '034', price: '400.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina 4 faces.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração com resina 5 faces', code: '035', price: '450.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina 5 faces.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração com resina 6 faces', code: '036', price: '500.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina 6 faces.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração com resina anterior', code: '037', price: '350.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina anterior.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração com resina posterior', code: '038', price: '350.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração com resina posterior.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Dentística - restauração provisória', code: '039', price: '150.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Dentística - restauração provisória.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Diagnóstico de Bruxismo', code: '040', price: '250.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Diagnóstico de Bruxismo.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Endodontia - retratamento (incisivo/canino)', code: '041', price: '750.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Endodontia - retratamento (incisivo/canino).', duration: 60, category: 'Endodontia', userId },
-    { name: 'Endodontia - retratamento (pré-molar)', code: '042', price: '850.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Endodontia - retratamento (pré-molar).', duration: 60, category: 'Endodontia', userId },
-    { name: 'Endodontia - retratamento (molar)', code: '043', price: '950.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Endodontia - retratamento (molar).', duration: 60, category: 'Endodontia', userId },
-    { name: 'Endodontia - tratamento (incisivo/canino)', code: '044', price: '650.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Endodontia - tratamento (incisivo/canino).', duration: 60, category: 'Endodontia', userId },
-    { name: 'Endodontia - tratamento (pré-molar)', code: '045', price: '750.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Endodontia - tratamento (pré-molar).', duration: 60, category: 'Endodontia', userId },
-    { name: 'Endodontia - tratamento (molar)', code: '046', price: '850.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Endodontia - tratamento (molar).', duration: 60, category: 'Endodontia', userId },
-    { name: 'Enxerto ósseo', code: '047', price: '1200.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Enxerto ósseo.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Exodontia simples', code: '048', price: '300.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Exodontia simples.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Exodontia complexa', code: '049', price: '450.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Exodontia complexa.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Faceta em resina', code: '050', price: '450.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Faceta em resina.', duration: 60, category: 'Estética', userId },
-    { name: 'Faceta em porcelana', code: '051', price: '1800.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Faceta em porcelana.', duration: 60, category: 'Estética', userId },
-    { name: 'Frenectomia labial', code: '052', price: '450.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Frenectomia labial.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Frenectomia lingual', code: '053', price: '450.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Frenectomia lingual.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Gengivoplastia', code: '054', price: '450.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Gengivoplastia.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Hemissecção', code: '055', price: '450.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Hemissecção.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Implante unitário', code: '056', price: '3500.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Implante unitário.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Implante protocolo', code: '057', price: '15000.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Implante protocolo.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Implante múltiplo', code: '058', price: '6500.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Implante múltiplo.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Limpeza (profilaxia)', code: '059', price: '200.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Limpeza (profilaxia).', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Manutenção de aparelho', code: '060', price: '150.00', cost: '0.00', description: 'Procedimento ortodôntico realizado conforme indicação: Manutenção de aparelho.', duration: 60, category: 'Ortodontia', userId },
-    { name: 'Manutenção de contenção', code: '061', price: '150.00', cost: '0.00', description: 'Procedimento ortodôntico realizado conforme indicação: Manutenção de contenção.', duration: 60, category: 'Ortodontia', userId },
-    { name: 'Manutenção periodontal', code: '062', price: '250.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Manutenção periodontal.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Odontopediatria - consulta', code: '063', price: '200.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Odontopediatria - consulta.', duration: 60, category: 'Odontopediatria', userId },
-    { name: 'Odontopediatria - aplicação flúor', code: '064', price: '150.00', cost: '0.00', description: 'Procedimento preventivo para controle de placa, cárie e saúde bucal: Odontopediatria - aplicação flúor.', duration: 60, category: 'Odontopediatria', userId },
-    { name: 'Odontopediatria - selante', code: '065', price: '250.00', cost: '0.00', description: 'Procedimento preventivo para controle de placa, cárie e saúde bucal: Odontopediatria - selante.', duration: 60, category: 'Odontopediatria', userId },
-    { name: 'Odontopediatria - restauração', code: '066', price: '250.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Odontopediatria - restauração.', duration: 60, category: 'Odontopediatria', userId },
-    { name: 'Ortodontia - documentação', code: '067', price: '450.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Ortodontia - documentação.', duration: 60, category: 'Ortodontia', userId },
-    { name: 'Ortodontia - instalação aparelho', code: '068', price: '1200.00', cost: '0.00', description: 'Procedimento ortodôntico realizado conforme indicação: Ortodontia - instalação aparelho.', duration: 60, category: 'Ortodontia', userId },
-    { name: 'Ortodontia - aparelho móvel', code: '069', price: '950.00', cost: '0.00', description: 'Procedimento ortodôntico realizado conforme indicação: Ortodontia - aparelho móvel.', duration: 60, category: 'Ortodontia', userId },
-    { name: 'Ortodontia - contenção', code: '070', price: '650.00', cost: '0.00', description: 'Procedimento ortodôntico realizado conforme indicação: Ortodontia - contenção.', duration: 60, category: 'Ortodontia', userId },
-    { name: 'Ortodontia - alinhadores', code: '071', price: '6500.00', cost: '0.00', description: 'Procedimento ortodôntico realizado conforme indicação: Ortodontia - alinhadores.', duration: 60, category: 'Ortodontia', userId },
-    { name: 'PPR (prótese parcial removível)', code: '072', price: '1600.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: PPR (prótese parcial removível).', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'PPF (prótese fixa)', code: '073', price: '1800.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: PPF (prótese fixa).', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Placa de clareamento', code: '074', price: '250.00', cost: '0.00', description: 'Procedimento estético odontológico conforme indicação: Placa de clareamento.', duration: 60, category: 'Estética', userId },
-    { name: 'Placa de bruxismo', code: '075', price: '650.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Placa de bruxismo.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Ponte fixa', code: '076', price: '3500.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Ponte fixa.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Prótese total', code: '077', price: '2500.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Prótese total.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Raspagem subgengival (por quadrante)', code: '078', price: '350.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Raspagem subgengival (por quadrante).', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Raspagem supragengival', code: '079', price: '250.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Raspagem supragengival.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Remoção de cálculo', code: '080', price: '200.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Remoç�urador/dentística conforme indicação: Restauração em resina.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Restauração provisória', code: '084', price: '150.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Restauração provisória.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Reembasamento de prótese', code: '085', price: '450.00', cost: '0.00', description: 'Procedimento odontológico relacionado a prótese/reabilitação e moldagem: Reembasamento de prótese.', duration: 60, category: 'Prótese & Moldagem', userId },
-    { name: 'Remoção de tártaro', code: '086', price: '200.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Remoção de tártaro.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Urgência - consulta', code: '087', price: '250.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Urgência - consulta.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Urgência - curativo', code: '088', price: '200.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Urgência - curativo.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Urgência - drenagem', code: '089', price: '300.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Urgência - drenagem.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Urgência - medicação', code: '090', price: '150.00', cost: '0.00', description: 'Avaliação clínica, anamnese e orientação/planejamento odontológico: Urgência - medicação.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Urgência - abertura endodôntica', code: '091', price: '350.00', cost: '0.00', description: 'Procedimento endodôntico realizado conforme indicação: Urgência - abertura endodôntica.', duration: 60, category: 'Endodontia', userId },
-    { name: 'Urgência - restauração provisória', code: '092', price: '200.00', cost: '0.00', description: 'Procedimento odontológico restaurador/dentística conforme indicação: Urgência - restauração provisória.', duration: 60, category: 'Restaurador', userId },
-    { name: 'Urgência - ajuste oclusal', code: '093', price: '200.00', cost: '0.00', description: 'Exame de imagem para avaliação e planejamento odontológico: Urgência - ajuste oclusal.', duration: 60, category: 'Profilaxia & Periodontia', userId },
-    { name: 'Urgência - exodontia', code: '094', price: '350.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Urgência - exodontia.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Urgência - sutura', code: '095', price: '250.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Urgência - sutura.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Urgência - remoção de ponto', code: '096', price: '100.00', cost: '0.00', description: 'Procedimento cirúrgico odontológico realizado conforme indicação e protocolo clínico: Urgência - remoção de ponto.', duration: 60, category: 'Cirurgia', userId },
-    { name: 'Exame Laboratorial (solicitação/avaliação)', code: '097', price: '150.00', cost: '0.00', description: 'Exames e testes para apoio diagnóstico odontológico: Exame Laboratorial (solicitação/avaliação).', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Teste de sensibilidade pulpar', code: '098', price: '100.00', cost: '0.00', description: 'Exames e testes para apoio diagnóstico odontológico: Teste de sensibilidade pulpar.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Teste de oclusão', code: '099', price: '100.00', cost: '0.00', description: 'Exames e testes para apoio diagnóstico odontológico: Teste de oclusão.', duration: 60, category: 'Diagnóstico', userId },
-    { name: 'Teste de saliva', code: '100', price: '100.00', cost: '0.00', description: 'Exames e testes para apoio diagnóstico odontológico: Teste de saliva.', duration: 60, category: 'Diagnóstico', userId },
-  ];
+export const setupNewUserEnvironment = async (
+    clerkId: string,
+    role: string,
+    force: boolean = false,
+    clerkOrgId?: string,
+    clinicName?: string
+) => {
+    console.log('🏁 Iniciando setup do usuário:', clerkId, 'Role:', role, 'Org:', clerkOrgId);
 
-  await db.insert(procedures).values(procedureItems);
-  console.log('✅ Procedimentos padrão criados.');
-  
-  console.log('🎉 Setup do usuário concluído com sucesso!');
+    // 1. Ensure User exists
+    let user = await db.query.users.findFirst({ where: eq(users.clerkId, clerkId) });
+    if (!user) {
+        const [newUser] = await db.insert(users).values({
+            clerkId,
+            role,
+            isActive: true,
+            onboardingComplete: true
+        }).returning();
+        user = newUser;
+    }
+
+    // 2. Ensure Clinic exists and User is Member
+    // Se for PACIENTE, não cria clínica nem associa como membro de clínica proprietária
+    if (role === 'patient') {
+        console.log('ℹ️ Usuário é paciente. Pulando criação de clínica.');
+        return;
+    }
+
+    let clinicId: number;
+
+    // Se temos um clerkOrgId, tentamos encontrar a clínica por ele primeiro
+    let existingClinic;
+    if (clerkOrgId) {
+        existingClinic = await db.query.clinics.findFirst({ where: eq(clinics.clerkOrgId, clerkOrgId) });
+    }
+
+    if (existingClinic) {
+        clinicId = existingClinic.id;
+
+        // Garantir que o usuário é membro
+        const isMember = await db.query.clinicMembers.findFirst({
+            where: (cm, { and, eq }) => and(eq(cm.userId, user!.id), eq(cm.clinicId, clinicId))
+        });
+
+        if (!isMember) {
+            await db.insert(clinicMembers).values({
+                userId: user.id,
+                clinicId,
+                role: 'OWNER' // Ou herdar do Org se preferir
+            });
+        }
+    } else {
+        // Criar nova clínica
+        const name = clinicName || (role === 'clinic_owner' ? 'Minha Clínica' : `Consultório de ${user.name || clerkId}`);
+        const [clinic] = await db.insert(clinics).values({
+            name,
+            clerkOrgId: clerkOrgId || null
+        }).returning();
+        clinicId = clinic.id;
+
+        await db.insert(clinicMembers).values({
+            userId: user.id,
+            clinicId,
+            role: 'OWNER'
+        });
+    }
+
+    // 3. Seed Data (Opcional: evitar duplicados se force=false)
+    const existingProcedures = await db.query.procedures.findFirst({ where: eq(procedures.clinicId, clinicId) });
+    if (force || !existingProcedures) {
+        await seedDefaultData(clinicId, user.id);
+    }
+
+    console.log('🎉 Setup do usuário concluído com sucesso!');
 };

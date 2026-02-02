@@ -32,32 +32,20 @@ const seedProcedures = [
   },
 ];
 
-async function ensureDefaultClinic() {
+async function ensureDefaultClinic(): Promise<{ id: number }> {
   let clinic = await db.query.clinics.findFirst();
 
   if (!clinic) {
     const [created] = await db.insert(clinics).values({
       name: 'Dentis Default Clinic',
     }).returning();
-    clinic = created;
+    clinic = created as any;
   }
 
-  return clinic;
+  return clinic as any;
 }
 
-async function seedProceduresIfNeeded(clinicId: string) {
-  const existing = await db.query.procedures.findMany({ limit: 1 });
-  if (existing.length > 0) return;
-
-  await db.insert(procedures).values(
-    seedProcedures.map((proc) => ({
-      ...proc,
-      clinicId,
-    }))
-  );
-}
-
-async function ensureAdminUser(clinicId: string) {
+async function ensureAdminUser(clinicId: number): Promise<{ id: number } | undefined> {
   const existing = await db.query.users.findFirst({
     where: eq(users.email, ADMIN_EMAIL),
   });
@@ -70,12 +58,14 @@ async function ensureAdminUser(clinicId: string) {
       email: ADMIN_EMAIL,
       name: 'Admin',
       surname: 'Master',
+      role: 'OWNER',
       isActive: true,
+      onboardingComplete: true,
     }).returning();
     adminUser = created;
   }
 
-  if (!adminUser) return;
+  if (!adminUser) return undefined;
 
   const member = await db.query.clinicMembers.findFirst({
     where: and(eq(clinicMembers.userId, adminUser.id), eq(clinicMembers.clinicId, clinicId)),
@@ -88,12 +78,38 @@ async function ensureAdminUser(clinicId: string) {
       role: 'OWNER',
     });
   }
+
+  return adminUser;
+}
+
+async function seedProceduresIfNeeded(clinicId: number, userId: number) {
+  const existing = await db.query.procedures.findMany({ limit: 1 });
+  if (existing.length > 0) return;
+
+  await db.insert(procedures).values(
+    seedProcedures.map((proc) => ({
+      clinicId,
+      userId,
+      name: proc.name,
+      category: proc.category,
+      tussCode: proc.tussCode,
+      price: proc.price,
+      cost: proc.materialsCost,
+      duration: proc.durationMinutes,
+      code: proc.tussCode, // Fallback
+    }))
+  );
 }
 
 async function main() {
   const clinic = await ensureDefaultClinic();
-  await seedProceduresIfNeeded(clinic.id);
-  await ensureAdminUser(clinic.id);
+  if (!clinic) throw new Error("Falha ao criar clínica default");
+
+  const admin = await ensureAdminUser(clinic.id);
+
+  if (admin) {
+    await seedProceduresIfNeeded(clinic.id, admin.id);
+  }
 
   console.log('Seed finalizado com sucesso.');
 }

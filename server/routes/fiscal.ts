@@ -6,12 +6,12 @@ import { financial, patients, procedures } from '../db/schema';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { clinicId: string } }>();
+const app = new Hono<{ Variables: { clinicId: number } }>();
 app.use('*', authMiddleware);
 
 const tissSchema = z.object({
-  patientId: z.string().uuid(),
-  procedureIds: z.array(z.string().uuid()).min(1),
+  patientId: z.coerce.number(),
+  procedureIds: z.array(z.coerce.number()).min(1),
 });
 
 const invoiceSchema = z.object({
@@ -22,7 +22,7 @@ const invoiceSchema = z.object({
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 const formatTime = (date: Date) => date.toISOString().slice(11, 19);
 
-const buildTissXml = (clinicId: string, patient: any, procs: any[]) => {
+const buildTissXml = (clinicId: number, patient: any, procs: any[]) => {
   const now = new Date();
   const guideNumber = `SP${now.getTime()}`;
   const patientName =

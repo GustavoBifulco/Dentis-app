@@ -8,7 +8,7 @@ import { eq, and, lte, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { HTTPException } from 'hono/http-exception';
 
-const app = new Hono<{ Variables: { clinicId: string; userId: string; role: string } }>();
+const app = new Hono<{ Variables: { clinicId: number; userId: number; role: string } }>();
 
 app.use('*', authMiddleware);
 
@@ -27,7 +27,7 @@ app.get('/campaigns', async (c) => {
     where: eq(campaigns.clinicId, clinicId),
     orderBy: [desc(campaigns.createdAt)],
     with: {
-        logs: true // Include stats
+      logs: true // Include stats
     }
   });
   return c.json({ ok: true, data: list });
@@ -42,10 +42,10 @@ app.post('/campaigns', zValidator('json', campaignSchema), async (c) => {
 
   // 1. Permission Check
   if (role !== 'OWNER' && role !== 'MANAGER') {
-      // Dentists can only send Recall campaigns
-      if (!name.toLowerCase().includes('retorno') && !name.toLowerCase().includes('recall')) {
-          throw new HTTPException(403, { message: 'Dentistas só podem criar campanhas de Retorno Clínico.' });
-      }
+    // Dentists can only send Recall campaigns
+    if (!name.toLowerCase().includes('retorno') && !name.toLowerCase().includes('recall')) {
+      throw new HTTPException(403, { message: 'Dentistas só podem criar campanhas de Retorno Clínico.' });
+    }
   }
 
   // 2. Create Campaign Record
@@ -62,32 +62,32 @@ app.post('/campaigns', zValidator('json', campaignSchema), async (c) => {
 
   // 3. Execution Logic (Simulation of WhatsApp API)
   if (sendNow) {
-      let targetPatients: { id: string }[] = [];
+    let targetPatients: { id: number }[] = [];
 
-      // Audience Logic
-      if (targetAudience === 'ALL') {
-          targetPatients = await db.select({ id: patients.id }).from(patients).where(eq(patients.clinicId, clinicId));
-      } else if (targetAudience === 'INACTIVE_6_MONTHS') {
-          const sixMonthsAgo = new Date();
-          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-          // Assuming we have lastVisit data, simple filter
-          targetPatients = await db.select({ id: patients.id })
-            .from(patients)
-            .where(and(eq(patients.clinicId, clinicId), lte(patients.lastVisit, sixMonthsAgo)));
-      }
-      
-      // Bulk Insert Logs (Simulating Queue)
-      if (targetPatients.length > 0) {
-          await db.insert(messageLogs).values(
-              targetPatients.map(p => ({
-                  campaignId: newCampaign.id,
-                  patientId: p.id,
-                  channel: type,
-                  status: 'SENT', // Simulating instant success for demo
-                  sentAt: new Date()
-              }))
-          );
-      }
+    // Audience Logic
+    if (targetAudience === 'ALL') {
+      targetPatients = await db.select({ id: patients.id }).from(patients).where(eq(patients.clinicId, clinicId));
+    } else if (targetAudience === 'INACTIVE_6_MONTHS') {
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      // Assuming we have lastVisit data, simple filter
+      targetPatients = await db.select({ id: patients.id })
+        .from(patients)
+        .where(and(eq(patients.clinicId, clinicId), lte(patients.lastVisit, sixMonthsAgo)));
+    }
+
+    // Bulk Insert Logs (Simulating Queue)
+    if (targetPatients.length > 0) {
+      await db.insert(messageLogs).values(
+        targetPatients.map(p => ({
+          campaignId: newCampaign.id,
+          patientId: p.id,
+          channel: type,
+          status: 'SENT', // Simulating instant success for demo
+          sentAt: new Date()
+        }))
+      );
+    }
   }
 
   return c.json({ ok: true, data: newCampaign, message: sendNow ? 'Campanha enviada com sucesso!' : 'Campanha salva.' });

@@ -6,7 +6,7 @@ import { patients } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { userId: string } }>();
+const app = new Hono<{ Variables: { userId: number; clinicId: number } }>();
 
 app.use('*', authMiddleware);
 
@@ -19,10 +19,10 @@ const patientSchema = z.object({
 
 // GET /api/patients
 app.get('/', async (c) => {
-  const userId = c.get('userId');
+  const clinicId = c.get('clinicId');
   try {
     const allPatients = await db.select().from(patients)
-      .where(eq(patients.userId, userId))
+      .where(eq(patients.clinicId, clinicId))
       .orderBy(desc(patients.id));
     return c.json({ ok: true, data: allPatients });
   } catch (error: any) {
@@ -33,10 +33,11 @@ app.get('/', async (c) => {
 
 // POST /api/patients
 app.post('/', zValidator('json', patientSchema), async (c) => {
+  const clinicId = c.get('clinicId');
   const userId = c.get('userId');
-  const data = c.req.valid('json');
+  const data = c.req.valid('json') as { name: string; cpf?: string; phone: string; email?: string };
   try {
-    const result = await db.insert(patients).values({ ...data, userId }).returning();
+    const result = await db.insert(patients).values({ ...data, clinicId, userId }).returning();
     return c.json({ ok: true, data: result[0] }, 201);
   } catch (error: any) {
     console.error("Erro criar paciente:", error);
