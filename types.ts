@@ -149,3 +149,17 @@ export interface AIMessage {
   content: string;
   actionData?: any; // Se a IA sugerir uma ação (JSON estruturado)
 }
+
+// Declaração global para o elemento do Stripe
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'stripe-pricing-table': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        'pricing-table-id': string;
+        'publishable-key': string;
+        'client-reference-id'?: string;
+        'customer-email'?: string;
+      };
+    }
+  }
+}

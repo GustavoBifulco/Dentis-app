@@ -1,41 +1,56 @@
 import React, { useEffect, useState } from 'react';
+import { useUser } from '@clerk/clerk-react'; // Import necessário
 import { Services } from '../lib/services';
 import { Patient } from '../types';
 import { LoadingState, EmptyState, SectionHeader, ErrorState, IslandCard, LuxButton } from './Shared';
 import { Search, Plus, Filter, Eye } from 'lucide-react';
 
-// Props adicionais para comunicar a seleção com o componente pai (App)
 interface PatientsProps {
   onSelectPatient?: (patient: Patient) => void;
 }
 
 const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
+  const { user, isLoaded } = useUser(); // Hook do Clerk
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const loadPatients = async () => {
+    if (!user?.id) return;
+    
     setLoading(true);
     setError(null);
-    const res = await Services.patients.list();
-    if (res.ok) {
-      setPatients(res.data || []);
-    } else {
-      setError(res.error || 'Erro ao carregar pacientes');
+    try {
+      // Chama a função correta 'getAll' passando o ID
+      const res = await Services.patients.getAll(user.id);
+      
+      if (res.ok) {
+        setPatients(res.data || []);
+      } else {
+        setError(res.error || 'Erro ao carregar pacientes');
+      }
+    } catch (err) {
+      setError('Falha na conexão com o servidor');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => { loadPatients(); }, []);
+  // Só carrega quando o usuário estiver logado
+  useEffect(() => { 
+    if (isLoaded && user) {
+      loadPatients(); 
+    }
+  }, [isLoaded, user?.id]);
 
   const filtered = patients.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
-  if (loading) return <LoadingState message="Buscando prontuários..." />;
+  if (!isLoaded || loading) return <LoadingState message="Buscando prontuários..." />;
   if (error) return <ErrorState message={error} onRetry={loadPatients} />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <SectionHeader 
         title="Pacientes" 
         subtitle="Gestão completa de prontuários e históricos."

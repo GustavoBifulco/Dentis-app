@@ -1,7 +1,4 @@
-const getHeaders = () => {
-  const clerkUser = (window as any).Clerk?.user || (window as any).clerk?.user;
-  const userId = clerkUser?.id || '';
-  
+const getHeaders = (userId: string) => {
   return { 
     'x-user-id': userId,
     'Content-Type': 'application/json'
@@ -9,18 +6,18 @@ const getHeaders = () => {
 };
 
 export const inventoryService = {
-  getAll: () => fetch('/api/inventory', { headers: getHeaders() }).then(res => res.json()),
+  getAll: (userId: string) => fetch('/api/inventory', { headers: getHeaders(userId) }).then(res => res.json()),
 };
 
 export const procedureService = {
-  getAll: () => fetch('/api/procedures', { headers: getHeaders() }).then(res => res.json()),
+  getAll: (userId: string) => fetch('/api/procedures', { headers: getHeaders(userId) }).then(res => res.json()),
 };
 
 export const patientService = {
-  getAll: () => fetch('/api/patients', { headers: getHeaders() }).then(res => res.json()),
+  // Agora aceita userId e o nome é getAll (padronizado)
+  getAll: (userId: string) => fetch('/api/patients', { headers: getHeaders(userId) }).then(res => res.json()),
 };
 
-// Este objeto Services (no plural) é o que o seu Dashboard e Patients.tsx usam
 export const Services = {
   patients: patientService,
   inventory: inventoryService,

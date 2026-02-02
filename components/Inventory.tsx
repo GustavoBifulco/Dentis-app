@@ -1,23 +1,42 @@
 import React, { useEffect, useState } from 'react';
+import { useUser } from '@clerk/clerk-react'; // Importando o hook do Clerk
 import { Services } from '../lib/services';
 import { StockItem } from '../types';
-import { LoadingState, EmptyState, SectionHeader, IslandCard } from './Shared';
-import { Plus, ChevronDown, Package, AlertTriangle, Box } from 'lucide-react';
+import { LoadingState, EmptyState, SectionHeader } from './Shared';
+import { Plus, ChevronDown, Box, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Inventory: React.FC = () => {
+  const { user, isLoaded } = useUser(); // Pegando dados do usuário
   const [items, setItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const res = await Services.inventory.list();
-      if (res.ok) setItems(res.data || []);
-      setLoading(false);
+      // Só carrega se o usuário estiver logado e tiver ID
+      if (!isLoaded || !user?.id) return;
+
+      try {
+        // Passamos o user.id para o serviço e usamos getAll (conforme definido no services.ts)
+        const data = await Services.inventory.getAll(user.id);
+        // Verifica se é array, pois o backend retorna lista direta
+        if (Array.isArray(data)) {
+          setItems(data);
+        } else {
+          setItems([]);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar estoque:", error);
+      } finally {
+        setLoading(false);
+      }
     }
-    load();
-  }, []);
+    
+    if (isLoaded && user) {
+        load();
+    }
+  }, [isLoaded, user?.id]);
 
   // Group items by category (Specialty)
   const categories = Array.from(new Set(items.map(i => i.category)));
@@ -61,7 +80,6 @@ const Inventory: React.FC = () => {
                     border border-lux-border rounded-[2.5rem] shadow-sm
                  `}
                >
-                 {/* Header da Categoria */}
                  <motion.div layout="position" className="p-8 flex items-center justify-between">
                     <div className="flex items-center gap-6">
                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${isExpanded ? 'bg-lux-accent text-white' : 'bg-lux-subtle text-lux-text'}`}>
@@ -89,7 +107,6 @@ const Inventory: React.FC = () => {
                     </div>
                  </motion.div>
 
-                 {/* Conteúdo Expandido (Lista de Itens) */}
                  <AnimatePresence>
                     {isExpanded && (
                        <motion.div 
@@ -121,7 +138,6 @@ const Inventory: React.FC = () => {
                                 </div>
                              ))}
                              
-                             {/* Card de Adicionar Novo na Categoria */}
                              <div className="border-2 border-dashed border-lux-border rounded-2xl flex flex-col items-center justify-center p-6 text-lux-text-secondary hover:border-lux-accent/50 hover:bg-lux-subtle transition-colors cursor-pointer min-h-[140px]">
                                 <Plus size={32} className="opacity-30 mb-2" />
                                 <span className="text-xs font-bold uppercase tracking-widest">Adicionar em {cat}</span>

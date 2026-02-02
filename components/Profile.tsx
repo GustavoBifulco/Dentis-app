@@ -1,16 +1,116 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
 import { SectionHeader, LuxButton } from './Shared';
-import { User, MapPin, Phone, Mail, FileBadge, Building, Upload, LogOut, ShieldCheck } from 'lucide-react';
+import { User, MapPin, Phone, Mail, FileBadge, Building, Upload, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
+
+// 1. Definindo a estrutura dos dados reais
+interface UserProfileData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  cpf: string;
+  birthDate: string;
+  address: {
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+  };
+  // Campos opcionais para clínica
+  companyName?: string;
+  cnpj?: string;
+  technicalManager?: string;
+}
 
 interface ProfileProps {
   userRole: UserRole;
   onLogout: () => void;
+  // Opcional: Se você já tiver os dados no componente pai, pode passar via prop
+  initialData?: UserProfileData; 
 }
 
-const Profile: React.FC<ProfileProps> = ({ userRole, onLogout }) => {
+const Profile: React.FC<ProfileProps> = ({ userRole, onLogout, initialData }) => {
+  
+  // 2. Estado para gerenciar os dados do formulário
+  const [isLoading, setIsLoading] = useState(true);
+  const [formData, setFormData] = useState<UserProfileData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    cpf: '',
+    birthDate: '',
+    address: { street: '', number: '', neighborhood: '', city: '', state: '' },
+    companyName: '',
+    cnpj: '',
+    technicalManager: ''
+  });
 
-  const renderField = (label: string, icon: React.ReactNode, value: string, readOnly = false, type = "text", placeholder = "") => (
+  // 3. Simulação de busca de dados (AQUI VOCÊ CONECTA SEU BACKEND REAL)
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setIsLoading(true);
+      try {
+        // --- INÍCIO DA INTEGRAÇÃO COM BACKEND ---
+        // Exemplo: const response = await api.get('/user/profile');
+        // setFormData(response.data);
+        
+        // *Simulando* um delay de rede, mas usando dados vazios ou iniciais se não houver prop
+        // Remova este timeout e use sua chamada real (Supabase, Firebase, Axios)
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        if (initialData) {
+          setFormData(initialData);
+        } else {
+            // Se não houver dados iniciais, deixamos pronto para edição ou buscamos da API
+            // Aqui estou apenas preenchendo com vazios para não quebrar, 
+            // mas é aqui que viria o JSON do seu banco de dados.
+            console.log("Buscando dados do banco...");
+        }
+        // --- FIM DA INTEGRAÇÃO ---
+      } catch (error) {
+        console.error("Erro ao buscar perfil", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [initialData]);
+
+  // 4. Função genérica para atualizar os inputs
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // Lógica para campos aninhados (endereço)
+    if (name.startsWith('address.')) {
+        const addressField = name.split('.')[1];
+        setFormData(prev => ({
+            ...prev,
+            address: { ...prev.address, [addressField]: value }
+        }));
+    } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSave = () => {
+      console.log("Salvando dados atualizados:", formData);
+      // Aqui entraria: await api.put('/user/profile', formData);
+  };
+
+  // Renderização do Input atualizada para ser controlada (value + onChange)
+  const renderField = (
+    label: string, 
+    icon: React.ReactNode, 
+    name: string, // Adicionado 'name' para mapear no state
+    value: string, 
+    readOnly = false, 
+    type = "text", 
+    placeholder = ""
+  ) => (
     <div className="space-y-1.5">
       <label className="text-xs font-bold text-lux-text-secondary uppercase tracking-wider ml-1">{label}</label>
       <div className="relative group">
@@ -18,8 +118,10 @@ const Profile: React.FC<ProfileProps> = ({ userRole, onLogout }) => {
             {icon}
         </div>
         <input 
+          name={name}
           type={type} 
-          defaultValue={value}
+          value={value} // Agora usa value, não defaultValue
+          onChange={readOnly ? undefined : handleInputChange}
           readOnly={readOnly}
           placeholder={placeholder}
           className={`
@@ -38,6 +140,18 @@ const Profile: React.FC<ProfileProps> = ({ userRole, onLogout }) => {
       </div>
     </div>
   );
+
+  // Loading State
+  if (isLoading) {
+      return (
+          <div className="flex h-96 items-center justify-center">
+              <Loader2 className="animate-spin text-lux-accent w-10 h-10" />
+          </div>
+      );
+  }
+
+  // Nome dinâmico para exibição
+  const displayName = formData.companyName || `${formData.firstName} ${formData.lastName}`.trim() || "Usuário";
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -67,8 +181,8 @@ const Profile: React.FC<ProfileProps> = ({ userRole, onLogout }) => {
                  <div className="w-32 h-32 rounded-full border-[6px] border-lux-surface shadow-2xl overflow-hidden bg-white relative">
                    <img 
                     src={userRole === 'clinic_owner' 
-                        ? "https://ui-avatars.com/api/?name=Odonto+Center&background=0D8ABC&color=fff&size=256" 
-                        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${userRole}`
+                        ? `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0D8ABC&color=fff&size=256` 
+                        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.email || userRole}`
                     } 
                     alt="Profile" 
                     className="w-full h-full object-cover" 
@@ -81,10 +195,10 @@ const Profile: React.FC<ProfileProps> = ({ userRole, onLogout }) => {
               </div>
 
               <h3 className="text-xl font-bold text-lux-text">
-                {userRole === 'clinic_owner' ? 'Odonto Center' : 'Ricardo Silva'}
+                {displayName}
               </h3>
               <p className="text-lux-text-secondary text-sm font-medium mb-6">
-                {userRole === 'clinic_owner' ? 'Matriz - São Paulo' : userRole === 'dentist' ? 'Cirurgião Dentista' : 'Paciente VIP'}
+                {userRole === 'clinic_owner' ? 'Matriz' : userRole === 'dentist' ? 'Cirurgião Dentista' : 'Paciente VIP'}
               </p>
 
               <div className="w-full bg-lux-subtle p-3 rounded-xl border border-lux-border/50">
@@ -116,37 +230,37 @@ const Profile: React.FC<ProfileProps> = ({ userRole, onLogout }) => {
                   </h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {renderField("Nome", <User size={18}/>, userRole === 'clinic_owner' ? "Ricardo" : "Ricardo")}
-                      {renderField("Sobrenome", <User size={18}/>, "Silva")}
+                      {renderField("Nome", <User size={18}/>, "firstName", formData.firstName)}
+                      {renderField("Sobrenome", <User size={18}/>, "lastName", formData.lastName)}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {renderField("CPF", <FileBadge size={18}/>, "123.456.789-00", true)} {/* CPF Read Only */}
-                      {renderField("Data de Nascimento", <User size={18}/>, "1985-05-20", false, "date")}
+                      {renderField("CPF", <FileBadge size={18}/>, "cpf", formData.cpf, true)} {/* CPF Read Only */}
+                      {renderField("Data de Nascimento", <User size={18}/>, "birthDate", formData.birthDate, false, "date")}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {renderField("Celular", <Phone size={18}/>, "(11) 99999-8888")}
-                      {renderField("E-mail", <Mail size={18}/>, "ricardo@dentis.com")}
+                      {renderField("Celular", <Phone size={18}/>, "phone", formData.phone)}
+                      {renderField("E-mail", <Mail size={18}/>, "email", formData.email, true)} {/* Email geralmente é read-only ou requer validação */}
                   </div>
               </div>
 
-              {/* Endereço Completo (Para Todos) */}
+              {/* Endereço Completo */}
               <div className="space-y-6">
-                 <h4 className="text-sm font-black text-lux-text uppercase tracking-widest border-b border-lux-border pb-2">
+                  <h4 className="text-sm font-black text-lux-text uppercase tracking-widest border-b border-lux-border pb-2">
                     Endereço
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                      <div className="md:col-span-2">
-                        {renderField("Rua", <MapPin size={18}/>, "Rua das Flores", false, "text")}
+                        {renderField("Rua", <MapPin size={18}/>, "address.street", formData.address.street)}
                      </div>
                      <div>
-                        {renderField("Número", <MapPin size={18}/>, "123", false, "text")}
+                        {renderField("Número", <MapPin size={18}/>, "address.number", formData.address.number)}
                      </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     {renderField("Bairro", <MapPin size={18}/>, "Jardins", false, "text")}
-                     {renderField("Cidade/UF", <MapPin size={18}/>, "São Paulo / SP", false, "text")}
+                     {renderField("Bairro", <MapPin size={18}/>, "address.neighborhood", formData.address.neighborhood)}
+                     {renderField("Cidade/UF", <MapPin size={18}/>, "address.city", formData.address.city)}
                   </div>
               </div>
 
@@ -156,17 +270,17 @@ const Profile: React.FC<ProfileProps> = ({ userRole, onLogout }) => {
                     <h4 className="text-sm font-black text-lux-text uppercase tracking-widest border-b border-lux-border pb-2">
                         Dados da Clínica
                     </h4>
-                    {renderField("Nome Fantasia", <Building size={18}/>, "Odonto Center Premium")}
+                    {renderField("Nome Fantasia", <Building size={18}/>, "companyName", formData.companyName || '')}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {renderField("CNPJ", <FileBadge size={18}/>, "00.000.000/0001-99", true)}
-                        {renderField("Responsável Técnico", <User size={18}/>, "Dr. Ricardo Silva")}
+                        {renderField("CNPJ", <FileBadge size={18}/>, "cnpj", formData.cnpj || '', true)}
+                        {renderField("Responsável Técnico", <User size={18}/>, "technicalManager", formData.technicalManager || '')}
                     </div>
                 </div>
               )}
 
-              {/* Botão Salvar Fixo no Final */}
+              {/* Botão Salvar */}
               <div className="pt-4 flex justify-end">
-                <LuxButton>Salvar Alterações</LuxButton>
+                <LuxButton onClick={handleSave}>Salvar Alterações</LuxButton>
               </div>
 
            </div>

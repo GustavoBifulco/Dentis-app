@@ -14,6 +14,7 @@ services:
       - db
     networks:
       - dentis_net
+    # Volume removido para usar a versão compilada da imagem
 
   db:
     image: postgres:16-alpine
@@ -24,6 +25,14 @@ services:
       POSTGRES_DB: dentis_prod
     volumes:
       - dentis_db_data:/var/lib/postgresql/data
+    networks:
+      - dentis_net
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
     networks:
       - dentis_net
 
