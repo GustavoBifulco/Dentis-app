@@ -38,3 +38,11 @@ export const MOCK_SESSION: Partial<UserSession> = {
     onboardingComplete: true,
     capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false }
 };
+
+export const MOCK_INVENTORY = [
+    { id: 1, name: 'Luvas de Látex (Cx)', quantity: 50, unit: 'box', minLevel: 10 },
+    { id: 2, name: 'Anestésico Tópico', quantity: 12, unit: 'frasco', minLevel: 5 },
+    { id: 3, name: 'Resina Composta A2', quantity: 8, unit: 'seringa', minLevel: 3 },
+    { id: 4, name: 'Agulhas Gengivais', quantity: 100, unit: 'uni', minLevel: 20 },
+    { id: 5, name: 'Sugadores Descartáveis', quantity: 200, unit: 'pacote', minLevel: 15 },
+];
