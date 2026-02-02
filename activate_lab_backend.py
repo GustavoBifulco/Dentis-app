@@ -1,105 +1,65 @@
 import os
 
-def activate_lab_backend():
-    # 1. Atualizar SCHEMA do Banco de Dados
-    # Como o arquivo schema.ts original está "desativado", vamos criar um novo focado no Lab
-    if not os.path.exists("server/db"):
-        os.makedirs("server/db")
-
-    schema_content = """
-import { pgTable, serial, text, integer, boolean, timestamp, decimal } from 'drizzle-orm/pg-core';
-
-export const labOrders = pgTable('lab_orders', {
-  id: serial('id').primaryKey(),
-  clinicId: text('clinic_id').notNull(),
-  patientName: text('patient_name').notNull(),
-  procedure: text('procedure').notNull(),
-  labName: text('lab_name'),
-  status: text('status', { enum: ['requested', 'production', 'ready', 'delivered'] }).default('requested'),
-  deadline: timestamp('deadline').notNull(),
-  cost: decimal('cost', { precision: 10, scale: 2 }).default('0'),
-  isDigital: boolean('is_digital').default(false),
-  stlFileUrl: text('stl_file_url'),
-  createdAt: timestamp('created_at').defaultNow()
-});
-"""
-    with open("server/db/schema_lab.ts", "w", encoding="utf-8") as f:
-        f.write(schema_content.strip())
-    print("✅ Schema de Laboratório criado em server/db/schema_lab.ts")
-
-    # 2. Criar a Rota API (Backend)
-    # Esta rota vai receber as chamadas do useLabs.ts
-    if not os.path.exists("server/routes"):
-        os.makedirs("server/routes")
-
-    route_content = """
-import { Router } from 'express';
-import { db } from '../db';
-import { labOrders } from '../db/schema_lab';
-import { eq, and } from 'drizzle-orm';
-import { requireRole } from '../middleware/auth';
-
-const router = Router();
-
-// LISTAR Pedidos (Filtrado por Clínica)
-router.get("/", requireRole(['dentist', 'admin']), async (req: any, res) => {
-  try {
-    const orders = await db.select().from(labOrders)
-      .where(eq(labOrders.clinicId, req.clinicId));
+def fix_mock_export():
+    # Caminho do arquivo
+    path = "lib/mockData.ts"
     
-    res.json({ orders });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao buscar pedidos" });
-  }
-});
+    # Conteúdo corrigido com TODOS os mocks necessários
+    content = """import { Patient, AppContext, UserSession, FinancialEntry, Procedure, LabOrder } from '../types';
 
-// CRIAR Novo Pedido
-router.post("/", requireRole(['dentist']), async (req: any, res) => {
-  try {
-    const { patientName, procedure, deadline, labName, cost } = req.body;
-    
-    await db.insert(labOrders).values({
-      clinicId: req.clinicId, // Injeção automática segura
-      patientName,
-      procedure,
-      labName,
-      deadline: new Date(deadline),
-      cost: cost ? String(cost) : '0',
-      status: 'requested'
-    });
+// Detecta se é dev environment
+const isDev = (import.meta as any).env.MODE === 'development';
 
-    res.json({ success: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao criar pedido" });
-  }
-});
+export const MOCK_PATIENTS: Patient[] = isDev ? [
+    { id: 1, clinicId: '1', organizationId: 1, name: 'Paciente Beta', status: 'active', email: 'contato1@provider.com', phone: '(11) 99999-9999' },
+    { id: 2, clinicId: '1', organizationId: 1, name: 'Paciente Gama', status: 'active', email: 'contato2@provider.com', phone: '(11) 98888-8888' }
+] : [];
 
-// ATUALIZAR Status
-router.patch("/:id/status", requireRole(['dentist', 'admin']), async (req: any, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
+export const MOCK_CONTEXTS = {
+    professional: [
+        { type: 'CLINIC', id: 1, name: 'Clínica Demo', organizationId: '1' }
+    ],
+    patient: [
+        { type: 'PATIENT', id: 1, name: 'Portal Pessoal' }
+    ]
+};
 
-    await db.update(labOrders)
-      .set({ status })
-      .where(and(
-        eq(labOrders.id, Number(id)),
-        eq(labOrders.clinicId, req.clinicId) // Garante que só altera da própria clínica
-      ));
+// Mocks Financeiros (Adicionado para corrigir o erro de build)
+export const MOCK_FINANCE: FinancialEntry[] = isDev ? [
+    { id: 1, clinicId: '1', type: 'income', amount: 1500.00, description: 'Consulta Inicial', dueDate: '2024-05-20', status: 'paid', category: 'Clínico' },
+    { id: 2, clinicId: '1', type: 'expense', amount: 350.00, description: 'Material Descartável', dueDate: '2024-05-21', status: 'pending', category: 'Insumos' }
+] : [];
 
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: "Erro ao atualizar status" });
-  }
-});
+// Mocks de Procedimentos
+export const MOCK_PROCEDURES: Procedure[] = isDev ? [
+    { id: 1, clinicId: '1', name: 'Limpeza', code: 'PRO-001', price: 200, durationMinutes: 30, category: 'Prevenção' },
+    { id: 2, clinicId: '1', name: 'Clareamento', code: 'PRO-002', price: 800, durationMinutes: 60, category: 'Estética' }
+] : [];
 
-export default router;
+// Mocks de Laboratório
+export const MOCK_LABS: LabOrder[] = isDev ? [
+    { id: 1, clinicId: '1', patientName: 'Paciente Beta', procedure: 'Prótese Total', status: 'production', deadline: '2024-06-01', cost: 500 }
+] : [];
+
+export const MOCK_SESSION: Partial<UserSession> = {
+    onboardingComplete: true,
+    capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false }
+};
 """
-    with open("server/routes/labs.ts", "w", encoding="utf-8") as f:
-        f.write(route_content.strip())
-    print("✅ Rota API de Laboratório criada em server/routes/labs.ts")
+
+    # Verifica e cria diretório se necessário
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # Escreve o arquivo
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    
+    print(f"✅ Arquivo {path} corrigido com sucesso!")
+    print("   - MOCK_FINANCE restaurado.")
+    print("   - MOCK_PROCEDURES restaurado.")
+    print("   - MOCK_LABS restaurado.")
 
 if __name__ == "__main__":
-    activate_lab_backend()
+    fix_mock_export()
