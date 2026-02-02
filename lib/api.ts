@@ -11,12 +11,21 @@ export const api = {
     post: async (endpoint: string, data: any, token: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(data),
         });
+        if (!res.ok) throw new Error('Falha na requisição post');
         return res.json();
     }
+};
+
+/**
+ * Função exigida pelo componente Onboarding.tsx
+ * Adicionada para corrigir o erro de build no Coolify
+ */
+export const completeOnboarding = async (data: any, token: string) => {
+    return api.post('/onboarding/complete', data, token);
 };
