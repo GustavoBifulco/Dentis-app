@@ -1,65 +1,132 @@
 import os
 
-def fix_mock_export():
-    # Caminho do arquivo
-    path = "lib/mockData.ts"
-    
-    # Conteúdo corrigido com TODOS os mocks necessários
-    content = """import { Patient, AppContext, UserSession, FinancialEntry, Procedure, LabOrder } from '../types';
+def fix_server_entry():
+    content = """
+import 'dotenv/config';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
+import { logger } from 'hono/logger';
 
-// Detecta se é dev environment
-const isDev = (import.meta as any).env.MODE === 'development';
+// Importação segura das rotas
+import onboarding from './routes/onboarding';
+import inventory from './routes/inventory';
+import procedures from './routes/procedures';
+import patients from './routes/patients';
+import debug from './routes/debug';
+import checkout from './routes/checkout';
+import ai from './routes/ai';
+import appointments from './routes/appointments';
+import clinical from './routes/clinical';
+import finance from './routes/finance';
+import fiscal from './routes/fiscal';
+import kiosk from './routes/kiosk';
+import marketing from './routes/marketing';
+import uploads from './routes/uploads';
+import orders from './routes/orders';
+import patient from './routes/patient';
+import courier from './routes/courier';
+import lab from './routes/lab';
+import dashboard from './routes/dashboard';
 
-export const MOCK_PATIENTS: Patient[] = isDev ? [
-    { id: 1, clinicId: '1', organizationId: 1, name: 'Paciente Beta', status: 'active', email: 'contato1@provider.com', phone: '(11) 99999-9999' },
-    { id: 2, clinicId: '1', organizationId: 1, name: 'Paciente Gama', status: 'active', email: 'contato2@provider.com', phone: '(11) 98888-8888' }
-] : [];
+const app = new Hono();
 
-export const MOCK_CONTEXTS = {
-    professional: [
-        { type: 'CLINIC', id: 1, name: 'Clínica Demo', organizationId: '1' }
-    ],
-    patient: [
-        { type: 'PATIENT', id: 1, name: 'Portal Pessoal' }
-    ]
+// 1. Middlewares Globais
+app.use('*', logger()); // Loga cada requisição
+app.use('*', cors({
+  origin: '*', // Em produção, mude para o domínio real
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
+}));
+
+// 2. Health Check (Vital para o Coolify não matar o app)
+app.get('/api/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
+app.get('/api', (c) => c.json({ status: 'online', version: '1.0.0' }));
+
+// 3. Função auxiliar para carregar rotas sem derrubar o servidor
+const safeRoute = (path: string, routeModule: any, name: string) => {
+  try {
+    app.route(path, routeModule);
+    console.log(`✅ Rota carregada: ${name}`);
+  } catch (err) {
+    console.error(`❌ Falha ao carregar rota ${name}:`, err);
+  }
 };
 
-// Mocks Financeiros (Adicionado para corrigir o erro de build)
-export const MOCK_FINANCE: FinancialEntry[] = isDev ? [
-    { id: 1, clinicId: '1', type: 'income', amount: 1500.00, description: 'Consulta Inicial', dueDate: '2024-05-20', status: 'paid', category: 'Clínico' },
-    { id: 2, clinicId: '1', type: 'expense', amount: 350.00, description: 'Material Descartável', dueDate: '2024-05-21', status: 'pending', category: 'Insumos' }
-] : [];
+// 4. Carregamento das Rotas
+safeRoute('/api/dashboard', dashboard, 'Dashboard');
+safeRoute('/api/onboarding', onboarding, 'Onboarding');
+safeRoute('/api/inventory', inventory, 'Inventory');
+safeRoute('/api/procedures', procedures, 'Procedures');
+safeRoute('/api/patients', patients, 'Patients');
+safeRoute('/api/debug', debug, 'Debug');
+safeRoute('/api/checkout', checkout, 'Checkout');
+safeRoute('/api/ai', ai, 'AI');
+safeRoute('/api/appointments', appointments, 'Appointments');
+safeRoute('/api/clinical', clinical, 'Clinical');
+safeRoute('/api/finance', finance, 'Finance');
+safeRoute('/api/fiscal', fiscal, 'Fiscal');
+safeRoute('/api/kiosk', kiosk, 'Kiosk');
+safeRoute('/api/marketing', marketing, 'Marketing');
+safeRoute('/api/uploads', uploads, 'Uploads');
+safeRoute('/api/orders', orders, 'Orders');
+safeRoute('/api/patient', patient, 'Patient Portal');
+safeRoute('/api/courier', courier, 'Courier');
+safeRoute('/api/lab', lab, 'Lab');
 
-// Mocks de Procedimentos
-export const MOCK_PROCEDURES: Procedure[] = isDev ? [
-    { id: 1, clinicId: '1', name: 'Limpeza', code: 'PRO-001', price: 200, durationMinutes: 30, category: 'Prevenção' },
-    { id: 2, clinicId: '1', name: 'Clareamento', code: 'PRO-002', price: 800, durationMinutes: 60, category: 'Estética' }
-] : [];
+// 5. Tratamento de Erros Global
+app.onError((err, c) => {
+  console.error("🔥 Erro Global:", err);
+  return c.json({ success: false, error: "Erro interno no servidor" }, 500);
+});
 
-// Mocks de Laboratório
-export const MOCK_LABS: LabOrder[] = isDev ? [
-    { id: 1, clinicId: '1', patientName: 'Paciente Beta', procedure: 'Prótese Total', status: 'production', deadline: '2024-06-01', cost: 500 }
-] : [];
+// 6. Servir Frontend (Arquivos Estáticos)
+// Primeiro tenta servir arquivos da pasta assets
+app.use('/assets/*', serveStatic({ root: './dist' }));
 
-export const MOCK_SESSION: Partial<UserSession> = {
-    onboardingComplete: true,
-    capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false }
-};
+// Para qualquer outra rota não-API, serve o index.html (SPA)
+app.get('*', serveStatic({ 
+  path: './dist/index.html',
+  onNotFound: (path, c) => {
+    console.log(`⚠️ Arquivo não encontrado: ${path}`);
+    return undefined; // Continua para o próximo handler
+  }
+}));
+
+// Fallback final
+app.notFound((c) => {
+  if (c.req.path.startsWith('/api')) {
+    return c.json({ error: 'Endpoint API não encontrado' }, 404);
+  }
+  return c.text('Página não encontrada', 404);
+});
+
+const port = 3000;
+console.log(`🚀 Servidor Dentis rodando na porta ${port}`);
+
+serve({
+  fetch: app.fetch,
+  port
+});
 """
 
-    # Verifica e cria diretório se necessário
-    directory = os.path.dirname(path)
-    if directory and not os.path.exists(directory):
-        os.makedirs(directory)
-
-    # Escreve o arquivo
-    with open(path, "w", encoding="utf-8") as f:
+    # Garante que a pasta existe (se estiver rodando na raiz, ok)
+    if not os.path.exists("server"):
+        os.makedirs("server")
+        
+    # Escreve o arquivo index.ts (pode ser na raiz ou server/, ajustando conforme sua estrutura)
+    # Assumindo que este arquivo é o server/index.ts ou index.ts na raiz.
+    # Vou salvar como index.ts na raiz pois parece ser onde o Coolify busca, ou server/index.ts
+    
+    # Se existe pasta server, salva lá.
+    target_path = "server/index.ts" if os.path.exists("server") else "index.ts"
+    
+    with open(target_path, "w", encoding="utf-8") as f:
         f.write(content.strip())
     
-    print(f"✅ Arquivo {path} corrigido com sucesso!")
-    print("   - MOCK_FINANCE restaurado.")
-    print("   - MOCK_PROCEDURES restaurado.")
-    print("   - MOCK_LABS restaurado.")
+    print(f"✅ Servidor blindado salvo em: {target_path}")
+    print("Agora, se uma rota falhar, o servidor CONTINUA rodando!")
 
 if __name__ == "__main__":
-    fix_mock_export()
+    fix_server_entry()

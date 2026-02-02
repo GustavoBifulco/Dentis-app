@@ -1,12 +1,12 @@
-import 'dotenv/config'; // Importa variáveis do .env
+import 'dotenv/config';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
+import { logger } from 'hono/logger';
 
+// Importação segura das rotas
 import onboarding from './routes/onboarding';
-// TEMPORARILY DISABLED - Schema migration needed
-// import profile from './routes/profile';
 import inventory from './routes/inventory';
 import procedures from './routes/procedures';
 import patients from './routes/patients';
@@ -22,82 +22,86 @@ import marketing from './routes/marketing';
 import uploads from './routes/uploads';
 import orders from './routes/orders';
 import patient from './routes/patient';
+import courier from './routes/courier';
+import lab from './routes/lab';
+import dashboard from './routes/dashboard';
 
 const app = new Hono();
 
-app.use('*', async (c, next) => {
-  console.log(`🌐 [${c.req.method}] ${c.req.url}`);
-  await next();
-});
-
+// 1. Middlewares Globais
+app.use('*', logger()); // Loga cada requisição
 app.use('*', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: '*', // Em produção, mude para o domínio real
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
 }));
 
-// --- MANIPULADORES GLOBAIS DE ERRO ---
-app.onError((err, c) => {
-  console.error("🔥 Erro Global no Servidor:", err);
-  return c.json({
-    success: false,
-    error: err.message || "Erro interno no servidor",
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  }, 500);
-});
-
-app.notFound(async (c) => {
-  if (c.req.path.startsWith('/api')) {
-    return c.json({ success: false, error: `Rota não encontrada: ${c.req.path}` }, 404);
-  }
-  const res = await serveStatic({ path: './dist/index.html' })(c, () => Promise.resolve());
-  return res || c.text('Not Found', 404);
-});
-
-
-// Feature guards - temporarily disabled routes
-// app.use('/api/appointments/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-// app.use('/api/clinical/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-// app.use('/api/finance/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-// app.use('/api/patients/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-
-import { featureGuard } from './middleware/featureGuard';
-
-import dashboard from './routes/dashboard';
-
-// ...
-app.route('/api/dashboard', dashboard);
-// app.route('/api/profile', profile); // DISABLED - schema migration needed
-// ...
-app.route('/api/onboarding', onboarding);
-app.route('/api/inventory', inventory);
-app.route('/api/procedures', procedures);
-app.route('/api/patients', patients);
-app.route('/api/debug', debug);
-app.route('/api/checkout', checkout);
-// TEMPORARILY DISABLED - Schema migration needed:
-app.route('/api/ai', ai);
-app.route('/api/appointments', appointments);
-app.route('/api/clinical', clinical);
-app.route('/api/finance', finance);
-app.route('/api/fiscal', fiscal);
-app.route('/api/kiosk', kiosk);
-app.route('/api/marketing', marketing);
-app.route('/api/uploads', uploads);
-app.route('/api/orders', orders);
-app.route('/api/patient', patient);
-
-import courier from './routes/courier';
-import lab from './routes/lab';
-import invites from './routes/invites';
-
-// app.route('/api/invites', invites); // DISABLED - schema migration needed
-app.route('/api/courier', courier);
-app.route('/api/lab', lab);
-
+// 2. Health Check (Vital para o Coolify não matar o app)
+app.get('/api/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 app.get('/api', (c) => c.json({ status: 'online', version: '1.0.0' }));
-app.use('/assets/*', serveStatic({ root: './dist' }));
-app.get('*', serveStatic({ path: './dist/index.html' }));
 
-console.log("🚀 Servidor Dentis Online na porta 3000");
-serve({ fetch: app.fetch, port: 3000 });
+// 3. Função auxiliar para carregar rotas sem derrubar o servidor
+const safeRoute = (path: string, routeModule: any, name: string) => {
+  try {
+    app.route(path, routeModule);
+    console.log(`✅ Rota carregada: ${name}`);
+  } catch (err) {
+    console.error(`❌ Falha ao carregar rota ${name}:`, err);
+  }
+};
+
+// 4. Carregamento das Rotas
+safeRoute('/api/dashboard', dashboard, 'Dashboard');
+safeRoute('/api/onboarding', onboarding, 'Onboarding');
+safeRoute('/api/inventory', inventory, 'Inventory');
+safeRoute('/api/procedures', procedures, 'Procedures');
+safeRoute('/api/patients', patients, 'Patients');
+safeRoute('/api/debug', debug, 'Debug');
+safeRoute('/api/checkout', checkout, 'Checkout');
+safeRoute('/api/ai', ai, 'AI');
+safeRoute('/api/appointments', appointments, 'Appointments');
+safeRoute('/api/clinical', clinical, 'Clinical');
+safeRoute('/api/finance', finance, 'Finance');
+safeRoute('/api/fiscal', fiscal, 'Fiscal');
+safeRoute('/api/kiosk', kiosk, 'Kiosk');
+safeRoute('/api/marketing', marketing, 'Marketing');
+safeRoute('/api/uploads', uploads, 'Uploads');
+safeRoute('/api/orders', orders, 'Orders');
+safeRoute('/api/patient', patient, 'Patient Portal');
+safeRoute('/api/courier', courier, 'Courier');
+safeRoute('/api/lab', lab, 'Lab');
+
+// 5. Tratamento de Erros Global
+app.onError((err, c) => {
+  console.error("🔥 Erro Global:", err);
+  return c.json({ success: false, error: "Erro interno no servidor" }, 500);
+});
+
+// 6. Servir Frontend (Arquivos Estáticos)
+// Primeiro tenta servir arquivos da pasta assets
+app.use('/assets/*', serveStatic({ root: './dist' }));
+
+// Para qualquer outra rota não-API, serve o index.html (SPA)
+app.get('*', serveStatic({ 
+  path: './dist/index.html',
+  onNotFound: (path, c) => {
+    console.log(`⚠️ Arquivo não encontrado: ${path}`);
+    return undefined; // Continua para o próximo handler
+  }
+}));
+
+// Fallback final
+app.notFound((c) => {
+  if (c.req.path.startsWith('/api')) {
+    return c.json({ error: 'Endpoint API não encontrado' }, 404);
+  }
+  return c.text('Página não encontrada', 404);
+});
+
+const port = 3000;
+console.log(`🚀 Servidor Dentis rodando na porta ${port}`);
+
+serve({
+  fetch: app.fetch,
+  port
+});
