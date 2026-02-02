@@ -2,11 +2,11 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db';
-import { appointments, procedures } from '../db/schema';
+import { appointments, procedures, financial } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { clinicId: number, userId: number } }>();
+const app = new Hono<{ Variables: { organizationId: number, userId: number } }>();
 app.use('*', authMiddleware);
 
 const apptSchema = z.object({
@@ -20,9 +20,9 @@ const apptSchema = z.object({
 
 // LIST
 app.get('/', async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
   const list = await db.query.appointments.findMany({
-    where: eq(appointments.clinicId, clinicId),
+    where: eq(appointments.organizationId, organizationId),
     with: {
       patient: true,
       dentist: true
@@ -34,12 +34,12 @@ app.get('/', async (c) => {
 
 // CREATE
 app.post('/', zValidator('json', apptSchema), async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
   const dentistId = c.get('userId');
   const data = c.req.valid('json');
 
   const result = await db.insert(appointments).values({
-    clinicId,
+    organizationId,
     dentistId,
     patientId: data.patientId,
     procedureId: data.procedureId,
@@ -56,14 +56,14 @@ app.post('/', zValidator('json', apptSchema), async (c) => {
 // COMPLETE & GENERATE FINANCE
 app.patch('/:id/complete', async (c) => {
   const id = Number(c.req.param('id'));
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
 
   if (isNaN(id)) return c.json({ error: 'ID inválido' }, 400);
 
   // 1. Atualizar Status
   const [updatedAppt] = await db.update(appointments)
     .set({ status: 'completed' })
-    .where(and(eq(appointments.id, id), eq(appointments.clinicId, clinicId)))
+    .where(and(eq(appointments.id, id), eq(appointments.organizationId, organizationId)))
     .returning();
 
   if (!updatedAppt) return c.json({ ok: false, error: 'Agendamento não encontrado' }, 404);
@@ -76,7 +76,7 @@ app.patch('/:id/complete', async (c) => {
 
     if (proc) {
       await db.insert(financial).values({
-        clinicId,
+        organizationId,
         patientId: updatedAppt.patientId,
         appointmentId: updatedAppt.id,
         type: 'INCOME',

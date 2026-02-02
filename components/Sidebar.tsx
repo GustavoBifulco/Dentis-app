@@ -1,6 +1,7 @@
 import React from 'react';
 import { ViewType, ContextType, AppContext } from '../types';
 import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package } from 'lucide-react';
+import { useClerk, useUser } from "@clerk/clerk-react";
 import Logo from './Logo';
 import ContextSwitcher from './ContextSwitcher';
 
@@ -25,6 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onClose
 }) => {
+  const { signOut } = useClerk();
+  const { user } = useUser();
 
   const handleNavigation = (view: ViewType) => {
     setView(view);
@@ -196,14 +199,31 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </nav>
 
-        <div className="p-6 border-t border-lux-border">
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-3 text-lux-text-secondary hover:text-red-500 transition-colors text-sm font-medium px-2"
-          >
-            <LogOut size={18} />
-            <span>Sair</span>
-          </button>
+        <div className="mt-auto p-4 border-t border-lux-border bg-lux-background/50 backdrop-blur-md sticky bottom-0">
+          <div className="flex items-center justify-between gap-3 px-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full overflow-hidden border border-lux-border flex-shrink-0">
+                <img
+                  src={user?.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`}
+                  alt={user?.fullName || ''}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-bold text-lux-text truncate">{user?.fullName || 'Usuário'}</span>
+                <span className="text-[10px] text-lux-text-secondary truncate opacity-70">
+                  {user?.primaryEmailAddress?.emailAddress}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => signOut({ redirectUrl: '/' })}
+              className="p-2 text-lux-text-secondary hover:text-red-500 hover:bg-rose-50 transition-all rounded-xl"
+              title="Sair"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </aside>
     </>

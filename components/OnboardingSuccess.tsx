@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { completeOnboarding } from '../lib/api';
 import SetupWizard from './SetupWizard';
+import { unformat } from '../lib/formatters';
 
 interface OnboardingSuccessProps {
     onComplete: () => void;
@@ -29,14 +30,19 @@ export default function OnboardingSuccess({ onComplete }: OnboardingSuccessProps
                     userId: user.id,
                     name: user.fullName || '',
                     role: data.role,
-                    cpf: data.cpf,
-                    phone: data.phone,
+                    cpf: unformat(data.cpf),
+                    phone: unformat(data.phone),
                     cro: data.cro,
                 });
 
+                // Recarrega Clerk
+                await user.reload();
+
                 // Limpa após sucesso
                 localStorage.removeItem('pending_onboarding_data');
-                setLoading(false);
+                setTimeout(() => {
+                    setLoading(false);
+                }, 500);
             } catch (err: any) {
                 setError(err.message || "Erro ao finalizar o cadastro.");
                 setLoading(false);

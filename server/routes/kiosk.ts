@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db';
-import { appointments, clinics, patients } from '../db/schema';
+import { appointments, organizations, patients } from '../db/schema';
 import { and, desc, eq, gte, lte, or } from 'drizzle-orm';
 
 const app = new Hono();
@@ -16,22 +16,22 @@ app.post('/checkin', zValidator('json', checkinSchema), async (c) => {
   const { cpf, kioskToken } = c.req.valid('json');
   const cpfDigits = cpf.replace(/\D/g, '');
 
-  let clinicId: number | null = null;
+  let organizationId: number | null = null;
   if (kioskToken) {
-    const clinic = await db.query.clinics.findFirst({
-      where: eq(clinics.kioskToken, kioskToken),
+    const clinic = await db.query.organizations.findFirst({
+      where: eq(organizations.kioskToken, kioskToken),
     });
 
     if (!clinic) {
       return c.json({ ok: false, error: 'Kiosk token invalido' }, 401);
     }
-    clinicId = clinic.id;
+    organizationId = clinic.id;
   }
 
   const patient = await db.query.patients.findFirst({
-    where: clinicId
+    where: organizationId
       ? and(
-        eq(patients.clinicId, clinicId),
+        eq(patients.organizationId, organizationId),
         or(eq(patients.cpf, cpfDigits), eq(patients.cpf, cpf))
       )
       : or(eq(patients.cpf, cpfDigits), eq(patients.cpf, cpf)),

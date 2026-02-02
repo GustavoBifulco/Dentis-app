@@ -4,7 +4,9 @@ import { orders, organizations, patients } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const labRoute = new Hono();
+import type { UserSession } from '../../types';
+
+const labRoute = new Hono<{ Variables: { organizationId: number; userId: number; session: UserSession } }>();
 
 // Apply auth middleware to all routes
 labRoute.use('*', authMiddleware);
@@ -69,7 +71,12 @@ labRoute.get('/orders', async (c) => {
 
     const labId = session.activeOrganization.id;
 
-    let query = db
+    const conditions = [eq(orders.labId, labId)];
+    if (statusFilter) {
+        conditions.push(eq(orders.status, statusFilter));
+    }
+
+    const labOrders = await db
         .select({
             id: orders.id,
             description: orders.description,
@@ -84,22 +91,10 @@ labRoute.get('/orders', async (c) => {
             patientName: patients.name,
         })
         .from(orders)
-        .leftJoin(organizations, eq(orders.clinicId, organizations.id))
+        .leftJoin(organizations, eq(orders.organizationId, organizations.id))
         .leftJoin(patients, eq(orders.patientId, patients.id))
-        .where(eq(orders.labId, labId))
+        .where(and(...conditions))
         .orderBy(desc(orders.createdAt));
-
-    // Apply status filter if provided
-    if (statusFilter) {
-        query = query.where(
-            and(
-                eq(orders.labId, labId),
-                eq(orders.status, statusFilter)
-            )
-        ) as any;
-    }
-
-    const labOrders = await query;
 
     return c.json({
         orders: labOrders.map(order => ({

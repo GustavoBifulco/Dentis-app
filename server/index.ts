@@ -1,9 +1,4 @@
 import 'dotenv/config'; // Importa variáveis do .env
-import { webcrypto } from 'node:crypto';
-if (typeof globalThis.crypto === 'undefined') {
-  Object.defineProperty(globalThis, 'crypto', { value: webcrypto, writable: false, configurable: true });
-}
-
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
@@ -24,7 +19,9 @@ import checkout from './routes/checkout';
 // import fiscal from './routes/fiscal';
 // import kiosk from './routes/kiosk';
 // import marketing from './routes/marketing';
-// import uploads from './routes/uploads';
+import uploads from './routes/uploads';
+import orders from './routes/orders';
+import patient from './routes/patient';
 
 const app = new Hono();
 
@@ -38,6 +35,24 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
 }));
+
+// --- MANIPULADORES GLOBAIS DE ERRO ---
+app.onError((err, c) => {
+  console.error("🔥 Erro Global no Servidor:", err);
+  return c.json({
+    success: false,
+    error: err.message || "Erro interno no servidor",
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  }, 500);
+});
+
+app.notFound(async (c) => {
+  if (c.req.path.startsWith('/api')) {
+    return c.json({ success: false, error: `Rota não encontrada: ${c.req.path}` }, 404);
+  }
+  const res = await serveStatic({ path: './dist/index.html' })(c, () => Promise.resolve());
+  return res || c.text('Not Found', 404);
+});
 
 
 // Feature guards - temporarily disabled routes
@@ -68,7 +83,9 @@ app.route('/api/checkout', checkout);
 // app.route('/api/fiscal', fiscal);
 // app.route('/api/kiosk', kiosk);
 // app.route('/api/marketing', marketing);
-// app.route('/api/uploads', uploads);
+app.route('/api/uploads', uploads);
+app.route('/api/orders', orders);
+app.route('/api/patient', patient);
 
 import courier from './routes/courier';
 import lab from './routes/lab';

@@ -338,7 +338,7 @@ async function seed() {
 
     // Pedido 1: READY_FOR_PICKUP (esperando motoboy)
     await db.insert(orders).values({
-      clinicId: clinica.id,
+      organizationId: clinica.id,
       labId: lab.id,
       dentistId: dentista.id,
       patientId: paciente1.id,
@@ -353,7 +353,7 @@ async function seed() {
 
     // Pedido 2: IN_PRODUCTION (lab trabalhando)
     await db.insert(orders).values({
-      clinicId: clinica.id,
+      organizationId: clinica.id,
       labId: lab.id,
       dentistId: dentista.id,
       patientId: paciente2.id,
@@ -368,7 +368,7 @@ async function seed() {
 
     // Pedido 3: PENDING (recém criado)
     await db.insert(orders).values({
-      clinicId: clinica.id,
+      organizationId: clinica.id,
       labId: lab.id,
       dentistId: dentista.id,
       patientId: paciente1.id,

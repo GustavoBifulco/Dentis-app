@@ -4,15 +4,15 @@ import { financial } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { clinicId: number } }>();
+const app = new Hono<{ Variables: { organizationId: number } }>();
 app.use('*', authMiddleware);
 
 app.get('/', async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
 
   // Fetch transactions
   const transactions = await db.query.financial.findMany({
-    where: eq(financial.clinicId, clinicId),
+    where: eq(financial.organizationId, organizationId),
     orderBy: [desc(financial.dueDate)],
     limit: 50
   });

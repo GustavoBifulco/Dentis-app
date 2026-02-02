@@ -8,40 +8,33 @@ services:
       - "3000:3000"
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgres://dentis:dentis_secure_pass@db:5432/dentis_prod
     depends_on:
-      - db
+      - postgres
+      - redis
     networks:
-      - dentis_net
-    # Volume removido para usar a versão compilada da imagem
+      - dentis-network
 
-  db:
-    image: postgres:16-alpine
+  postgres:
+    image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: dentis
-      POSTGRES_PASSWORD: dentis_secure_pass
-      POSTGRES_DB: dentis_prod
+      POSTGRES_USER: ${POSTGRES_USER:-dentis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dentis_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-dentis}
     volumes:
-      - dentis_db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - dentis_net
+      - dentis-network
 
-  adminer:
-    image: adminer
+  redis:
+    image: redis:alpine
     restart: always
-    ports:
-      - "8080:8080"
     networks:
-      - dentis_net
+      - dentis-network
 
 volumes:
-  dentis_db_data:
-  dentis_uploads:
+  postgres_data:
 
 
 networks:
-  dentis_net:
+  dentis-network:

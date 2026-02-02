@@ -5,12 +5,20 @@ interface AppContextState {
     session: UserSession | null;
     setSession: (session: UserSession | null) => void;
     switchContext: (context: AppContext) => void;
+    showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+    toast: { message: string, type: 'success' | 'error' | 'info' } | null;
 }
 
 const AppContextContext = createContext<AppContextState | undefined>(undefined);
 
 export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [session, setSession] = useState<UserSession | null>(null);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     const switchContext = (context: AppContext) => {
         if (!session) return;
@@ -47,7 +55,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }, []);
 
     return (
-        <AppContextContext.Provider value={{ session, setSession, switchContext }}>
+        <AppContextContext.Provider value={{ session, setSession, switchContext, showToast, toast }}>
             {children}
         </AppContextContext.Provider>
     );

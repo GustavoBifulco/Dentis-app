@@ -3,11 +3,11 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db';
-import { appointments, patients, users } from '../db/schema';
+import { appointments, patients, users, financial } from '../db/schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { clinicId: number; userId: number; role: string } }>();
+const app = new Hono<{ Variables: { organizationId: number; userId: number; role: string } }>();
 
 app.use('*', authMiddleware);
 
@@ -20,7 +20,7 @@ const formatDate = (date: Date) => date.toLocaleDateString('pt-BR', { day: '2-di
 
 app.post('/chat', zValidator('json', chatSchema), async (c) => {
     const { message } = c.req.valid('json');
-    const clinicId = c.get('clinicId');
+    const organizationId = c.get('organizationId');
     const userId = c.get('userId'); // Internal User ID
     const role = c.get('role');
 
@@ -49,7 +49,7 @@ app.post('/chat', zValidator('json', chatSchema), async (c) => {
 
             if (userRecord) {
                 const patientRecord = await db.query.patients.findFirst({
-                    where: and(eq(patients.clinicId, clinicId), eq(patients.email, userRecord.email))
+                    where: and(eq(patients.organizationId, organizationId), eq(patients.email, userRecord.email))
                 });
 
                 if (patientRecord) {
@@ -88,7 +88,7 @@ app.post('/chat', zValidator('json', chatSchema), async (c) => {
                 const entries = await db.select({
                     total: sql<number>`sum(${financial.amount})`
                 }).from(financial)
-                    .where(and(eq(financial.clinicId, clinicId), eq(financial.type, 'income')));
+                    .where(and(eq(financial.organizationId, organizationId), eq(financial.type, 'income')));
 
                 const total = entries[0]?.total || 0;
                 aiResponse = `O faturamento total registrado até agora é de R$ ${Number(total).toFixed(2)}.`;
@@ -104,7 +104,7 @@ app.post('/chat', zValidator('json', chatSchema), async (c) => {
             const todaysAppts = await db.select({ count: sql<number>`count(*)` })
                 .from(appointments)
                 .where(and(
-                    eq(appointments.clinicId, clinicId),
+                    eq(appointments.organizationId, organizationId),
                     gte(appointments.startTime, today),
                     lte(appointments.startTime, tomorrow)
                 ));

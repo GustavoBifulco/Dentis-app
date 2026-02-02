@@ -8,7 +8,7 @@ import { eq, and, lte, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { HTTPException } from 'hono/http-exception';
 
-const app = new Hono<{ Variables: { clinicId: number; userId: number; role: string } }>();
+const app = new Hono<{ Variables: { organizationId: number; userId: number; role: string } }>();
 
 app.use('*', authMiddleware);
 
@@ -22,9 +22,9 @@ const campaignSchema = z.object({
 
 // GET /api/marketing/campaigns
 app.get('/campaigns', async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
   const list = await db.query.campaigns.findMany({
-    where: eq(campaigns.clinicId, clinicId),
+    where: eq(campaigns.organizationId, organizationId),
     orderBy: [desc(campaigns.createdAt)],
     with: {
       logs: true // Include stats
@@ -35,7 +35,7 @@ app.get('/campaigns', async (c) => {
 
 // POST /api/marketing/campaigns
 app.post('/campaigns', zValidator('json', campaignSchema), async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
   const userId = c.get('userId');
   const role = c.get('role');
   const { name, type, targetAudience, messageTemplate, sendNow } = c.req.valid('json');
@@ -50,7 +50,7 @@ app.post('/campaigns', zValidator('json', campaignSchema), async (c) => {
 
   // 2. Create Campaign Record
   const [newCampaign] = await db.insert(campaigns).values({
-    clinicId,
+    organizationId,
     creatorId: userId,
     name,
     type,
@@ -66,14 +66,14 @@ app.post('/campaigns', zValidator('json', campaignSchema), async (c) => {
 
     // Audience Logic
     if (targetAudience === 'ALL') {
-      targetPatients = await db.select({ id: patients.id }).from(patients).where(eq(patients.clinicId, clinicId));
+      targetPatients = await db.select({ id: patients.id }).from(patients).where(eq(patients.organizationId, organizationId));
     } else if (targetAudience === 'INACTIVE_6_MONTHS') {
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
       // Assuming we have lastVisit data, simple filter
       targetPatients = await db.select({ id: patients.id })
         .from(patients)
-        .where(and(eq(patients.clinicId, clinicId), lte(patients.lastVisit, sixMonthsAgo)));
+        .where(and(eq(patients.organizationId, organizationId), lte(patients.lastVisit, sixMonthsAgo)));
     }
 
     // Bulk Insert Logs (Simulating Queue)

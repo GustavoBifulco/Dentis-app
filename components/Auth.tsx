@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSignIn, useSignUp, useClerk } from "@clerk/clerk-react";
 import { ArrowLeft, Mail, Lock, User, Loader2, FileBadge, CheckCircle, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
+import { formatCPF, unformat } from '../lib/formatters';
 
 interface AuthProps {
   mode: 'login' | 'register';
@@ -24,6 +25,7 @@ const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [cpf, setCpf] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
 
   // --- LÓGICA DE LOGIN ---
   const handleLogin = async (e: React.FormEvent) => {
@@ -70,8 +72,8 @@ const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
         password,
         firstName,
         lastName,
-        // O CPF pode ser salvo nos metadados inseguros (públicos para o front)
-        unsafeMetadata: { cpf }
+        // O CPF deve ser salvo apenas os números para facilitar indexação e validação
+        unsafeMetadata: { cpf: unformat(cpf) }
       });
 
       // 2. Enviar email de verificação
@@ -115,12 +117,16 @@ const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
 
       if (completeSignUp.status === "complete") {
         await setSignUpActive({ session: completeSignUp.createdSessionId });
+        // Sincroniza e recarrega se necessário para garantir que o App.tsx veja o novo estado
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 500);
       } else {
         console.log("Verificação incompleta:", completeSignUp);
       }
     } catch (err: any) {
       console.error(err);
-      setError("Código inválido. Tente novamente.");
+      setError("Código inválido ou expirado. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -244,7 +250,7 @@ const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
                         <input
                           type="text"
                           value={cpf}
-                          onChange={(e) => setCpf(e.target.value)}
+                          onChange={(e) => setCpf(formatCPF(e.target.value))}
                           className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition font-medium"
                           placeholder="000.000.000-00"
                           required
@@ -289,6 +295,24 @@ const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
                     />
                   </div>
                 </div>
+
+                {mode === 'login' && (
+                  <div className="flex items-center justify-between py-1">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className="peer appearance-none w-5 h-5 border-2 border-slate-200 rounded-md checked:bg-indigo-600 checked:border-indigo-600 transition-all cursor-pointer"
+                        />
+                        <CheckCircle className="absolute text-white scale-0 peer-checked:scale-100 transition-transform pointer-events-none" size={14} />
+                      </div>
+                      <span className="text-sm font-bold text-slate-500 group-hover:text-slate-900 transition-colors">Manter conectado</span>
+                    </label>
+                    <button type="button" className="text-xs font-bold text-indigo-600 hover:underline">Esqueci a senha</button>
+                  </div>
+                )}
 
                 {/* Alerta amigável para senha vazada */}
                 {breachedPasswordWarning && (

@@ -1,3 +1,4 @@
+import React from 'react';
 
 export enum ViewType {
   DASHBOARD = 'DASHBOARD',
@@ -95,9 +96,11 @@ export interface Appointment {
   id: number;
   organizationId: number;
   patientId: number;
+  patientName?: string;
   dentistId: number;
   startTime: string;
   endTime: string;
+  procedure?: string;
   status: string;
 }
 
@@ -155,6 +158,7 @@ export interface FinancialSummary {
   pendingPayments: Payment[];
 }
 
+
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -167,3 +171,55 @@ declare global {
     }
   }
 }
+
+
+export interface LabOrder {
+  id: number;
+  organizationId: number;
+  labName?: string;
+  patientName: string;
+  procedure: string;
+  status: 'requested' | 'production' | 'ready' | 'delivered';
+  deadline: string;
+  cost: number;
+  isDigital?: boolean;
+  stlFileUrl?: string;
+  designFileUrl?: string;
+}
+
+export type UserRole = 'clinic_owner' | 'dentist' | 'lab_admin' | 'courier' | 'supplier' | 'patient';
+
+export interface FinancialEntry {
+  id: number;
+  organizationId: number;
+  type: 'income' | 'expense';
+  amount: number;
+  description: string;
+  dueDate: string;
+  status: 'paid' | 'pending' | 'overdue';
+  category?: string;
+}
+
+export interface StockItem {
+  id: number;
+  organizationId: number;
+  name: string;
+  category: string;
+  quantity: number;
+  minQuantity: number;
+  unit: string;
+  price: number;
+}
+
+export interface Procedure {
+  id: number;
+  organizationId: number;
+  name: string;
+  code: string;
+  price: number;
+  durationMinutes: number;
+  duration?: number;
+  category: string;
+}
+
+

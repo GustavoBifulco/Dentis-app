@@ -21,16 +21,22 @@ export const api = {
 // Função usada pelo Onboarding
 export async function completeOnboarding(data: any) {
   console.log("📡 Enviando onboarding para o servidor...", data);
-  const response = await fetch(`${API_URL}/onboarding/complete`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Erro no servidor');
+  try {
+    const response = await fetch(`${API_URL}/onboarding/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Resposta não é JSON' }));
+      console.error("❌ Erro na resposta do servidor:", errorData);
+      throw new Error(errorData.error || 'Erro no servidor');
+    }
+
+    return response.json();
+  } catch (err: any) {
+    console.error("🔥 Erro crítico em completeOnboarding:", err);
+    throw err;
   }
-  
-  return response.json();
 }

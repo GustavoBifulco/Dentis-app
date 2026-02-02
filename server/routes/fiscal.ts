@@ -6,7 +6,7 @@ import { financial, patients, procedures } from '../db/schema';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { clinicId: number } }>();
+const app = new Hono<{ Variables: { organizationId: number } }>();
 app.use('*', authMiddleware);
 
 const tissSchema = z.object({
@@ -22,7 +22,7 @@ const invoiceSchema = z.object({
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 const formatTime = (date: Date) => date.toISOString().slice(11, 19);
 
-const buildTissXml = (clinicId: number, patient: any, procs: any[]) => {
+const buildTissXml = (organizationId: number, patient: any, procs: any[]) => {
   const now = new Date();
   const guideNumber = `SP${now.getTime()}`;
   const patientName =
@@ -61,7 +61,7 @@ const buildTissXml = (clinicId: number, patient: any, procs: any[]) => {
     </ans:identificacaoTransacao>
     <ans:origem>
       <ans:identificacaoPrestador>
-        <ans:codigoPrestadorNaOperadora>${clinicId}</ans:codigoPrestadorNaOperadora>
+        <ans:codigoPrestadorNaOperadora>${organizationId}</ans:codigoPrestadorNaOperadora>
       </ans:identificacaoPrestador>
     </ans:origem>
     <ans:destino>
@@ -93,11 +93,11 @@ const buildTissXml = (clinicId: number, patient: any, procs: any[]) => {
 };
 
 app.post('/tiss/xml', zValidator('json', tissSchema), async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
   const { patientId, procedureIds } = c.req.valid('json');
 
   const patient = await db.query.patients.findFirst({
-    where: and(eq(patients.id, patientId), eq(patients.clinicId, clinicId)),
+    where: and(eq(patients.id, patientId), eq(patients.organizationId, organizationId)),
   });
 
   if (!patient) {
@@ -105,21 +105,21 @@ app.post('/tiss/xml', zValidator('json', tissSchema), async (c) => {
   }
 
   const procList = await db.query.procedures.findMany({
-    where: and(eq(procedures.clinicId, clinicId), inArray(procedures.id, procedureIds)),
+    where: and(eq(procedures.organizationId, organizationId), inArray(procedures.id, procedureIds)),
   });
 
-  const xml = buildTissXml(clinicId, patient, procList);
+  const xml = buildTissXml(organizationId, patient, procList);
   return c.text(xml, 200, { 'Content-Type': 'application/xml; charset=utf-8' });
 });
 
 app.post('/invoice', zValidator('json', invoiceSchema), async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
   const { amount, cpf } = c.req.valid('json');
   const cpfDigits = cpf.replace(/\D/g, '');
 
   const patient = await db.query.patients.findFirst({
     where: and(
-      eq(patients.clinicId, clinicId),
+      eq(patients.organizationId, organizationId),
       or(eq(patients.cpf, cpfDigits), eq(patients.cpf, cpf))
     ),
   });
@@ -129,7 +129,7 @@ app.post('/invoice', zValidator('json', invoiceSchema), async (c) => {
   }
 
   const entry = await db.query.financial.findFirst({
-    where: and(eq(financial.clinicId, clinicId), eq(financial.patientId, patient.id)),
+    where: and(eq(financial.organizationId, organizationId), eq(financial.patientId, patient.id)),
     orderBy: [desc(financial.dueDate)],
   });
 

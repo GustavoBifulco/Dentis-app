@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import * as fs from 'node:fs';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { clerkClient } from '@clerk/clerk-sdk-node';
@@ -23,14 +24,41 @@ const onboardingSchema = z.object({
 onboarding.post('/complete', zValidator('json', onboardingSchema), async (c) => {
   const data = c.req.valid('json');
   try {
+    console.log(`🛠️ [ONBOARDING] Processando userId: [${data.userId}]`);
+    console.log(`🛠️ [ONBOARDING] Dados recebidos:`, JSON.stringify(data));
+
+    if (!data.userId) throw new Error("userId is required");
+
     await clerkClient.users.updateUser(data.userId, {
       publicMetadata: { onboardingComplete: true, role: data.role }
     });
-    // Setup normal (sem forçar)
-    await setupNewUserEnvironment(data.userId, data.role, false, data.orgId, data.clinicName);
+
+    console.log("✅ [ONBOARDING] Metadados Clerk atualizados.");
+
+    try {
+      const setupResult = await setupNewUserEnvironment(data.userId, data.role, false, data.orgId, data.clinicName, data.name, undefined, data.cpf);
+      if (!setupResult.success) {
+        throw new Error(setupResult.message || "Falha no setup do ambiente");
+      }
+      console.log("✅ [ONBOARDING] Setup de ambiente concluído.");
+    } catch (setupErr: any) {
+      console.error("❌ [ONBOARDING] Erro no setup de ambiente:", setupErr);
+      throw setupErr; // Vai cair no catch principal e retornar JSON 500
+    }
+
     return c.json({ success: true });
   } catch (error: any) {
-    return c.json({ success: false, error: error.message }, 500);
+    try {
+      const errorMsg = `[${new Date().toISOString()}] ONBOARDING ERROR: ${error.message}\n` +
+        `Data: ${JSON.stringify(data)}\n` +
+        `Stack: ${error.stack}\n\n`;
+      fs.appendFileSync('onboarding_debug.log', errorMsg);
+    } catch (logErr) {
+      console.error("❌ Erro ao escrever log no arquivo:", logErr);
+    }
+
+    console.error("❌ [ONBOARDING] ERRO CRÍTICO:", error);
+    return c.json({ success: false, error: error.message || "Erro interno no servidor" }, 500);
   }
 });
 

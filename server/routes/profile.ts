@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/auth';
 import { db } from '../db'; // Assuming db export exists in ../db/index.ts
-import { users, clinics } from '../db/schema';
+import { users, organizations } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import Stripe from 'stripe';
@@ -13,7 +13,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
     apiVersion: '2023-10-16',
 });
 
-const profile = new Hono<{ Variables: { userId: string, clerkId: string, role: string } }>();
+const profile = new Hono<{ Variables: { userId: number; clerkId: string; role: string; organizationId: number } }>();
 
 profile.use('*', authMiddleware);
 

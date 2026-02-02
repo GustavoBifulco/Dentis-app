@@ -4,6 +4,7 @@ import { useUser, useOrganizationList } from '@clerk/clerk-react';
 import { completeOnboarding } from '../lib/api';
 import SetupWizard from './SetupWizard';
 import { User, Building2, CheckCircle2, Zap, Shield, Star, Briefcase, X } from 'lucide-react';
+import { formatCPF, formatPhone, unformat } from '../lib/formatters';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   EmbeddedCheckoutProvider,
@@ -26,8 +27,9 @@ interface OnboardingProps {
 }
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
-  const { user } = useUser();
+  const { user, isLoaded: userLoaded } = useUser();
   const { createOrganization, isLoaded: orgsLoaded } = useOrganizationList();
+
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [isOwnerDentist, setIsOwnerDentist] = useState(true);
   const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
@@ -36,12 +38,21 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [clientSecret, setClientSecret] = useState('');
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
-  // Usando state updates funcionais para evitar race conditions
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     role: '', cpf: '', cro: '', phone: '',
     clinicName: '',
     responsibleDentistName: '', responsibleDentistCpf: '', responsibleDentistCro: ''
   });
+
+  // Pre-fill CPF from user metadata as requested
+  React.useEffect(() => {
+    if (userLoaded && user?.unsafeMetadata?.cpf) {
+      console.log("📌 [ONBOARDING] CPF encontrado no Clerk:", user.unsafeMetadata.cpf);
+      const val = user.unsafeMetadata.cpf as string;
+      setFormData(prev => ({ ...prev, cpf: formatCPF(val) }));
+    }
+  }, [user, userLoaded]);
 
   const updateFormData = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -99,19 +110,24 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
   const finishSetup = async () => {
     if (!user) return;
-    setStep(4);
+    setLoading(true);
+
+    // Only go to SetupWizard (Step 4) if NOT a patient
+    const isPatient = formData.role === 'patient';
+    if (!isPatient) {
+      setStep(4);
+    }
+
     try {
       let orgId = '';
 
       // Criar Organização no Clerk APENAS se for Dono de Clínica
       if (formData.role === 'clinic_owner' && orgsLoaded && createOrganization) {
         try {
-          // Verifica se já existe (opcional, aqui estamos confiando no create)
           const org = await createOrganization({ name: formData.clinicName });
           orgId = org.id;
         } catch (orgErr: any) {
           console.error("Erro ao criar organização:", orgErr);
-          // Não bloqueia o fluxo, mas avisa (ou prossegue silenciosamente se for duplicata conhecida)
         }
       }
 
@@ -121,16 +137,28 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         userId: user.id,
         name: user.fullName || '',
         role: formData.role,
-        cpf: formData.cpf,
-        phone: formData.phone,
+        cpf: unformat(formData.cpf),
+        phone: unformat(formData.phone),
         cro: finalCro,
         clinicName: formData.clinicName,
         orgId: orgId
       });
+
+      // Recarrega os dados do usuário do Clerk para garantir que o frontend veja o onboardingComplete: true
+      await user.reload();
+
+      // If patient, we are done!
+      if (isPatient) {
+        setTimeout(() => {
+          onComplete();
+        }, 300);
+      }
     } catch (err: any) {
       console.error(err);
       alert("Erro no setup: " + err.message);
-      setStep(formData.role === 'patient' ? 2 : 3);
+      if (!isPatient) setStep(3);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -207,8 +235,32 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <input required placeholder="Nome da Clínica" className="w-full p-4 rounded-xl border border-emerald-200" value={formData.clinicName} onChange={e => updateFormData('clinicName', e.target.value)} />
               )}
 
-              <input required placeholder="CPF" className="w-full p-4 rounded-xl border" value={formData.cpf} onChange={e => updateFormData('cpf', e.target.value)} />
-              <input required placeholder="Celular" className="w-full p-4 rounded-xl border" value={formData.phone} onChange={e => updateFormData('phone', e.target.value)} />
+              {(!user?.unsafeMetadata?.cpf && userLoaded) && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">CPF</label>
+                  <input
+                    required
+                    placeholder="000.000.000-00"
+                    className="w-full p-4 rounded-xl border focus:ring-2 focus:ring-slate-900 outline-none transition"
+                    value={formData.cpf}
+                    onChange={e => updateFormData('cpf', formatCPF(e.target.value))}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Telefone Celular</label>
+                <input
+                  required
+                  placeholder="(00) 00000-0000"
+                  className="w-full p-4 rounded-xl border focus:ring-2 focus:ring-slate-900 outline-none transition"
+                  value={formData.phone}
+                  onChange={e => {
+                    const val = formatPhone(e.target.value);
+                    if (val.length <= 15) updateFormData('phone', val);
+                  }}
+                />
+              </div>
 
               {(formData.role === 'dentist' || (formData.role === 'clinic_owner' && isOwnerDentist)) &&
                 <input required placeholder="CRO" className="w-full p-4 rounded-xl border" value={formData.cro} onChange={e => updateFormData('cro', e.target.value)} />
@@ -223,8 +275,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
               <div className="flex gap-4 mt-8">
                 <button type="button" onClick={() => setStep(1)} className="px-6 py-4 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Voltar</button>
-                <button type="submit" className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg">
-                  {formData.role === 'patient' ? 'Finalizar Cadastro' : 'Continuar'}
+                <button disabled={loading} type="submit" className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2">
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    formData.role === 'patient' ? 'Finalizar Cadastro' : 'Continuar'
+                  )}
                 </button>
               </div>
             </form>

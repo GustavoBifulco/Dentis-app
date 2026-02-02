@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db';
-import { invites, clinics, users } from '../db/schema';
+import { invites, organizations, users } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { sendMessage } from '../services/whatsapp';
 import { randomUUID } from 'crypto';
@@ -15,13 +15,13 @@ invitesRoute.post('/lab', async (c) => {
     // Manual header check or trust middleware context
     // const userId = c.get('userId'); 
 
-    const { labName, phone, dentistName, clinicId } = await c.req.json();
+    const { labName, phone, dentistName, organizationId } = await c.req.json();
 
     if (!labName || !phone) return c.json({ error: 'Missing Data' }, 400);
 
     // a. Check if Lab exists (Simulated by name match for now, ideally phone match in users)
-    // Since we don't store Phone in Clinics table as a unique key easily yet, let's search by name
-    const [existingLab] = await db.select().from(clinics).where(and(eq(clinics.name, labName), eq(clinics.type, 'LAB')));
+    // Since we don't store Phone in Organizations table as a unique key easily yet, let's search by name
+    const [existingLab] = await db.select().from(organizations).where(and(eq(organizations.name, labName), eq(organizations.type, 'LAB')));
 
     if (existingLab) {
         // Already exists, just return (Frontend handles "Already connect?" logic)
@@ -29,11 +29,12 @@ invitesRoute.post('/lab', async (c) => {
     }
 
     // b. Create "Shadow Account"
-    const [shadowLab] = await db.insert(clinics).values({
+    const [shadowLab] = await db.insert(organizations).values({
         name: labName,
         type: 'LAB',
         status: 'SHADOW', // Waiting for claim
-        phone: phone
+        phone: phone,
+        clerkOrgId: `shadow_${randomUUID()}` // Shadow accounts need a dummy clerk ID or handle null
     }).returning();
 
     // c. Generate Token
@@ -44,11 +45,11 @@ invitesRoute.post('/lab', async (c) => {
     // If we don't have authenticated user context handy, we might need it passed or mock it.
     // Let's assume passed in body for the "Viral Loop" test
     const inviterUserId = 1; // MOCK or get from Context
-    const inviterClinicId = clinicId || 1; // MOCK
+    const inviterOrganizationId = organizationId || 1; // MOCK
 
     await db.insert(invites).values({
         token,
-        inviterClinicId,
+        inviterOrganizationId,
         inviterUserId,
         invitedName: labName,
         invitedPhone: phone,
@@ -76,7 +77,7 @@ invitesRoute.get('/accept/:token', async (c) => {
     if (invite.status !== 'PENDING') return c.json({ error: 'Invite expired or already accepted' }, 400);
 
     // Get Lab Details
-    const [lab] = await db.select().from(clinics).where(eq(clinics.id, invite.targetOrganizationId));
+    const [lab] = await db.select().from(organizations).where(eq(organizations.id, invite.targetOrganizationId));
 
     return c.json({
         valid: true,

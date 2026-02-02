@@ -32,7 +32,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, onLogin }) => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/50 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/assets/dentis-logo.png" alt="Dentis" className="h-8" />
+            <img src="/assets/dentis-logo.svg" alt="Dentis" className="h-8" />
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
@@ -84,7 +84,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, onLogin }) => {
               className="mb-12"
             >
               <img
-                src="/assets/dentis-logo.png"
+                src="/assets/dentis-logo.svg"
                 alt="Dentis"
                 className="mx-auto w-full max-w-2xl drop-shadow-[0_0_80px_rgba(168,85,247,0.4)]"
               />
@@ -311,7 +311,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, onLogin }) => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
-              <img src="/assets/dentis-logo.png" alt="Dentis" className="h-8" />
+              <img src="/assets/dentis-logo.svg" alt="Dentis" className="h-8" />
             </div>
             <div className="text-slate-400 text-sm">
               © 2026 Dentis. Todos os direitos reservados.

@@ -1,251 +1,202 @@
-import React from 'react';
-import { SectionHeader, IslandCard } from './Shared';
-import { CheckCircle2, Circle, Clock, MessageSquareQuote, Sparkles, Trophy, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import {
+    CheckCircle2,
+    Circle,
+    Clock,
+    MessageSquareQuote,
+    Sparkles,
+    Trophy,
+    Loader2,
+    Box,
+    Calendar,
+    Stethoscope,
+    Zap,
+    ChevronDown,
+    X
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../lib/useAppContext';
 import { useTreatmentProgress } from '../lib/hooks/useTreatmentProgress';
+import { usePatientScans } from '../lib/hooks/usePatientScans';
+import ThreeDViewer from './3DViewer';
 
 const TreatmentJourney: React.FC = () => {
     const { session } = useAppContext();
     const patientId = session?.activeContext?.type === 'PATIENT' ? session.activeContext.id : null;
 
+    const [selectedScanUrl, setSelectedScanUrl] = useState<string | null>(null);
     const { phases, currentPhase, overallProgress, isLoading, error } = useTreatmentProgress({ patientId });
+    const { scans, loading: scansLoading } = usePatientScans();
 
-    // Motivational messages based on progress
-    const getMotivationalMessage = (progress: number) => {
-        if (progress === 0) return "Sua jornada está começando! 🚀";
-        if (progress < 25) return "Primeiros passos dados com sucesso! 👏";
-        if (progress < 50) return "Você está indo muito bem! 💪";
-        if (progress < 75) return "Mais da metade concluída! Continue assim! ⭐";
-        if (progress < 100) return "Quase lá! Seu sorriso perfeito está próximo! 🎯";
-        return "Parabéns! Tratamento concluído! 🎉";
-    };
-
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    const getPhaseIcon = (title: string) => {
+        const t = title.toLowerCase();
+        if (t.includes('escaneamento') || t.includes('scan')) return <Box size={18} />;
+        if (t.includes('aparelho') || t.includes('alinhador')) return <Zap size={18} />;
+        if (t.includes('consulta') || t.includes('analise')) return <Stethoscope size={18} />;
+        return <Sparkles size={18} />;
     };
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400 gap-4">
                 <Loader2 className="animate-spin text-lux-accent" size={48} />
-            </div>
-        );
-    }
-
-    if (error || phases.length === 0) {
-        return (
-            <div className="space-y-8">
-                <SectionHeader
-                    title="Jornada do Sorriso"
-                    subtitle="Acompanhe cada etapa da sua transformação."
-                />
-                <div className="apple-card p-12 text-center">
-                    <Sparkles size={48} className="text-lux-text-secondary mx-auto mb-4 opacity-50" />
-                    <h3 className="font-bold text-lux-text text-xl mb-2">Nenhum Tratamento Ativo</h3>
-                    <p className="text-lux-text-secondary">
-                        Seu plano de tratamento aparecerá aqui assim que for criado pelo seu dentista.
-                    </p>
-                </div>
+                <p className="font-bold text-xs uppercase tracking-[0.2em]">Construindo seu Futuro Sorriso...</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-            <SectionHeader
-                title="Jornada do Sorriso"
-                subtitle="Acompanhe cada etapa da sua transformação ortodôntica."
-            />
+        <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-lg mx-auto pb-20">
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Timeline Visual */}
-                <div className="lg:col-span-2">
-                    <IslandCard className="p-8">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-xl font-bold text-lux-text">Linha do Tempo</h3>
-                            <div className="flex items-center gap-2 bg-lux-subtle px-3 py-1 rounded-full">
-                                <Clock size={14} className="text-lux-accent" />
-                                <span className="text-xs font-bold text-lux-text-secondary">
-                                    {currentPhase?.estimatedDate ? `Previsão: ${formatDate(currentPhase.estimatedDate)}` : 'Em andamento'}
-                                </span>
-                            </div>
+            {/* Header com Progresso Global */}
+            <div className="bg-lux-text text-lux-background rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+                <div className="relative z-10">
+                    <div className="flex justify-between items-center mb-6">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-lux-accent">Seu Progresso Global</span>
+                        <div className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase">
+                            Sorriso 2.0
                         </div>
+                    </div>
+                    <div className="flex items-end gap-2 mb-4">
+                        <span className="text-6xl font-light">{overallProgress}%</span>
+                        <span className="text-sm font-bold opacity-60 mb-2">concluído</span>
+                    </div>
+                    <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden mb-4">
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${overallProgress}%` }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                            className="h-full bg-lux-accent"
+                        />
+                    </div>
+                    <p className="text-sm font-medium opacity-80 leading-relaxed italic">
+                        "{overallProgress < 50 ? 'Você está nos primeiros marcos da sua transformação. Cada dia conta!' : 'Mais da metade do caminho percorrido! Seu novo sorriso está quase aqui.'}"
+                    </p>
+                </div>
+                {/* Visuals */}
+                <div className="absolute top-0 right-0 w-48 h-48 bg-lux-accent/30 rounded-full blur-[100px]" />
+            </div>
 
-                        <div className="relative pl-4 space-y-12 before:content-[''] before:absolute before:left-[27px] before:top-2 before:bottom-2 before:w-0.5 before:bg-lux-border">
-                            {phases.map((phase, index) => (
-                                <motion.div
-                                    key={phase.id}
-                                    className="relative flex items-start gap-6 group"
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                >
-                                    <div className={`
-                                w-6 h-6 rounded-full border-[3px] z-10 flex-shrink-0 transition-all duration-500
-                                ${phase.status === 'completed' ? 'bg-lux-accent border-lux-accent' :
-                                            phase.status === 'current' ? 'bg-white border-lux-accent ring-4 ring-lux-accent/20 animate-pulse' :
-                                                'bg-lux-surface border-lux-border'}
-                            `}>
-                                        {phase.status === 'completed' && <CheckCircle2 size={14} className="text-white ml-[1px] mt-[1px]" />}
-                                    </div>
+            {/* Timeline Vertical (Style Delivery) */}
+            <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-50 relative">
+                <h3 className="text-lg font-black text-slate-900 mb-8 border-b border-slate-50 pb-4">Timeline do Tratamento</h3>
 
-                                    <div className={`flex-1 transition-opacity ${phase.status === 'upcoming' ? 'opacity-50' : 'opacity-100'}`}>
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <h4 className="font-bold text-lux-text text-lg mb-1">{phase.title}</h4>
-                                                <p className="text-sm text-lux-text-secondary mb-2">{phase.description}</p>
-                                                <p className="text-xs text-lux-text-secondary font-medium">
-                                                    {phase.status === 'completed' && phase.completedDate && `Concluído em ${formatDate(phase.completedDate)}`}
-                                                    {phase.status === 'current' && 'Em andamento'}
-                                                    {phase.status === 'upcoming' && phase.estimatedDate && `Previsão: ${formatDate(phase.estimatedDate)}`}
-                                                </p>
-                                            </div>
-                                            {phase.status === 'completed' && (
-                                                <Trophy size={20} className="text-lux-accent" />
-                                            )}
-                                        </div>
+                <div className="relative space-y-12 pb-4">
+                    {/* Linha da Timeline */}
+                    <div className="absolute left-[27px] top-4 bottom-4 w-1 bg-slate-100 rounded-full" />
 
-                                        {/* Individual phase progress bar for current phase */}
-                                        {phase.status === 'current' && phase.progress !== undefined && (
-                                            <div className="mt-3">
-                                                <div className="w-full bg-lux-subtle h-2 rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        className="h-full bg-lux-accent rounded-full"
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${phase.progress}%` }}
-                                                        transition={{ duration: 1, ease: "easeOut" }}
-                                                    ></motion.div>
-                                                </div>
-                                                <p className="text-xs text-lux-text-secondary mt-1">{phase.progress}% concluído</p>
-                                            </div>
-                                        )}
-                                    </div>
+                    {phases.map((phase, index) => {
+                        const isCompleted = phase.status === 'completed';
+                        const isCurrent = phase.status === 'current';
 
-                                    {phase.status === 'current' && (
-                                        <div className="absolute -left-[5px] top-8 w-1 h-full bg-gradient-to-b from-lux-accent to-transparent opacity-50"></div>
-                                    )}
-                                </motion.div>
-                            ))}
-
-                            {/* Dream Goal Card */}
+                        return (
                             <motion.div
-                                className="relative flex items-start gap-6"
+                                key={phase.id}
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: phases.length * 0.1 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="relative flex items-start gap-6 group"
                             >
-                                <div className="w-6 h-6 rounded-full border-[3px] border-dashed border-lux-accent z-10 flex-shrink-0 bg-lux-surface"></div>
-                                <div className="flex-1">
-                                    <div className="apple-card p-4 bg-gradient-to-br from-lux-accent/10 to-lux-accent/5 border-lux-accent/30">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Sparkles size={20} className="text-lux-accent" />
-                                            <h4 className="font-bold text-lux-text">Seu Sonho</h4>
-                                        </div>
-                                        <p className="text-sm text-lux-text-secondary">
-                                            Sorriso perfeito e saudável! Continue seguindo as orientações do seu dentista.
-                                        </p>
+                                {/* Ponto da Timeline */}
+                                <div className={`
+                                    w-14 h-14 rounded-2xl flex items-center justify-center z-10 transition-all duration-500
+                                    ${isCompleted ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' :
+                                        isCurrent ? 'bg-lux-accent text-white shadow-lg shadow-lux-accent/30 animate-pulse' :
+                                            'bg-slate-100 text-slate-400 border-4 border-white'}
+                                `}>
+                                    {isCompleted ? <CheckCircle2 size={24} /> : getPhaseIcon(phase.title)}
+                                </div>
+
+                                <div className="flex-1 pt-1">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h4 className={`font-black text-sm uppercase tracking-tight ${isCurrent ? 'text-lux-accent' : 'text-slate-800'}`}>
+                                            {phase.title}
+                                        </h4>
+                                        <span className="text-[10px] font-black text-slate-300 uppercase">
+                                            {isCompleted ? 'OK' : isCurrent ? 'AGORA' : 'EM BREVE'}
+                                        </span>
                                     </div>
+                                    <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">
+                                        {phase.description}
+                                    </p>
+
+                                    {isCurrent && (
+                                        <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                <Calendar size={12} /> Previsão: {new Date().toLocaleDateString()}
+                                            </p>
+
+                                            {/* Integração 3D se houver scan */}
+                                            {scans.length > 0 && phase.title.toLowerCase().includes('escaneamento') && (
+                                                <button
+                                                    onClick={() => setSelectedScanUrl(scans[0].url)}
+                                                    className="w-full bg-white border border-lux-accent/20 text-lux-accent py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-lux-accent hover:text-white transition-all shadow-sm"
+                                                >
+                                                    <Box size={14} /> Ver Escaneamento 3D
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
-                        </div>
-                    </IslandCard>
+                        );
+                    })}
                 </div>
+            </div>
 
-                {/* Sidebar de Progresso e Notas */}
-                <div className="space-y-6">
-                    {/* Overall Progress Card */}
-                    <motion.div
-                        className="bg-lux-text text-lux-background rounded-2xl p-8 relative overflow-hidden"
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                    >
-                        <div className="relative z-10">
-                            <p className="text-sm font-bold uppercase tracking-widest opacity-70 mb-2">Progresso Total</p>
-                            <motion.p
-                                className="text-5xl font-light mb-4"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.5 }}
-                            >
-                                {overallProgress}%
-                            </motion.p>
-                            <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden mb-4">
-                                <motion.div
-                                    className="h-full bg-lux-accent"
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${overallProgress}%` }}
-                                    transition={{ duration: 1.5, ease: "easeOut", delay: 0.6 }}
-                                ></motion.div>
-                            </div>
-                            <p className="text-sm opacity-80 font-medium">{getMotivationalMessage(overallProgress)}</p>
-                        </div>
-                        {/* Abstract graphic */}
-                        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-lux-accent rounded-full blur-[80px] opacity-30"></div>
-                    </motion.div>
+            {/* Achievement Footer */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-[40px] p-8 flex items-center gap-6">
+                <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-emerald-100 shadow-lg">
+                    <Trophy className="text-emerald-500" size={32} />
+                </div>
+                <div>
+                    <h4 className="font-black text-emerald-900 text-sm mb-1 uppercase tracking-tight">Próxima Conquista</h4>
+                    <p className="text-xs text-emerald-700/80 font-bold uppercase tracking-widest">
+                        {overallProgress < 100 ? 'Finalizar Alinhadores' : 'Sorriso dos Sonhos'}
+                    </p>
+                </div>
+            </div>
 
-                    {/* Milestone Achievements */}
-                    {overallProgress >= 25 && (
+            {/* 3D Visualizer Modal */}
+            <AnimatePresence>
+                {selectedScanUrl && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className="apple-card p-6 bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSelectedScanUrl(null)}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="relative bg-white w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col"
                         >
-                            <div className="flex items-start gap-3">
-                                <Trophy className="text-amber-600 shrink-0" size={24} />
+                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                                 <div>
-                                    <h4 className="font-bold text-amber-900 text-sm mb-2">Conquistas Desbloqueadas</h4>
-                                    <div className="space-y-2">
-                                        {overallProgress >= 25 && (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                                                <p className="text-xs text-amber-800">25% - Primeiro Marco! 🎯</p>
-                                            </div>
-                                        )}
-                                        {overallProgress >= 50 && (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                                                <p className="text-xs text-amber-800">50% - Metade do Caminho! 🌟</p>
-                                            </div>
-                                        )}
-                                        {overallProgress >= 75 && (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                                                <p className="text-xs text-amber-800">75% - Quase Lá! 🚀</p>
-                                            </div>
-                                        )}
-                                        {overallProgress === 100 && (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                                                <p className="text-xs text-amber-800">100% - Missão Cumprida! 🎉</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <h2 className="text-xl font-black text-slate-900">Seu Sorriso Digital</h2>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Escaneamento Intraoral</p>
                                 </div>
+                                <button
+                                    onClick={() => setSelectedScanUrl(null)}
+                                    className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                <ThreeDViewer url={selectedScanUrl} className="h-[450px]" />
+                            </div>
+                            <div className="p-6 bg-slate-50 text-center">
+                                <p className="text-xs text-slate-500 font-medium">Este é o modelo digital preciso dos seus dentes, usado para planejar seu tratamento com perfeição.</p>
                             </div>
                         </motion.div>
-                    )}
+                    </div>
+                )}
+            </AnimatePresence>
 
-                    {/* Doctor's Note */}
-                    {currentPhase && (
-                        <IslandCard className="p-6 border-l-4 border-l-lux-accent">
-                            <div className="flex items-start gap-3">
-                                <MessageSquareQuote className="text-lux-accent shrink-0" />
-                                <div>
-                                    <h4 className="font-bold text-lux-text text-sm mb-2">Nota do Dentista</h4>
-                                    <p className="text-sm text-lux-text-secondary italic">
-                                        "Continue seguindo as orientações para {currentPhase.title.toLowerCase()}.
-                                        Você está no caminho certo para alcançar o sorriso dos seus sonhos!"
-                                    </p>
-                                </div>
-                            </div>
-                        </IslandCard>
-                    )}
-                </div>
-
-            </div>
         </div>
     );
 };

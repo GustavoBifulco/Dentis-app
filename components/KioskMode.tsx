@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, Loader2, AlertTriangle, X } from 'lucide-react';
 
 type KioskPatient = {
   id: string;
@@ -51,6 +51,16 @@ const KioskMode: React.FC = () => {
   const [appointment, setAppointment] = useState<KioskAppointment | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        window.location.href = '/';
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
   const handleCheckin = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -96,7 +106,16 @@ const KioskMode: React.FC = () => {
     'Paciente';
 
   return (
-    <div className="min-h-screen bg-lux-background text-lux-charcoal flex items-center justify-center p-6">
+    <div className="min-h-screen bg-lux-background text-lux-charcoal flex items-center justify-center p-6 relative">
+      {/* Floating Close Button */}
+      <button
+        onClick={() => window.location.href = '/'}
+        className="absolute top-8 right-8 p-3 bg-white/80 hover:bg-white text-lux-text-secondary rounded-full shadow-lg border border-lux-border backdrop-blur-md transition-all active:scale-95 z-50 group"
+        title="Sair do Modo Quiosque"
+      >
+        <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+      </button>
+
       <div className="w-full max-w-2xl">
         <div className="bg-white border border-lux-border rounded-[2.5rem] shadow-xl p-10">
           <div className="flex flex-col items-center text-center gap-3 mb-10">

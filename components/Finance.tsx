@@ -25,7 +25,7 @@ const Finance: React.FC<FinanceProps> = ({ userRole }) => {
     // Mock saving
     const entry: FinancialEntry = {
       id: Date.now(),
-      clinicId: 1,
+      organizationId: 1,
       type: newTrans.type as 'income' | 'expense',
       amount: Number(newTrans.amount) || 0,
       description: newTrans.description || 'Nova movimentação',
@@ -47,7 +47,7 @@ const Finance: React.FC<FinanceProps> = ({ userRole }) => {
       <div className="flex justify-between items-end">
         <SectionHeader
           title="Gestão Financeira"
-          subtitle={userRole === 'clinic_owner' ? "Fluxo de caixa completo da clínica, salários e custos fixos." : "Seus ganhos, repasses e despesas profissionais."}
+          subtitle={userRole === 'clinic_owner' ? "Fluxo de caixa completo da empresa, salários e custos fixos." : "Seus ganhos, repasses e despesas profissionais."}
         />
         <LuxButton icon={<Plus size={18} />} onClick={() => setShowModal(true)}>Nova Movimentação</LuxButton>
       </div>

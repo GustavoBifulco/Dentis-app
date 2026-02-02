@@ -3,6 +3,7 @@ import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/clerk-react";
 import { ViewType, ThemeConfig, Patient, AppContext } from './types';
 import { AppContextProvider, useAppContext } from './lib/useAppContext';
 import Sidebar from './components/Sidebar';
+import MobileHeader from './components/MobileHeader';
 import Dashboard from './components/Dashboard';
 import Patients from './components/Patients';
 import PatientRecord from './components/PatientRecord';
@@ -28,20 +29,24 @@ import Labs from './components/Labs';
 import Marketplace from './components/Marketplace';
 import KioskMode from './components/KioskMode';
 import PatientWallet from './components/PatientWallet';
-import { EmptyState } from './components/Shared';
+import { EmptyState, Toast } from './components/Shared';
 import { Menu, Bell, Search, Command } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigation } from './lib/navigation';
 
 const AppContent: React.FC = () => {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
-  const { session, setSession, switchContext } = useAppContext();
+  const { session, setSession, switchContext, toast, showToast } = useAppContext();
   const hasCompletedOnboarding = user?.publicMetadata?.onboardingComplete === true;
 
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   const [currentView, setCurrentView] = useState<ViewType>(ViewType.DASHBOARD);
+  const [history, setHistory] = useState<ViewType[]>([]);
+  const { navigate, goBack } = useNavigation(currentView, setCurrentView, history, setHistory);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -55,15 +60,20 @@ const AppContent: React.FC = () => {
   // Initialize session with mock data (will be replaced with API call)
   useEffect(() => {
     if (user && !session) {
-      // Mock available contexts based on user metadata
-      const mockContexts: AppContext[] = [
-        { type: 'CLINIC', id: 1, name: 'Clínica Sorriso', organizationId: 1 }
-      ];
+      const userRole = user.publicMetadata?.role as string || 'dentist';
+      const isPatient = userRole === 'patient';
 
-      // Check if user has patient profile
-      if (user.publicMetadata?.role === 'patient') {
+      // Mock available contexts based on user metadata
+      const mockContexts: AppContext[] = [];
+
+      if (isPatient) {
         mockContexts.push({ type: 'PATIENT', id: 1, name: 'Portal Pessoal' });
+      } else {
+        mockContexts.push({ type: 'CLINIC', id: 1, name: 'Clínica Sorriso', organizationId: 1 });
+        mockContexts.push({ type: 'PATIENT', id: 1, name: 'Portal Pessoal (Meu)' });
       }
+
+      const activeCtx = mockContexts[0];
 
       setSession({
         id: 1,
@@ -72,16 +82,21 @@ const AppContent: React.FC = () => {
         email: user.primaryEmailAddress?.emailAddress || '',
         professionalType: null,
         capabilities: {
-          isOrgAdmin: true,
-          isHealthProfessional: true,
-          isCourier: false,
-          isPatient: false
+          isOrgAdmin: !isPatient,
+          isHealthProfessional: !isPatient,
+          isCourier: userRole === 'courier',
+          isPatient: isPatient
         },
         availableContexts: mockContexts,
-        activeContext: mockContexts[0],
-        activeOrganization: null,
-        orgRole: 'admin'
+        activeContext: activeCtx,
+        activeOrganization: activeCtx.type === 'CLINIC' ? { id: 1, name: 'Clínica Sorriso' } as any : null,
+        orgRole: isPatient ? null : 'admin'
       });
+
+      // Se for paciente, força a view correta se não estiver nela
+      if (isPatient) {
+        setCurrentView(ViewType.DASHBOARD);
+      }
     }
   }, [user, session, setSession]);
 
@@ -105,7 +120,7 @@ const AppContent: React.FC = () => {
 
   const handlePatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
-    setCurrentView(ViewType.PATIENT_RECORD);
+    navigate(ViewType.PATIENT_RECORD);
   };
 
   const renderContent = () => {
@@ -204,9 +219,14 @@ const AppContent: React.FC = () => {
               onClose={() => setIsMobileMenuOpen(false)}
             />
             <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-              <header className="flex-shrink-0 z-30 px-8 py-5 glass-panel border-b border-lux-border flex justify-between items-center transition-all">
+              <MobileHeader
+                currentView={currentView}
+                onMenuClick={() => setIsMobileMenuOpen(true)}
+                onBackClick={goBack}
+                title={getTitle()}
+              />
+              <header className="hidden lg:flex flex-shrink-0 z-30 px-8 py-5 glass-panel border-b border-lux-border justify-between items-center transition-all bg-lux-background/50 backdrop-blur-md">
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-lux-text hover:bg-lux-surface rounded-xl transition"><Menu size={24} strokeWidth={1.5} /></button>
                   <div>
                     <div className="flex items-center text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-0.5">
                       <span className="opacity-70">Workspace</span>
@@ -243,7 +263,7 @@ const AppContent: React.FC = () => {
                       </>
                     )}
                   </div>
-                  <button onClick={() => setCurrentView(ViewType.PROFILE)} className="w-9 h-9 rounded-full overflow-hidden border border-lux-border hover:ring-2 hover:ring-lux-accent transition-all duration-300">
+                  <button onClick={() => navigate(ViewType.PROFILE)} className="w-9 h-9 rounded-full overflow-hidden border border-lux-border hover:ring-2 hover:ring-lux-accent transition-all duration-300">
                     <img src={user?.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.firstName}`} alt="Avatar" className="w-full h-full object-cover" />
                   </button>
                 </div>
@@ -264,6 +284,14 @@ const AppContent: React.FC = () => {
                 </div>
               </div>
             </main>
+            <AnimatePresence>
+              {toast && (
+                <Toast
+                  message={toast.message}
+                  type={toast.type}
+                />
+              )}
+            </AnimatePresence>
           </div>
         )}
       </SignedIn>

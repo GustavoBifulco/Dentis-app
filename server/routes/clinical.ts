@@ -7,7 +7,7 @@ import { clinicalRecords } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { clinicId: number; userId: number } }>();
+const app = new Hono<{ Variables: { organizationId: number; userId: number } }>();
 
 app.use('*', authMiddleware);
 
@@ -20,12 +20,12 @@ const recordSchema = z.object({
 // GET /api/clinical/:patientId/odontogram
 app.get('/:patientId/odontogram', async (c) => {
   const patientId = Number(c.req.param('patientId'));
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
 
   const lastState = await db.query.clinicalRecords.findFirst({
     where: and(
       eq(clinicalRecords.patientId, patientId),
-      eq(clinicalRecords.clinicId, clinicId),
+      eq(clinicalRecords.organizationId, organizationId),
       eq(clinicalRecords.type, 'ODONTOGRAM_STATE')
     ),
     orderBy: [desc(clinicalRecords.createdAt)]
@@ -36,12 +36,12 @@ app.get('/:patientId/odontogram', async (c) => {
 
 // POST /api/clinical
 app.post('/', zValidator('json', recordSchema), async (c) => {
-  const clinicId = c.get('clinicId');
+  const organizationId = c.get('organizationId');
   const dentistId = c.get('userId');
   const { patientId, type, data } = c.req.valid('json');
 
   const [newRecord] = await db.insert(clinicalRecords).values({
-    clinicId,
+    organizationId,
     patientId,
     dentistId,
     type,

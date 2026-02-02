@@ -1,279 +1,155 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Download, Copy, CheckCircle2, Clock, AlertCircle, DollarSign, Loader2 } from 'lucide-react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { useAppContext } from '../lib/useAppContext';
-import { useFinancials } from '../lib/hooks/useFinancials';
-import { Payment } from '../types';
+import {
+    DollarSign,
+    Download,
+    CreditCard,
+    Clock,
+    CheckCircle2,
+    ChevronRight,
+    ArrowUpRight,
+    FileText,
+    Loader2
+} from 'lucide-react';
+import { usePatientFinancials } from '../lib/hooks/usePatientFinancials';
 
 interface PatientWalletProps {
     onBack?: () => void;
 }
 
-const PatientWallet: React.FC<PatientWalletProps> = ({ onBack }) => {
-    const { session } = useAppContext();
-    const patientId = session?.activeContext?.type === 'PATIENT' ? session.activeContext.id : null;
+export default function PatientWallet({ onBack }: PatientWalletProps) {
+    const { financials, loading, error } = usePatientFinancials();
 
-    const {
-        totalContracted,
-        totalPaid,
-        outstandingBalance,
-        paymentHistory,
-        pendingPayments,
-        isLoading,
-        error
-    } = useFinancials({ patientId });
-
-    const [copiedId, setCopiedId] = useState<number | null>(null);
-
-    const formatCurrency = (value: number) => {
-        return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const handlePayment = (amount: string, description: string) => {
+        // Redirect to mock checkout route or Stripe
+        window.location.href = `/api/checkout?amount=${amount}&description=${description}`;
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+    const downloadInvoice = (id: string) => {
+        alert(`Baixando NF-e #${id} (Simulado)`);
     };
 
-    const handleCopyPix = (paymentId: number) => {
-        // Mock PIX code - in production, this would be a real PIX code from the API
-        const pixCode = `00020126580014br.gov.bcb.pix0136${paymentId}-mock-pix-code-here`;
-        navigator.clipboard.writeText(pixCode);
-        setCopiedId(paymentId);
-        setTimeout(() => setCopiedId(null), 2000);
-    };
-
-    const handleDownloadReceipt = (payment: Payment) => {
-        // Mock receipt download - in production, this would download a real PDF
-        console.log('Downloading receipt for payment:', payment.id);
-        alert(`Download do recibo #${payment.id} iniciado (mockado)`);
-    };
-
-    const getPaymentStatusColor = (status: Payment['status']) => {
-        switch (status) {
-            case 'paid':
-                return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            case 'pending':
-                return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'overdue':
-                return 'bg-red-100 text-red-700 border-red-200';
-            default:
-                return 'bg-gray-100 text-gray-700 border-gray-200';
-        }
-    };
-
-    const getPaymentStatusIcon = (status: Payment['status']) => {
-        switch (status) {
-            case 'paid':
-                return <CheckCircle2 size={16} />;
-            case 'pending':
-                return <Clock size={16} />;
-            case 'overdue':
-                return <AlertCircle size={16} />;
-            default:
-                return <DollarSign size={16} />;
-        }
-    };
-
-    const getPaymentStatusLabel = (status: Payment['status']) => {
-        switch (status) {
-            case 'paid':
-                return 'Pago';
-            case 'pending':
-                return 'Pendente';
-            case 'overdue':
-                return 'Vencido';
-            default:
-                return 'Desconhecido';
-        }
-    };
-
-    const paymentProgress = totalContracted > 0 ? (totalPaid / totalContracted) * 100 : 0;
-
-    if (isLoading) {
+    if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="animate-spin text-lux-accent" size={48} />
+            <div className="h-full flex flex-col items-center justify-center gap-4 text-slate-400">
+                <Loader2 className="animate-spin text-lux-accent" size={40} />
+                <p className="font-bold text-sm uppercase tracking-widest">Sincronizando Carteira...</p>
             </div>
         );
     }
 
+    const totalDebt = financials
+        .filter(f => f.status === 'PENDING')
+        .reduce((sum, f) => sum + Number(f.amount), 0);
+
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                {onBack && (
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-lux-subtle rounded-xl transition-colors"
-                    >
-                        <ArrowLeft size={24} className="text-lux-text" />
-                    </button>
-                )}
-                <div>
-                    <h2 className="text-3xl font-bold text-lux-text">Carteira Digital</h2>
-                    <p className="text-lux-text-secondary">Gerencie seus pagamentos e faturas</p>
-                </div>
-            </div>
-
-            {/* Financial Summary Card */}
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 p-4 md:p-0">
+            {onBack && (
+                <button
+                    onClick={onBack}
+                    className="flex items-center gap-2 text-lux-text-secondary hover:text-lux-text transition font-bold text-xs uppercase tracking-widest"
+                >
+                    <ChevronRight className="rotate-180" size={14} /> Voltar
+                </button>
+            )}
+            {/* Wallet Header Card */}
             <motion.div
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="apple-card p-8 bg-gradient-to-br from-lux-text to-lux-text/90 text-lux-background relative overflow-hidden"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-lux-text text-lux-background rounded-[32px] p-8 relative overflow-hidden shadow-2xl"
             >
-                <div className="absolute top-0 right-0 w-64 h-64 bg-lux-accent rounded-full blur-[100px] opacity-20"></div>
-                <div className="relative z-10">
-                    <p className="text-sm font-bold uppercase tracking-widest opacity-70 mb-6">Resumo Financeiro</p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div>
-                            <p className="text-xs opacity-70 mb-1">Total Contratado</p>
-                            <p className="text-2xl font-light">{formatCurrency(totalContracted)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs opacity-70 mb-1">Total Pago</p>
-                            <p className="text-2xl font-light text-emerald-300">{formatCurrency(totalPaid)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs opacity-70 mb-1">Saldo Devedor</p>
-                            <p className={`text-2xl font-light ${outstandingBalance === 0 ? 'text-emerald-300' : 'text-amber-300'}`}>
-                                {formatCurrency(outstandingBalance)}
-                            </p>
-                        </div>
+                <div className="relative z-10 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-6 border border-white/20">
+                        <CreditCard className="text-lux-accent" size={32} />
                     </div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-60 mb-2">Seu Saldo em Aberto</p>
+                    <h2 className="text-5xl font-light mb-8">
+                        R$ {totalDebt.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </h2>
 
-                    <div className="w-full bg-white/20 h-3 rounded-full overflow-hidden">
-                        <motion.div
-                            className="h-full bg-emerald-400 rounded-full"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${paymentProgress}%` }}
-                            transition={{ duration: 1, ease: "easeOut" }}
-                        ></motion.div>
-                    </div>
-                    <p className="text-xs mt-2 opacity-70">{paymentProgress.toFixed(1)}% do tratamento pago</p>
+                    <button
+                        disabled={totalDebt === 0}
+                        onClick={() => handlePayment(totalDebt.toString(), "Pagamento Pendente")}
+                        className={`
+                            px-12 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl
+                            ${totalDebt > 0
+                                ? 'bg-lux-accent text-white hover:scale-105 hover:shadow-lux-accent/20'
+                                : 'bg-white/10 text-white/40 cursor-not-allowed'}
+                        `}
+                    >
+                        {totalDebt > 0 ? 'Pagar Saldo Total' : 'Tudo em Dia'}
+                    </button>
                 </div>
+
+                {/* Abstract Visuals */}
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-lux-accent/20 rounded-full blur-[100px]" />
+                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-blue-500/10 rounded-full blur-[100px]" />
             </motion.div>
 
-            {/* Pending Payments */}
-            {pendingPayments.length > 0 && (
-                <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                >
-                    <h3 className="font-bold text-lux-text text-xl mb-4">Pagamentos Pendentes</h3>
-                    <div className="space-y-4">
-                        {pendingPayments.map((payment) => (
-                            <div
-                                key={payment.id}
-                                className={`apple-card p-6 border-2 ${payment.status === 'overdue' ? 'border-red-200 bg-red-50/50' : 'border-amber-200 bg-amber-50/50'
-                                    }`}
-                            >
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${getPaymentStatusColor(payment.status)}`}>
-                                                {getPaymentStatusIcon(payment.status)}
-                                                {getPaymentStatusLabel(payment.status)}
-                                            </span>
-                                            {payment.status === 'overdue' && (
-                                                <span className="text-xs text-red-600 font-bold">⚠️ Vencido</span>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-lux-text-secondary">
-                                            Vencimento: {formatDate(payment.dueDate)}
-                                        </p>
-                                    </div>
-                                    <p className="text-2xl font-bold text-lux-text">{formatCurrency(payment.amount)}</p>
+            {/* Transaction List */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                    <h3 className="font-bold text-lux-text text-lg">Histórico Financeiro</h3>
+                    <button className="text-xs font-bold text-lux-accent flex items-center gap-1 uppercase tracking-wider">
+                        Filtrar <ChevronRight size={14} />
+                    </button>
+                </div>
+
+                <div className="space-y-3">
+                    {financials.map((item, index) => (
+                        <motion.div
+                            key={item.id}
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="bg-white border border-slate-100 p-5 rounded-3xl flex items-center justify-between group hover:border-lux-accent transition-all"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`
+                                    w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110
+                                    ${item.status === 'PAID' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}
+                                `}>
+                                    {item.status === 'PAID' ? <CheckCircle2 size={24} /> : <Clock size={24} />}
                                 </div>
-
-                                <button
-                                    onClick={() => handleCopyPix(payment.id)}
-                                    className="w-full bg-lux-accent text-white px-4 py-3 rounded-xl font-bold hover:bg-lux-accent/90 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    {copiedId === payment.id ? (
-                                        <>
-                                            <CheckCircle2 size={18} />
-                                            Código PIX Copiado!
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy size={18} />
-                                            Copiar Código PIX
-                                        </>
-                                    )}
-                                </button>
+                                <div>
+                                    <h4 className="font-bold text-slate-800 text-sm">{item.description || 'Tratamento'}</h4>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        {new Date(item.dueDate || item.createdAt).toLocaleDateString()}
+                                    </p>
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                </motion.div>
-            )}
 
-            {/* Payment History */}
-            <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-            >
-                <h3 className="font-bold text-lux-text text-xl mb-4">Histórico de Pagamentos</h3>
-                {paymentHistory.length === 0 ? (
-                    <div className="apple-card p-12 text-center">
-                        <DollarSign size={48} className="text-lux-text-secondary mx-auto mb-4 opacity-50" />
-                        <p className="text-lux-text-secondary">Nenhum pagamento realizado ainda</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {paymentHistory.map((payment) => (
-                            <div
-                                key={payment.id}
-                                className="apple-card p-5 hover:border-lux-accent/50 transition-colors"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                            <CheckCircle2 size={20} />
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-lux-text">{formatCurrency(payment.amount)}</p>
-                                            <p className="text-sm text-lux-text-secondary">
-                                                Pago em {payment.paidDate ? formatDate(payment.paidDate) : 'N/A'}
-                                                {payment.method && ` • ${payment.method}`}
-                                            </p>
-                                        </div>
-                                    </div>
+                            <div className="text-right flex items-center gap-4">
+                                <div>
+                                    <p className="font-black text-slate-900 text-sm">R$ {Number(item.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                     <button
-                                        onClick={() => handleDownloadReceipt(payment)}
-                                        className="p-2 hover:bg-lux-subtle rounded-lg transition-colors text-lux-text-secondary hover:text-lux-text"
-                                        title="Baixar Recibo"
+                                        onClick={() => downloadInvoice(item.id)}
+                                        className="text-[10px] font-bold text-lux-accent flex items-center gap-1 mt-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
-                                        <Download size={20} />
+                                        NF-e <Download size={10} />
                                     </button>
                                 </div>
+                                <button
+                                    onClick={() => handlePayment(item.amount, item.description)}
+                                    className={`
+                                        p-2 rounded-xl transition-all
+                                        ${item.status === 'PENDING' ? 'bg-lux-accent text-white hover:scale-110 shadow-lg shadow-lux-accent/20' : 'bg-slate-50 text-slate-300'}
+                                    `}
+                                >
+                                    <ArrowUpRight size={18} />
+                                </button>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </motion.div>
+                        </motion.div>
+                    ))}
 
-            {/* Help Section */}
-            <div className="apple-card p-6 bg-blue-50 border-blue-200">
-                <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
-                        <AlertCircle size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-blue-900 mb-1">Precisa de Ajuda?</h4>
-                        <p className="text-sm text-blue-700 mb-3">
-                            Se você tiver dúvidas sobre seus pagamentos ou precisar negociar valores, entre em contato com nossa equipe financeira.
-                        </p>
-                        <button className="text-sm font-bold text-blue-600 hover:text-blue-700 underline">
-                            Falar com Financeiro
-                        </button>
-                    </div>
+                    {financials.length === 0 && (
+                        <div className="text-center py-12 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200">
+                            <FileText size={48} className="text-slate-200 mx-auto mb-4" />
+                            <p className="text-slate-400 font-bold">Nenhum registro financeiro encontrado.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
-};
-
-export default PatientWallet;
+}
