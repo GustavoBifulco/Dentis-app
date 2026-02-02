@@ -510,34 +510,175 @@ if __name__ == "__main__":
 ```
 
 --- 
+### ARQUIVO: activate_lab_backend.py
+```py
+import os
+
+def fix_server_entry():
+    content = """
+import 'dotenv/config';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
+import { logger } from 'hono/logger';
+
+// Importação segura das rotas
+import onboarding from './routes/onboarding';
+import inventory from './routes/inventory';
+import procedures from './routes/procedures';
+import patients from './routes/patients';
+import debug from './routes/debug';
+import checkout from './routes/checkout';
+import ai from './routes/ai';
+import appointments from './routes/appointments';
+import clinical from './routes/clinical';
+import finance from './routes/finance';
+import fiscal from './routes/fiscal';
+import kiosk from './routes/kiosk';
+import marketing from './routes/marketing';
+import uploads from './routes/uploads';
+import orders from './routes/orders';
+import patient from './routes/patient';
+import courier from './routes/courier';
+import lab from './routes/lab';
+import dashboard from './routes/dashboard';
+
+const app = new Hono();
+
+// 1. Middlewares Globais
+app.use('*', logger()); // Loga cada requisição
+app.use('*', cors({
+  origin: '*', // Em produção, mude para o domínio real
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
+}));
+
+// 2. Health Check (Vital para o Coolify não matar o app)
+app.get('/api/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
+app.get('/api', (c) => c.json({ status: 'online', version: '1.0.0' }));
+
+// 3. Função auxiliar para carregar rotas sem derrubar o servidor
+const safeRoute = (path: string, routeModule: any, name: string) => {
+  try {
+    app.route(path, routeModule);
+    console.log(`✅ Rota carregada: ${name}`);
+  } catch (err) {
+    console.error(`❌ Falha ao carregar rota ${name}:`, err);
+  }
+};
+
+// 4. Carregamento das Rotas
+safeRoute('/api/dashboard', dashboard, 'Dashboard');
+safeRoute('/api/onboarding', onboarding, 'Onboarding');
+safeRoute('/api/inventory', inventory, 'Inventory');
+safeRoute('/api/procedures', procedures, 'Procedures');
+safeRoute('/api/patients', patients, 'Patients');
+safeRoute('/api/debug', debug, 'Debug');
+safeRoute('/api/checkout', checkout, 'Checkout');
+safeRoute('/api/ai', ai, 'AI');
+safeRoute('/api/appointments', appointments, 'Appointments');
+safeRoute('/api/clinical', clinical, 'Clinical');
+safeRoute('/api/finance', finance, 'Finance');
+safeRoute('/api/fiscal', fiscal, 'Fiscal');
+safeRoute('/api/kiosk', kiosk, 'Kiosk');
+safeRoute('/api/marketing', marketing, 'Marketing');
+safeRoute('/api/uploads', uploads, 'Uploads');
+safeRoute('/api/orders', orders, 'Orders');
+safeRoute('/api/patient', patient, 'Patient Portal');
+safeRoute('/api/courier', courier, 'Courier');
+safeRoute('/api/lab', lab, 'Lab');
+
+// 5. Tratamento de Erros Global
+app.onError((err, c) => {
+  console.error("🔥 Erro Global:", err);
+  return c.json({ success: false, error: "Erro interno no servidor" }, 500);
+});
+
+// 6. Servir Frontend (Arquivos Estáticos)
+// Primeiro tenta servir arquivos da pasta assets
+app.use('/assets/*', serveStatic({ root: './dist' }));
+
+// Para qualquer outra rota não-API, serve o index.html (SPA)
+app.get('*', serveStatic({ 
+  path: './dist/index.html',
+  onNotFound: (path, c) => {
+    console.log(`⚠️ Arquivo não encontrado: ${path}`);
+    return undefined; // Continua para o próximo handler
+  }
+}));
+
+// Fallback final
+app.notFound((c) => {
+  if (c.req.path.startsWith('/api')) {
+    return c.json({ error: 'Endpoint API não encontrado' }, 404);
+  }
+  return c.text('Página não encontrada', 404);
+});
+
+const port = 3000;
+console.log(`🚀 Servidor Dentis rodando na porta ${port}`);
+
+serve({
+  fetch: app.fetch,
+  port
+});
+"""
+
+    # Garante que a pasta existe (se estiver rodando na raiz, ok)
+    if not os.path.exists("server"):
+        os.makedirs("server")
+        
+    # Escreve o arquivo index.ts (pode ser na raiz ou server/, ajustando conforme sua estrutura)
+    # Assumindo que este arquivo é o server/index.ts ou index.ts na raiz.
+    # Vou salvar como index.ts na raiz pois parece ser onde o Coolify busca, ou server/index.ts
+    
+    # Se existe pasta server, salva lá.
+    target_path = "server/index.ts" if os.path.exists("server") else "index.ts"
+    
+    with open(target_path, "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    
+    print(f"✅ Servidor blindado salvo em: {target_path}")
+    print("Agora, se uma rota falhar, o servidor CONTINUA rodando!")
+
+if __name__ == "__main__":
+    fix_server_entry()
+```
+
+--- 
 ### ARQUIVO: Dockerfile
 ```text
-# Build Stage
+# Estágio de Build
 FROM node:20-alpine AS builder
+
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install
+
 COPY . .
+
+# Gera o build do Vite (front) e do Esbuild (server) conforme seu package.json
 RUN npm run build
-RUN npm run server:build
 
-# Production Stage
+# Estágio de Produção
 FROM node:20-alpine
+
 WORKDIR /app
-ENV NODE_ENV=production
 
-COPY --from=builder /app/package.json ./
-# Only production dependencies
-RUN npm install --only=production --legacy-peer-deps
-
+# Copia apenas os builds e dependências necessárias
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/dist-server ./dist-server
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/server/db ./server/db
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
+# Define a porta padrão
+ENV PORT=3000
 EXPOSE 3000
-CMD ["npm", "run", "server:start"]
 
+# Comando para iniciar o servidor Hono que você definiu no package.json
+CMD ["npm", "run", "start"]
 ```
 
 --- 
@@ -9319,310 +9460,6 @@ volumes:
 networks:
   dentis-network:
 
-```
-
---- 
-### ARQUIVO: grok_optimization.py
-```py
-import os
-
-def apply_grok_fixes():
-    files = {
-        # 1. ARQUITETURA: App.tsx com Lazy Loading (Carregamento Rápido)
-        "App.tsx": """
-import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { SignedIn, SignedOut, useUser, useClerk, useAuth } from "@clerk/clerk-react";
-import { ViewType, ThemeConfig, Patient } from './types';
-import { AppContextProvider, useAppContext } from './lib/useAppContext';
-import { useNavigation } from './lib/navigation';
-import Sidebar from './components/Sidebar';
-import MobileHeader from './components/MobileHeader';
-import { Toast } from './components/Shared';
-import { AnimatePresence, motion } from 'framer-motion';
-
-// Lazy Loading: Carrega os módulos sob demanda (Sugestão do Grok)
-const Dashboard = lazy(() => import('./components/Dashboard'));
-const Patients = lazy(() => import('./components/Patients'));
-const PatientRecord = lazy(() => import('./components/PatientRecord'));
-const Schedule = lazy(() => import('./components/Schedule'));
-const Finance = lazy(() => import('./components/Finance'));
-const Landing = lazy(() => import('./components/Landing'));
-const Auth = lazy(() => import('./components/Auth'));
-const Onboarding = lazy(() => import('./components/Onboarding'));
-const Profile = lazy(() => import('./components/Profile'));
-const Settings = lazy(() => import('./components/Settings'));
-const TreatmentJourney = lazy(() => import('./components/TreatmentJourney'));
-const Anamnesis = lazy(() => import('./components/Anamnesis'));
-const ManagementHub = lazy(() => import('./components/ManagementHub'));
-const Inventory = lazy(() => import('./components/Inventory'));
-const Procedures = lazy(() => import('./components/Procedures'));
-const ProcedureEngineer = lazy(() => import('./components/ProcedureEngineer'));
-const FinancialSplit = lazy(() => import('./components/FinancialSplit'));
-const Odontogram = lazy(() => import('./components/Odontogram'));
-const SmartPrescription = lazy(() => import('./components/SmartPrescription'));
-const TeamConfig = lazy(() => import('./components/TeamConfig'));
-const Labs = lazy(() => import('./components/Labs'));
-const Marketplace = lazy(() => import('./components/Marketplace'));
-const KioskMode = lazy(() => import('./components/KioskMode'));
-const PatientWallet = lazy(() => import('./components/PatientWallet'));
-
-// Componente de Loading leve
-const LoadingFallback = () => (
-  <div className="flex h-screen items-center justify-center bg-lux-background text-lux-accent">
-    <div className="animate-pulse font-medium">Carregando Dentis OS...</div>
-  </div>
-);
-
-const AppContent: React.FC = () => {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
-  const { session, setSession, switchContext, toast } = useAppContext();
-  const { getToken } = useAuth();
-  
-  const [currentView, setCurrentView] = useState<ViewType>(ViewType.DASHBOARD);
-  const [history, setHistory] = useState<ViewType[]>([]);
-  const { navigate, goBack } = useNavigation(currentView, setCurrentView, history, setHistory);
-  
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-
-  // Inicialização de Sessão Otimizada
-  useEffect(() => {
-    const initSession = async () => {
-        if (!user || session) return;
-        try {
-            const token = await getToken();
-            // Tenta conectar ao backend, se falhar usa modo offline seguro
-            try {
-                const res = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` }});
-                if (res.ok) {
-                    const data = await res.json();
-                    setSession(data.session);
-                    return;
-                }
-            } catch(e) { console.warn("Backend offline, inicializando modo seguro"); }
-            
-            // Fallback seguro (conforme Grok)
-            setSession({
-                user: { id: user.id, email: user.primaryEmailAddress?.emailAddress || '', name: user.fullName || '', role: 'dentist' },
-                activeContext: null,
-                availableContexts: [],
-                onboardingComplete: user.publicMetadata?.onboardingComplete as boolean,
-                capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false },
-                activeOrganization: null, orgRole: 'admin'
-            });
-        } catch (e) { console.error(e); }
-    };
-    if (isLoaded && user) initSession();
-  }, [user, isLoaded]);
-
-  const handlePatientSelect = (patient: Patient) => {
-    setSelectedPatient(patient);
-    navigate(ViewType.PATIENT_RECORD);
-  };
-
-  // Renderização Dinâmica com Suspense
-  const renderContent = () => (
-      <Suspense fallback={<LoadingFallback />}>
-        {currentView === ViewType.DASHBOARD && <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />}
-        {currentView === ViewType.PATIENTS && <Patients onSelectPatient={handlePatientSelect} />}
-        {currentView === ViewType.PATIENT_RECORD && (selectedPatient ? <PatientRecord patient={selectedPatient} onBack={() => setCurrentView(ViewType.PATIENTS)} /> : <Patients onSelectPatient={handlePatientSelect} />)}
-        {currentView === ViewType.SCHEDULE && <Schedule />}
-        {currentView === ViewType.FINANCE && <Finance userRole="dentist" />}
-        {currentView === ViewType.PROFILE && <Profile userRole="dentist" onLogout={() => signOut()} />}
-        {currentView === ViewType.SETTINGS && <Settings config={{ mode: 'light', accentColor: '#B59410', useGradient: false }} onConfigChange={() => {}} onNavigate={setCurrentView} />}
-        {currentView === ViewType.TREATMENT_JOURNEY && <TreatmentJourney />}
-        {currentView === ViewType.ANAMNESIS && <Anamnesis />}
-        {currentView === ViewType.MANAGEMENT_HUB && <ManagementHub onNavigate={setCurrentView} />}
-        {currentView === ViewType.INVENTORY && <Inventory />}
-        {currentView === ViewType.LABS && <Labs />}
-        {currentView === ViewType.MARKETPLACE && <Marketplace />}
-        {currentView === ViewType.PROCEDURES && <Procedures />}
-        {currentView === ViewType.PROCEDURE_ENGINEER && <ProcedureEngineer />}
-        {currentView === ViewType.FINANCIAL_SPLIT && <FinancialSplit />}
-        {currentView === ViewType.TEAM_SETTINGS && <TeamConfig />}
-        {currentView === ViewType.CLINICAL_EXECUTION && <Odontogram />}
-        {currentView === ViewType.DOCUMENTS && <SmartPrescription />}
-        {currentView === ViewType.PATIENT_WALLET && <PatientWallet onBack={() => setCurrentView(ViewType.DASHBOARD)} />}
-      </Suspense>
-  );
-
-  if (!isLoaded) return <LoadingFallback />;
-
-  return (
-    <>
-      <SignedOut>
-         <Suspense fallback={<LoadingFallback />}><Landing onStart={() => {}} onLogin={() => {}} /></Suspense>
-      </SignedOut>
-
-      <SignedIn>
-        {!(user?.publicMetadata?.onboardingComplete) ? (
-           <Suspense fallback={<LoadingFallback />}><Onboarding onComplete={() => setSession(prev => prev ? {...prev, onboardingComplete: true} : null)} /></Suspense>
-        ) : (
-          <div className="flex h-screen overflow-hidden bg-lux-background text-lux-text">
-            <Sidebar currentView={currentView} setView={setCurrentView} availableContexts={session?.availableContexts || []} activeContext={session?.activeContext || null} onContextSwitch={switchContext} onLogout={() => signOut()} isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
-            <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-               <MobileHeader currentView={currentView} onMenuClick={() => setIsMobileMenuOpen(true)} onBackClick={goBack} title="Dentis" />
-               <div className="flex-1 overflow-y-auto p-8 relative">
-                 <div className="max-w-[1400px] mx-auto pb-20">
-                    <AnimatePresence mode='wait'>
-                        <motion.div key={currentView} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                            {renderContent()}
-                        </motion.div>
-                    </AnimatePresence>
-                 </div>
-               </div>
-            </main>
-            {toast && <Toast message={toast.message} type={toast.type} />}
-          </div>
-        )}
-      </SignedIn>
-    </>
-  );
-};
-
-const App: React.FC = () => {
-  if (window.location.pathname === '/kiosk') return <Suspense fallback={<LoadingFallback />}><KioskMode /></Suspense>;
-  return (
-    <AppContextProvider>
-      <AppContent />
-    </AppContextProvider>
-  );
-};
-
-export default App;
-""",
-
-        # 2. SEGURANÇA & VALIDAÇÃO: Formatters Corretos (Chega de CPF inválido)
-        "lib/formatters.ts": """
-export const unformat = (value: string) => value.replace(/\D/g, "");
-
-// Validação Real de CPF (Algoritmo da Receita)
-function validateCPF(cpf: string): boolean {
-    let sum = 0;
-    let remainder;
-    if (cpf === "00000000000" || cpf.length !== 11) return false;
-    
-    for (let i = 1; i <= 9; i++) sum += parseInt(cpf.substring(i - 1, i)) * (11 - i);
-    remainder = (sum * 10) % 11;
-    if ((remainder === 10) || (remainder === 11)) remainder = 0;
-    if (remainder !== parseInt(cpf.substring(9, 10))) return false;
-    
-    sum = 0;
-    for (let i = 1; i <= 10; i++) sum += parseInt(cpf.substring(i - 1, i)) * (12 - i);
-    remainder = (sum * 10) % 11;
-    if ((remainder === 10) || (remainder === 11)) remainder = 0;
-    if (remainder !== parseInt(cpf.substring(10, 11))) return false;
-    
-    return true;
-}
-
-export const formatCPF = (value: string) => {
-    const nums = value.replace(/\D/g, "");
-    // Só formata se for um tamanho de CPF válido
-    if (nums.length > 11) return nums.slice(0, 11);
-    
-    return nums
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-        .slice(0, 14);
-};
-
-export const isValidCPF = (value: string) => validateCPF(value.replace(/\D/g, ""));
-
-export const formatPhone = (value: string) => {
-    const nums = value.replace(/\D/g, "");
-    if (nums.length <= 10) {
-        return nums.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2").slice(0, 14);
-    } else {
-        return nums.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2").slice(0, 15);
-    }
-};
-
-export const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
-""",
-
-        # 3. EFICIÊNCIA: Hook Financeiro Memoizado
-        "lib/hooks/useFinancials.ts": """
-import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@clerk/clerk-react';
-import { FinancialSummary, Payment } from '../../types';
-
-export const useFinancials = ({ patientId }: { patientId: number | null }) => {
-    const { getToken } = useAuth();
-    const [rawData, setRawData] = useState<FinancialSummary | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchFinancials = async () => {
-            if (!patientId) {
-                setRawData(null); setIsLoading(false); return;
-            }
-            try {
-                setIsLoading(true);
-                const token = await getToken();
-                // Tenta fetch real, se falhar loga e para (segurança)
-                try {
-                    const res = await fetch(`/api/financials/patient/${patientId}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setRawData(data);
-                    }
-                } catch(e) { console.warn("Erro no fetch financeiro"); }
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchFinancials();
-    }, [patientId, getToken]);
-
-    // Otimização: Memoização para evitar re-render desnecessário
-    const stats = useMemo(() => {
-        if (!rawData) return { totalPaid: 0, outstandingBalance: 0, totalContracted: 0 };
-        return rawData;
-    }, [rawData]);
-
-    return { ...stats, isLoading, financialData: rawData };
-};
-""",
-        # 4. MOCK DATA ANONIMIZADO (Compliance LGPD)
-        "lib/mockData.ts": """
-import { Patient } from '../types';
-
-const isDev = (import.meta as any).env.MODE === 'development';
-
-export const MOCK_PATIENTS: Patient[] = isDev ? [
-    { id: 1, clinicId: '1', organizationId: 1, name: 'Paciente Teste A', status: 'active', email: 'teste.a@dentis.dev', phone: '(11) 90000-0000' },
-    { id: 2, clinicId: '1', organizationId: 1, name: 'Paciente Teste B', status: 'active', email: 'teste.b@dentis.dev', phone: '(11) 90000-0001' }
-] : [];
-
-export const MOCK_CONTEXTS = {
-    professional: [
-        { type: 'CLINIC', id: 1, name: 'Clínica Demo', organizationId: '1' }
-    ]
-};
-"""
-    }
-
-    print("🚀 Aplicando Otimizações Finais (Arquitetura Grok + Segurança Claude)...")
-    for path, content in files.items():
-        directory = os.path.dirname(path)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
-            
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content.strip())
-        print(f"✅ Otimizado: {path}")
-
-    print("\\n✨ Dentis OS atualizado: Rápido (Lazy Load), Seguro (CPF Real) e Pronto para Escalar.")
-
-if __name__ == "__main__":
-    apply_grok_fixes()
 ```
 
 --- 
@@ -71478,15 +71315,15 @@ serve({ fetch: app11.fetch, port: 3e3 });
 --- 
 ### ARQUIVO: server/index.ts
 ```ts
-import 'dotenv/config'; // Importa variáveis do .env
+import 'dotenv/config';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
+import { logger } from 'hono/logger';
 
+// Importação segura das rotas
 import onboarding from './routes/onboarding';
-// TEMPORARILY DISABLED - Schema migration needed
-// import profile from './routes/profile';
 import inventory from './routes/inventory';
 import procedures from './routes/procedures';
 import patients from './routes/patients';
@@ -71502,86 +71339,91 @@ import marketing from './routes/marketing';
 import uploads from './routes/uploads';
 import orders from './routes/orders';
 import patient from './routes/patient';
+import courier from './routes/courier';
+import lab from './routes/lab';
+import dashboard from './routes/dashboard';
 
 const app = new Hono();
 
-app.use('*', async (c, next) => {
-  console.log(`🌐 [${c.req.method}] ${c.req.url}`);
-  await next();
-});
-
+// 1. Middlewares Globais
+app.use('*', logger()); // Loga cada requisição
 app.use('*', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: '*', // Em produção, mude para o domínio real
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
 }));
 
-// --- MANIPULADORES GLOBAIS DE ERRO ---
-app.onError((err, c) => {
-  console.error("🔥 Erro Global no Servidor:", err);
-  return c.json({
-    success: false,
-    error: err.message || "Erro interno no servidor",
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  }, 500);
-});
-
-app.notFound(async (c) => {
-  if (c.req.path.startsWith('/api')) {
-    return c.json({ success: false, error: `Rota não encontrada: ${c.req.path}` }, 404);
-  }
-  const res = await serveStatic({ path: './dist/index.html' })(c, () => Promise.resolve());
-  return res || c.text('Not Found', 404);
-});
-
-
-// Feature guards - temporarily disabled routes
-// app.use('/api/appointments/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-// app.use('/api/clinical/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-// app.use('/api/finance/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-// app.use('/api/patients/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-
-import { featureGuard } from './middleware/featureGuard';
-
-import dashboard from './routes/dashboard';
-
-// ...
-app.route('/api/dashboard', dashboard);
-// app.route('/api/profile', profile); // DISABLED - schema migration needed
-// ...
-app.route('/api/onboarding', onboarding);
-app.route('/api/inventory', inventory);
-app.route('/api/procedures', procedures);
-app.route('/api/patients', patients);
-app.route('/api/debug', debug);
-app.route('/api/checkout', checkout);
-// TEMPORARILY DISABLED - Schema migration needed:
-app.route('/api/ai', ai);
-app.route('/api/appointments', appointments);
-app.route('/api/clinical', clinical);
-app.route('/api/finance', finance);
-app.route('/api/fiscal', fiscal);
-app.route('/api/kiosk', kiosk);
-app.route('/api/marketing', marketing);
-app.route('/api/uploads', uploads);
-app.route('/api/orders', orders);
-app.route('/api/patient', patient);
-
-import courier from './routes/courier';
-import lab from './routes/lab';
-import invites from './routes/invites';
-
-// app.route('/api/invites', invites); // DISABLED - schema migration needed
-app.route('/api/courier', courier);
-app.route('/api/lab', lab);
-
+// 2. Health Check (Vital para o Coolify não matar o app)
+app.get('/api/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 app.get('/api', (c) => c.json({ status: 'online', version: '1.0.0' }));
+
+// 3. Função auxiliar para carregar rotas sem derrubar o servidor
+const safeRoute = (path: string, routeModule: any, name: string) => {
+  try {
+    app.route(path, routeModule);
+    console.log(`✅ Rota carregada: ${name}`);
+  } catch (err) {
+    console.error(`❌ Falha ao carregar rota ${name}:`, err);
+  }
+};
+
+// 4. Carregamento das Rotas
+safeRoute('/api/dashboard', dashboard, 'Dashboard');
+safeRoute('/api/onboarding', onboarding, 'Onboarding');
+safeRoute('/api/inventory', inventory, 'Inventory');
+safeRoute('/api/procedures', procedures, 'Procedures');
+safeRoute('/api/patients', patients, 'Patients');
+safeRoute('/api/debug', debug, 'Debug');
+safeRoute('/api/checkout', checkout, 'Checkout');
+safeRoute('/api/ai', ai, 'AI');
+safeRoute('/api/appointments', appointments, 'Appointments');
+safeRoute('/api/clinical', clinical, 'Clinical');
+safeRoute('/api/finance', finance, 'Finance');
+safeRoute('/api/fiscal', fiscal, 'Fiscal');
+safeRoute('/api/kiosk', kiosk, 'Kiosk');
+safeRoute('/api/marketing', marketing, 'Marketing');
+safeRoute('/api/uploads', uploads, 'Uploads');
+safeRoute('/api/orders', orders, 'Orders');
+safeRoute('/api/patient', patient, 'Patient Portal');
+safeRoute('/api/courier', courier, 'Courier');
+safeRoute('/api/lab', lab, 'Lab');
+
+// 5. Tratamento de Erros Global
+app.onError((err, c) => {
+  console.error("🔥 Erro Global:", err);
+  return c.json({ success: false, error: "Erro interno no servidor" }, 500);
+});
+
+// 6. Servir Frontend (Arquivos Estáticos)
+// Primeiro tenta servir arquivos da pasta assets
 app.use('/assets/*', serveStatic({ root: './dist' }));
-app.get('*', serveStatic({ path: './dist/index.html' }));
 
-console.log("🚀 Servidor Dentis Online na porta 3000");
-serve({ fetch: app.fetch, port: 3000 });
+// Para qualquer outra rota não-API, serve o index.html (SPA)
+app.get('*', serveStatic({
+  path: './dist/index.html',
+  onNotFound: (path, c) => {
+    console.log(`⚠️ Arquivo não encontrado: ${path}`);
+    return undefined; // Continua para o próximo handler
+  }
+}));
 
+// Fallback final
+app.notFound((c) => {
+  if (c.req.path.startsWith('/api')) {
+    return c.json({ error: 'Endpoint API não encontrado' }, 404);
+  }
+  return c.text('Página não encontrada', 404);
+});
+
+const port = Number(process.env.PORT) || 3000
+
+console.log(`🚀 Servidor Dentis rodando na porta ${port}`);
+
+serve({
+  fetch: app.fetch,
+  port: port,
+  hostname: '0.0.0.0' // <--- ISSO É OBRIGATÓRIO
+})
 ```
 
 --- 
@@ -72604,6 +72446,26 @@ export const db = drizzle(client, { schema });
 ```
 
 --- 
+### ARQUIVO: server/db/schema_lab.ts
+```ts
+import { pgTable, serial, text, integer, boolean, timestamp, decimal } from 'drizzle-orm/pg-core';
+
+export const labOrders = pgTable('lab_orders', {
+  id: serial('id').primaryKey(),
+  clinicId: text('clinic_id').notNull(),
+  patientName: text('patient_name').notNull(),
+  procedure: text('procedure').notNull(),
+  labName: text('lab_name'),
+  status: text('status', { enum: ['requested', 'production', 'ready', 'delivered'] }).default('requested'),
+  deadline: timestamp('deadline').notNull(),
+  cost: decimal('cost', { precision: 10, scale: 2 }).default('0'),
+  isDigital: boolean('is_digital').default(false),
+  stlFileUrl: text('stl_file_url'),
+  createdAt: timestamp('created_at').defaultNow()
+});
+```
+
+--- 
 ### ARQUIVO: server/routes/inventory.ts
 ```ts
 import { Hono } from 'hono';
@@ -73414,6 +73276,74 @@ app.post('/checkin', zValidator('json', checkinSchema), async (c) => {
 
 export default app;
 
+```
+
+--- 
+### ARQUIVO: server/routes/labs.ts
+```ts
+import { Router } from 'express';
+import { db } from '../db';
+import { labOrders } from '../db/schema_lab';
+import { eq, and } from 'drizzle-orm';
+import { requireRole } from '../middleware/auth';
+
+const router = Router();
+
+// LISTAR Pedidos (Filtrado por Clínica)
+router.get("/", requireRole(['dentist', 'admin']), async (req: any, res) => {
+  try {
+    const orders = await db.select().from(labOrders)
+      .where(eq(labOrders.clinicId, req.clinicId));
+    
+    res.json({ orders });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar pedidos" });
+  }
+});
+
+// CRIAR Novo Pedido
+router.post("/", requireRole(['dentist']), async (req: any, res) => {
+  try {
+    const { patientName, procedure, deadline, labName, cost } = req.body;
+    
+    await db.insert(labOrders).values({
+      clinicId: req.clinicId, // Injeção automática segura
+      patientName,
+      procedure,
+      labName,
+      deadline: new Date(deadline),
+      cost: cost ? String(cost) : '0',
+      status: 'requested'
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao criar pedido" });
+  }
+});
+
+// ATUALIZAR Status
+router.patch("/:id/status", requireRole(['dentist', 'admin']), async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    await db.update(labOrders)
+      .set({ status })
+      .where(and(
+        eq(labOrders.id, Number(id)),
+        eq(labOrders.clinicId, req.clinicId) // Garante que só altera da própria clínica
+      ));
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao atualizar status" });
+  }
+});
+
+export default router;
 ```
 
 --- 
@@ -78375,8 +78305,8 @@ const Marketplace: React.FC = () => {
   return (
     <div className="space-y-10">
       <div className="relative h-64 rounded-[3rem] overflow-hidden group">
-        <img 
-          src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1200" 
+        <img
+          src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1200"
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           alt="Dental Supplies"
         />
@@ -79622,162 +79552,162 @@ import { IslandCard, LuxButton, SectionHeader } from './Shared';
 import { MOCK_INVENTORY } from '../lib/mockData';
 
 const ProcedureEngineer: React.FC = () => {
-  const [basePrice, setBasePrice] = useState(350);
-  const [procedureName, setProcedureName] = useState('Restauração Resina (3 Faces)');
-  const [materials, setMaterials] = useState([
-    { ...MOCK_INVENTORY[0], usedQty: 0.2 }, // Ex: 0.2 de um tubo
-    { ...MOCK_INVENTORY[1], usedQty: 1 },   // 1 par de luvas
-  ]);
+    const [basePrice, setBasePrice] = useState(350);
+    const [procedureName, setProcedureName] = useState('Restauração Resina (3 Faces)');
+    const [materials, setMaterials] = useState([
+        { ...MOCK_INVENTORY[0], usedQty: 0.2 }, // Ex: 0.2 de um tubo
+        { ...MOCK_INVENTORY[1], usedQty: 1 },   // 1 par de luvas
+    ]);
 
-  // Função fictícia de cálculo de custo unitário (preço / qtd_estimada_por_unidade)
-  // No mundo real, cada item teria um "yield" (rendimento).
-  const calculateCost = (item: any) => {
-    // Simplificação: Custo proporcional simples
-    // Se o preço é do "tubo", e usamos 0.2 do tubo.
-    return item.price * item.usedQty;
-  };
+    // Função fictícia de cálculo de custo unitário (preço / qtd_estimada_por_unidade)
+    // No mundo real, cada item teria um "yield" (rendimento).
+    const calculateCost = (item: any) => {
+        // Simplificação: Custo proporcional simples
+        // Se o preço é do "tubo", e usamos 0.2 do tubo.
+        return item.price * item.usedQty;
+    };
 
-  const totalCost = materials.reduce((acc, item) => acc + calculateCost(item), 0);
-  const profit = basePrice - totalCost;
-  const margin = (profit / basePrice) * 100;
+    const totalCost = materials.reduce((acc, item) => acc + calculateCost(item), 0);
+    const profit = basePrice - totalCost;
+    const margin = (profit / basePrice) * 100;
 
-  const handleAddMaterial = () => {
-    // Simula adicionar o primeiro item do inventário que não está na lista
-    const newItem = MOCK_INVENTORY.find(i => !materials.some(m => m.id === i.id));
-    if (newItem) {
-        setMaterials([...materials, { ...newItem, usedQty: 1 }]);
-    }
-  };
+    const handleAddMaterial = () => {
+        // Simula adicionar o primeiro item do inventário que não está na lista
+        const newItem = MOCK_INVENTORY.find(i => !materials.some(m => m.id === i.id));
+        if (newItem) {
+            setMaterials([...materials, { ...newItem, usedQty: 1 }]);
+        }
+    };
 
-  return (
-    <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
-      <SectionHeader title="Engenharia de Procedimento" subtitle="Defina o preço de venda baseado no custo real dos materiais." />
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
+            <SectionHeader title="Engenharia de Procedimento" subtitle="Defina o preço de venda baseado no custo real dos materiais." />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-200px)]">
-         
-         {/* LEFT SIDE: PRODUCT DEFINITION */}
-         <div className="lg:col-span-7 flex flex-col gap-6">
-            <IslandCard className="p-8 flex-1 flex flex-col justify-between relative overflow-hidden">
-                <div className="space-y-6 z-10">
-                    <div>
-                        <label className="text-xs font-black text-lux-text-secondary uppercase tracking-widest mb-2 block">Nome do Procedimento</label>
-                        <input 
-                            type="text" 
-                            value={procedureName}
-                            onChange={(e) => setProcedureName(e.target.value)}
-                            className="text-3xl md:text-4xl font-black text-lux-text bg-transparent outline-none w-full placeholder:text-lux-border"
-                        />
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-200px)]">
 
-                    <div className="grid grid-cols-2 gap-8">
-                        <div>
-                            <label className="text-xs font-black text-lux-text-secondary uppercase tracking-widest mb-2 block flex items-center gap-2">
-                                <DollarSign size={14}/> Preço de Venda
-                            </label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-2xl text-lux-text-secondary font-light">R$</span>
-                                <input 
-                                    type="number" 
-                                    value={basePrice}
-                                    onChange={(e) => setBasePrice(Number(e.target.value))}
-                                    className="text-4xl font-black text-lux-text bg-transparent outline-none w-32 border-b-2 border-lux-border focus:border-lux-accent transition-colors"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-xs font-black text-lux-text-secondary uppercase tracking-widest mb-2 block flex items-center gap-2">
-                                <Clock size={14}/> Tempo Estimado
-                            </label>
-                            <div className="flex items-center gap-2">
-                                <input 
-                                    type="number" 
-                                    defaultValue={45}
-                                    className="text-4xl font-black text-lux-text bg-transparent outline-none w-24 border-b-2 border-lux-border focus:border-lux-accent transition-colors"
-                                />
-                                <span className="text-xl text-lux-text-secondary font-light">min</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Profit Gauge */}
-                <div className="bg-slate-900 text-white rounded-3xl p-6 mt-8">
-                    <div className="flex justify-between items-end mb-4">
-                        <div>
-                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Lucro Líquido Estimado</p>
-                            <p className="text-4xl font-black text-emerald-400">R$ {profit.toFixed(2)}</p>
-                        </div>
-                        <div className="text-right">
-                             <p className="text-3xl font-black">{margin.toFixed(0)}%</p>
-                             <p className="text-[10px] text-slate-400 uppercase">Margem</p>
-                        </div>
-                    </div>
-                    <div className="w-full bg-slate-700 h-4 rounded-full overflow-hidden relative">
-                        {/* Cost Bar */}
-                        <div style={{ width: `${100-margin}%` }} className="h-full bg-rose-500 absolute left-0 top-0"></div>
-                        {/* Profit Bar */}
-                        <div style={{ width: `${margin}%` }} className="h-full bg-emerald-500 absolute right-0 top-0"></div>
-                    </div>
-                    <div className="flex justify-between mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                        <span>Custo: R$ {totalCost.toFixed(2)}</span>
-                        <span>Lucro</span>
-                    </div>
-                </div>
-            </IslandCard>
-         </div>
-
-         {/* RIGHT SIDE: RECIPE (MATERIALS) */}
-         <div className="lg:col-span-5 flex flex-col">
-            <div className="bg-lux-surface border border-lux-border rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-xl">
-                <div className="p-6 border-b border-lux-border bg-lux-subtle flex justify-between items-center">
-                    <h3 className="font-bold text-lux-text flex items-center gap-2">
-                        <Box size={18} />
-                        Receita do Procedimento
-                    </h3>
-                    <button onClick={handleAddMaterial} className="w-8 h-8 rounded-full bg-lux-text text-white flex items-center justify-center hover:bg-black transition">
-                        <Plus size={16} />
-                    </button>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-lux-subtle/30">
-                    <p className="text-xs text-lux-text-secondary font-medium mb-2 uppercase tracking-wide">Materiais Necessários</p>
-                    
-                    {materials.map((item, index) => (
-                        <div key={index} className="bg-white p-4 rounded-2xl shadow-sm border border-lux-border flex justify-between items-center group">
+                {/* LEFT SIDE: PRODUCT DEFINITION */}
+                <div className="lg:col-span-7 flex flex-col gap-6">
+                    <IslandCard className="p-8 flex-1 flex flex-col justify-between relative overflow-hidden">
+                        <div className="space-y-6 z-10">
                             <div>
-                                <p className="font-bold text-sm text-lux-text">{item.name}</p>
-                                <p className="text-xs text-lux-text-secondary">{item.unit} (Custo ref: R$ {item.price})</p>
+                                <label className="text-xs font-black text-lux-text-secondary uppercase tracking-widest mb-2 block">Nome do Procedimento</label>
+                                <input
+                                    type="text"
+                                    value={procedureName}
+                                    onChange={(e) => setProcedureName(e.target.value)}
+                                    className="text-3xl md:text-4xl font-black text-lux-text bg-transparent outline-none w-full placeholder:text-lux-border"
+                                />
                             </div>
-                            <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                    <p className="font-black text-rose-600 text-sm">- R$ {calculateCost(item).toFixed(2)}</p>
-                                    <p className="text-[10px] text-lux-text-secondary font-bold">Qtd: {item.usedQty}</p>
+
+                            <div className="grid grid-cols-2 gap-8">
+                                <div>
+                                    <label className="text-xs font-black text-lux-text-secondary uppercase tracking-widest mb-2 block flex items-center gap-2">
+                                        <DollarSign size={14} /> Preço de Venda
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl text-lux-text-secondary font-light">R$</span>
+                                        <input
+                                            type="number"
+                                            value={basePrice}
+                                            onChange={(e) => setBasePrice(Number(e.target.value))}
+                                            className="text-4xl font-black text-lux-text bg-transparent outline-none w-32 border-b-2 border-lux-border focus:border-lux-accent transition-colors"
+                                        />
+                                    </div>
                                 </div>
-                                <button 
-                                    onClick={() => setMaterials(materials.filter((_, i) => i !== index))}
-                                    className="text-lux-text-secondary hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                <div>
+                                    <label className="text-xs font-black text-lux-text-secondary uppercase tracking-widest mb-2 block flex items-center gap-2">
+                                        <Clock size={14} /> Tempo Estimado
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            defaultValue={45}
+                                            className="text-4xl font-black text-lux-text bg-transparent outline-none w-24 border-b-2 border-lux-border focus:border-lux-accent transition-colors"
+                                        />
+                                        <span className="text-xl text-lux-text-secondary font-light">min</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    ))}
 
-                    <div className="border-2 border-dashed border-lux-border rounded-2xl p-4 flex flex-col items-center justify-center text-lux-text-secondary gap-2 hover:bg-lux-subtle hover:border-lux-accent/50 cursor-pointer transition-colors" onClick={handleAddMaterial}>
-                        <Plus size={24} className="opacity-50" />
-                        <span className="text-xs font-bold uppercase">Adicionar Material da Ilha</span>
+                        {/* Profit Gauge */}
+                        <div className="bg-slate-900 text-white rounded-3xl p-6 mt-8">
+                            <div className="flex justify-between items-end mb-4">
+                                <div>
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Lucro Líquido Estimado</p>
+                                    <p className="text-4xl font-black text-emerald-400">R$ {profit.toFixed(2)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-3xl font-black">{margin.toFixed(0)}%</p>
+                                    <p className="text-[10px] text-slate-400 uppercase">Margem</p>
+                                </div>
+                            </div>
+                            <div className="w-full bg-slate-700 h-4 rounded-full overflow-hidden relative">
+                                {/* Cost Bar */}
+                                <div style={{ width: `${100 - margin}%` }} className="h-full bg-rose-500 absolute left-0 top-0"></div>
+                                {/* Profit Bar */}
+                                <div style={{ width: `${margin}%` }} className="h-full bg-emerald-500 absolute right-0 top-0"></div>
+                            </div>
+                            <div className="flex justify-between mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                <span>Custo: R$ {totalCost.toFixed(2)}</span>
+                                <span>Lucro</span>
+                            </div>
+                        </div>
+                    </IslandCard>
+                </div>
+
+                {/* RIGHT SIDE: RECIPE (MATERIALS) */}
+                <div className="lg:col-span-5 flex flex-col">
+                    <div className="bg-lux-surface border border-lux-border rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-xl">
+                        <div className="p-6 border-b border-lux-border bg-lux-subtle flex justify-between items-center">
+                            <h3 className="font-bold text-lux-text flex items-center gap-2">
+                                <Box size={18} />
+                                Receita do Procedimento
+                            </h3>
+                            <button onClick={handleAddMaterial} className="w-8 h-8 rounded-full bg-lux-text text-white flex items-center justify-center hover:bg-black transition">
+                                <Plus size={16} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-lux-subtle/30">
+                            <p className="text-xs text-lux-text-secondary font-medium mb-2 uppercase tracking-wide">Materiais Necessários</p>
+
+                            {materials.map((item, index) => (
+                                <div key={index} className="bg-white p-4 rounded-2xl shadow-sm border border-lux-border flex justify-between items-center group">
+                                    <div>
+                                        <p className="font-bold text-sm text-lux-text">{item.name}</p>
+                                        <p className="text-xs text-lux-text-secondary">{item.unit} (Custo ref: R$ {item.price})</p>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                            <p className="font-black text-rose-600 text-sm">- R$ {calculateCost(item).toFixed(2)}</p>
+                                            <p className="text-[10px] text-lux-text-secondary font-bold">Qtd: {item.usedQty}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setMaterials(materials.filter((_, i) => i !== index))}
+                                            className="text-lux-text-secondary hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <div className="border-2 border-dashed border-lux-border rounded-2xl p-4 flex flex-col items-center justify-center text-lux-text-secondary gap-2 hover:bg-lux-subtle hover:border-lux-accent/50 cursor-pointer transition-colors" onClick={handleAddMaterial}>
+                                <Plus size={24} className="opacity-50" />
+                                <span className="text-xs font-bold uppercase">Adicionar Material da Ilha</span>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-lux-border bg-white">
+                            <LuxButton className="w-full justify-center" icon={<Save size={18} />}>Salvar Engenharia</LuxButton>
+                        </div>
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-lux-border bg-white">
-                    <LuxButton className="w-full justify-center" icon={<Save size={18}/>}>Salvar Engenharia</LuxButton>
-                </div>
             </div>
-         </div>
-
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default ProcedureEngineer;
@@ -82094,14 +82024,23 @@ export const api = {
     post: async (endpoint: string, data: any, token: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(data),
         });
+        if (!res.ok) throw new Error('Falha na requisição post');
         return res.json();
     }
+};
+
+/**
+ * Função exigida pelo componente Onboarding.tsx
+ * Adicionada para corrigir o erro de build no Coolify
+ */
+export const completeOnboarding = async (data: any, token: string) => {
+    return api.post('/onboarding/complete', data, token);
 };
 ```
 
@@ -82198,20 +82137,60 @@ export const Services = {
 --- 
 ### ARQUIVO: lib/mockData.ts
 ```ts
-import { Patient } from '../types';
+import { Patient, AppContext, UserSession, FinancialEntry, Procedure, LabOrder } from '../types';
 
+// Detecta se é dev environment
 const isDev = (import.meta as any).env.MODE === 'development';
 
 export const MOCK_PATIENTS: Patient[] = isDev ? [
-    { id: 1, clinicId: '1', organizationId: 1, name: 'Paciente Teste A', status: 'active', email: 'teste.a@dentis.dev', phone: '(11) 90000-0000' },
-    { id: 2, clinicId: '1', organizationId: 1, name: 'Paciente Teste B', status: 'active', email: 'teste.b@dentis.dev', phone: '(11) 90000-0001' }
+    { id: 1, clinicId: '1', organizationId: 1, name: 'Paciente Beta', status: 'active', email: 'contato1@provider.com', phone: '(11) 99999-9999' },
+    { id: 2, clinicId: '1', organizationId: 1, name: 'Paciente Gama', status: 'active', email: 'contato2@provider.com', phone: '(11) 98888-8888' }
 ] : [];
 
 export const MOCK_CONTEXTS = {
     professional: [
         { type: 'CLINIC', id: 1, name: 'Clínica Demo', organizationId: '1' }
+    ],
+    patient: [
+        { type: 'PATIENT', id: 1, name: 'Portal Pessoal' }
     ]
 };
+
+// Mocks Financeiros (Adicionado para corrigir o erro de build)
+export const MOCK_FINANCE: FinancialEntry[] = isDev ? [
+    { id: 1, clinicId: '1', type: 'income', amount: 1500.00, description: 'Consulta Inicial', dueDate: '2024-05-20', status: 'paid', category: 'Clínico' },
+    { id: 2, clinicId: '1', type: 'expense', amount: 350.00, description: 'Material Descartável', dueDate: '2024-05-21', status: 'pending', category: 'Insumos' }
+] : [];
+
+// Mocks de Procedimentos
+export const MOCK_PROCEDURES: Procedure[] = isDev ? [
+    { id: 1, clinicId: '1', name: 'Limpeza', code: 'PRO-001', price: 200, durationMinutes: 30, category: 'Prevenção' },
+    { id: 2, clinicId: '1', name: 'Clareamento', code: 'PRO-002', price: 800, durationMinutes: 60, category: 'Estética' }
+] : [];
+
+// Mocks de Laboratório
+export const MOCK_LABS: LabOrder[] = isDev ? [
+    { id: 1, clinicId: '1', patientName: 'Paciente Beta', procedure: 'Prótese Total', status: 'production', deadline: '2024-06-01', cost: 500 }
+] : [];
+
+export const MOCK_SESSION: Partial<UserSession> = {
+    onboardingComplete: true,
+    capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false }
+};
+
+export const MOCK_INVENTORY = [
+    { id: 1, name: 'Luvas de Látex (Cx)', quantity: 50, unit: 'box', minLevel: 10 },
+    { id: 2, name: 'Anestésico Tópico', quantity: 12, unit: 'frasco', minLevel: 5 },
+    { id: 3, name: 'Resina Composta A2', quantity: 8, unit: 'seringa', minLevel: 3 },
+    { id: 4, name: 'Agulhas Gengivais', quantity: 100, unit: 'uni', minLevel: 20 },
+    { id: 5, name: 'Sugadores Descartáveis', quantity: 200, unit: 'pacote', minLevel: 15 },
+];
+
+export const MOCK_MARKETPLACE_PRODUCTS = isDev ? [
+    { id: 1, name: 'Produto Exemplo 1', price: 99.99, description: 'Descrição do produto', category: 'Equipamentos' },
+    { id: 2, name: 'Produto Exemplo 2', price: 149.99, description: 'Outro produto', category: 'Insumos' }
+    // Adicione mais itens conforme necessário
+] : [];
 ```
 
 --- 
