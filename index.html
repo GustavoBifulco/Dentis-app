@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dentis - Dental Operating System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: [
+                '-apple-system', 
+                'BlinkMacSystemFont', 
+                '"SF Pro Text"', 
+                '"Segoe UI"', 
+                'Roboto', 
+                'Helvetica', 
+                'Arial', 
+                'sans-serif'
+              ],
+            },
+            colors: {
+              lux: {
+                accent: 'var(--color-accent)',
+                contrast: 'var(--color-contrast)',
+                surface: 'var(--color-surface)',
+                background: 'var(--color-background)',
+                subtle: 'var(--color-subtle)',
+                border: 'var(--color-border)',
+                text: 'var(--color-text)',
+                'text-secondary': 'var(--color-text-secondary)',
+              }
+            },
+            backgroundImage: {
+              'lux-gradient': 'var(--bg-gradient)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        /* Default Apple-like Light Mode */
+        --color-background: #F5F5F7; /* Apple Light Gray */
+        --color-surface: #FFFFFF;
+        --color-text: #1D1D1F; /* Apple Near Black */
+        --color-text-secondary: #86868B;
+        --color-border: #D2D2D7;
+        --color-subtle: #F5F5F7;
+        
+        /* Default Accent (Gold) */
+        --color-accent: #B59410;
+        --color-contrast: #FFFFFF;
+        
+        /* Gradient defaults to none/solid */
+        --bg-gradient: none; 
+      }
+
+      .dark {
+        /* Apple-like Dark Mode */
+        --color-background: #000000;
+        --color-surface: #1C1C1E;
+        --color-text: #F5F5F7;
+        --color-text-secondary: #86868B;
+        --color-border: #38383A;
+        --color-subtle: #1C1C1E;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--color-background);
+        color: var(--color-text);
+        margin: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        transition: background-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.4s ease;
+      }
+      
+      /* Apple UI Elements */
+      .apple-card {
+        background-color: var(--color-surface);
+        border-radius: 18px; /* Apple consistent radius */
+        border: 1px solid var(--color-border);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      
+      .apple-input {
+        background-color: var(--color-subtle);
+        border: 1px solid transparent;
+        border-radius: 12px;
+        transition: all 0.2s;
+      }
+      .apple-input:focus {
+        background-color: var(--color-surface);
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 4px var(--color-subtle);
+        outline: none;
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+      }
+      .dark .glass-panel {
+        background: rgba(28, 28, 30, 0.72);
+      }
+
+      /* Scrollbar Invisible but functional (Mac style) */
+      ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+    </style>
+    <!-- Import Map permanece o mesmo -->
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "recharts": "https://esm.sh/recharts@2.12.2?external=react,react-dom",
+    "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react,react-dom",
+    "framer-motion": "https://esm.sh/framer-motion@11.0.8?external=react,react-dom",
+    "@google/genai": "https://esm.sh/@google/genai@0.1.2",
+    "postgres": "https://esm.sh/postgres@^3.4.8",
+    "drizzle-orm/": "https://esm.sh/drizzle-orm@^0.45.1/",
+    "drizzle-orm": "https://esm.sh/drizzle-orm@^0.45.1",
+    "path": "https://esm.sh/path@^0.12.7",
+    "zod": "https://esm.sh/zod@^4.3.6",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "@hono/zod-validator": "https://esm.sh/@hono/zod-validator@^0.7.6",
+    "hono/": "https://esm.sh/hono@^4.11.7/",
+    "hono": "https://esm.sh/hono@^4.11.7",
+    "drizzle-kit": "https://esm.sh/drizzle-kit@^0.31.8",
+    "@clerk/backend": "https://esm.sh/@clerk/backend@^2.29.7",
+    "@hono/node-server": "https://esm.sh/@hono/node-server@^1.19.9",
+    "@hono/node-server/": "https://esm.sh/@hono/node-server@^1.19.9/",
+    "crypto": "https://esm.sh/crypto@^1.0.1"
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

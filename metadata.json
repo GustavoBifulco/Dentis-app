@@ -1,0 +1,8 @@
+{
+  "name": "Dentis",
+  "description": "A unifying dental platform featuring identity layers, transactional AI, marketplace integration, and professional networking.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

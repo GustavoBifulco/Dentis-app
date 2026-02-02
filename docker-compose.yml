@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://dentis:dentis_secure_pass@db:5432/dentis_prod
+    depends_on:
+      - db
+    networks:
+      - dentis_net
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: dentis
+      POSTGRES_PASSWORD: dentis_secure_pass
+      POSTGRES_DB: dentis_prod
+    volumes:
+      - dentis_db_data:/var/lib/postgresql/data
+    networks:
+      - dentis_net
+
+volumes:
+  dentis_db_data:
+  dentis_uploads:
+
+networks:
+  dentis_net:
