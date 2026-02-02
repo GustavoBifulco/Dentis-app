@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/clerk-react";
-import { ViewType, UserRole, ThemeConfig, Patient } from './types';
+import { ViewType, ThemeConfig, Patient, AppContext } from './types';
+import { AppContextProvider, useAppContext } from './lib/useAppContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Patients from './components/Patients';
@@ -30,13 +31,10 @@ import { EmptyState } from './components/Shared';
 import { Menu, Bell, Search, Command } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const App: React.FC = () => {
-  if (window.location.pathname === '/kiosk') {
-    return <KioskMode />;
-  }
-
+const AppContent: React.FC = () => {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const { session, setSession, switchContext } = useAppContext();
   const hasCompletedOnboarding = user?.publicMetadata?.onboardingComplete === true;
 
   const [showAuth, setShowAuth] = useState(false);
@@ -47,13 +45,44 @@ const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
-  const userRole: UserRole = (user?.publicMetadata?.role as UserRole) || 'dentist';
-
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>({
     mode: 'light',
     accentColor: '#B59410',
     useGradient: false
   });
+
+  // Initialize session with mock data (will be replaced with API call)
+  useEffect(() => {
+    if (user && !session) {
+      // Mock available contexts based on user metadata
+      const mockContexts: AppContext[] = [
+        { type: 'CLINIC', id: 1, name: 'Clínica Sorriso', organizationId: 1 }
+      ];
+
+      // Check if user has patient profile
+      if (user.publicMetadata?.role === 'patient') {
+        mockContexts.push({ type: 'PATIENT', id: 1, name: 'Portal Pessoal' });
+      }
+
+      setSession({
+        id: 1,
+        clerkId: user.id,
+        name: user.fullName || '',
+        email: user.primaryEmailAddress?.emailAddress || '',
+        professionalType: null,
+        capabilities: {
+          isOrgAdmin: true,
+          isHealthProfessional: true,
+          isCourier: false,
+          isPatient: false
+        },
+        availableContexts: mockContexts,
+        activeContext: mockContexts[0],
+        activeOrganization: null,
+        orgRole: 'admin'
+      });
+    }
+  }, [user, session, setSession]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -80,15 +109,16 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch (currentView) {
-      case ViewType.DASHBOARD: return <Dashboard userRole={userRole} onNavigate={setCurrentView} />;
+      case ViewType.DASHBOARD:
+        return <Dashboard activeContextType={session?.activeContext?.type || null} />;
       case ViewType.PATIENTS: return <Patients onSelectPatient={handlePatientSelect} />;
       case ViewType.PATIENT_RECORD:
         return selectedPatient
           ? <PatientRecord patient={selectedPatient} onBack={() => setCurrentView(ViewType.PATIENTS)} />
           : <Patients onSelectPatient={handlePatientSelect} />;
       case ViewType.SCHEDULE: return <Schedule />;
-      case ViewType.FINANCE: return <Finance userRole={userRole} />;
-      case ViewType.PROFILE: return <Profile userRole={userRole} onLogout={() => signOut()} />;
+      case ViewType.FINANCE: return <Finance userRole="dentist" />;
+      case ViewType.PROFILE: return <Profile userRole="dentist" onLogout={() => signOut()} />;
       case ViewType.SETTINGS: return <Settings config={themeConfig} onConfigChange={setThemeConfig} onNavigate={setCurrentView} />;
       case ViewType.TREATMENT_JOURNEY: return <TreatmentJourney />;
       case ViewType.ANAMNESIS: return <Anamnesis />;
@@ -97,6 +127,7 @@ const App: React.FC = () => {
       case ViewType.LABS: return <Labs />;
       case ViewType.MARKETPLACE: return <Marketplace />;
       case ViewType.PROCEDURES: return <Procedures />;
+
       case ViewType.PROCEDURE_ENGINEER: return <ProcedureEngineer />;
       case ViewType.FINANCIAL_SPLIT: return <FinancialSplit />;
       case ViewType.TEAM_SETTINGS: return <TeamConfig />;
@@ -162,11 +193,12 @@ const App: React.FC = () => {
             <Sidebar
               currentView={currentView}
               setView={setCurrentView}
-              userRole={userRole}
+              availableContexts={session?.availableContexts || []}
+              activeContext={session?.activeContext || null}
+              onContextSwitch={switchContext}
               onLogout={() => signOut()}
               isOpen={isMobileMenuOpen}
               onClose={() => setIsMobileMenuOpen(false)}
-              theme={themeConfig.mode}
             />
             <main className="flex-1 flex flex-col h-full overflow-hidden relative">
               <header className="flex-shrink-0 z-30 px-8 py-5 glass-panel border-b border-lux-border flex justify-between items-center transition-all">
@@ -176,7 +208,7 @@ const App: React.FC = () => {
                     <div className="flex items-center text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-0.5">
                       <span className="opacity-70">Workspace</span>
                       <span className="mx-2 opacity-30">/</span>
-                      <span className="text-lux-accent">{userRole === 'dentist' ? 'Clínico' : userRole === 'clinic_owner' ? 'Gestão' : 'Pessoal'}</span>
+                      <span className="text-lux-accent">{session?.activeContext?.name || 'Contexto'}</span>
                     </div>
                     <h1 className="text-2xl font-semibold tracking-tight text-lux-text">{getTitle()}</h1>
                   </div>
@@ -233,6 +265,18 @@ const App: React.FC = () => {
         )}
       </SignedIn>
     </>
+  );
+};
+
+const App: React.FC = () => {
+  if (window.location.pathname === '/kiosk') {
+    return <KioskMode />;
+  }
+
+  return (
+    <AppContextProvider>
+      <AppContent />
+    </AppContextProvider>
   );
 };
 

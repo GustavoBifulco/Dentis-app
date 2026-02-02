@@ -1,7 +1,7 @@
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { db } from '../db';
-import { users, clinicMembers } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { users, organizationMembers, organizations } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
 import { Context } from 'hono';
 
 export const authMiddleware = async (c: Context, next: any) => {
@@ -36,48 +36,67 @@ export const authMiddleware = async (c: Context, next: any) => {
     }
   }
 
-  // Fallback or dev header
+  // Fallback or dev header (Keeping for compatibility but optimized)
   if (!clerkId && devUserId) {
-    const user = await db.query.users.findFirst({ where: eq(users.id, Number(devUserId)) });
-    if (user) clerkId = user.clerkId;
+    if (isNaN(Number(devUserId))) {
+      clerkId = devUserId;
+    } else {
+      const dbUser = await db.query.users.findFirst({ where: eq(users.id, Number(devUserId)) });
+      if (dbUser) clerkId = dbUser.clerkId;
+    }
   }
 
   if (!clerkId) {
-    console.error("❌ Acesso negado: Sem userId (Clerk ou Header)");
+    console.error("❌ Acesso negado: Sem userId");
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
   try {
-    // 1. Buscar usuário no banco pelo Clerk ID
+    // 1. Fetch User and Context from Clerk / Cache / DB
+    // Otimização: Ler do publicMetadata via Clerk SDK se necessário, 
+    // mas aqui buscamos no banco para garantir consistência.
     const user = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
+      with: {
+        professionalProfile: true,
+        courierProfile: true,
+      }
     });
 
-    if (!user) {
-      console.error("❌ Usuário não encontrado no banco:", clerkId);
-      return c.json({ error: 'User not found' }, 404);
-    }
+    if (!user) return c.json({ error: 'User not found' }, 404);
 
-    // 2. Buscar clínica (por enquanto, pega a primeira que ele é membro)
-    // TODO: Permitir troca de contexto de clínica via Header
-    const member = await db.query.clinicMembers.findFirst({
-      where: eq(clinicMembers.userId, user.id)
+    // 2. Organization Context (Ler do Clerk Claims se disponível, ou do Header da Ordem se mockado)
+    const clerkOrgId = c.req.header('x-org-id'); // Simula seleção de organização no frontend
+
+    const membership = await db.query.organizationMembers.findFirst({
+      where: and(
+        eq(organizationMembers.userId, user.id),
+        clerkOrgId ? eq(organizations.clerkOrgId, clerkOrgId) : undefined
+      )
     });
 
-    // Em onboarding, pode não ter clínica ainda
-    const clinicId = member?.clinicId;
+    // 3. Derive Capabilities
+    // Aqui usamos o PermissionManager para definir o que o usuário PODE fazer
+    const capabilities = {
+      isOrgAdmin: membership?.role === 'admin',
+      isHealthProfessional: !!user.professionalProfile,
+      isCourier: !!user.courierProfile,
+      isPatient: !user.professionalProfile && !user.courierProfile
+    };
 
-    // 3. Injetar no Contexto
+    // 4. Injetar no Contexto do Hono
     c.set('userId', user.id);
     c.set('clerkId', clerkId);
-    if (clinicId) {
-      c.set('clinicId', clinicId);
-      c.set('role', member.role);
+    c.set('capabilities', capabilities);
+
+    if (membership) {
+      c.set('organizationId', membership.organizationId);
+      c.set('orgRole', membership.role);
     }
 
     await next();
   } catch (error) {
-    console.error("Erro no Auth Middleware:", error);
+    console.error("Erro no Auth Middleware (RBAC):", error);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 };

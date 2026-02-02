@@ -16,159 +16,102 @@ export enum ViewType {
   TREATMENT_JOURNEY = 'TREATMENT_JOURNEY',
   ANAMNESIS = 'ANAMNESIS',
   PROFILE = 'PROFILE',
-  // New Views
   MANAGEMENT_HUB = 'MANAGEMENT_HUB',
   PROCEDURE_ENGINEER = 'PROCEDURE_ENGINEER',
   FINANCIAL_SPLIT = 'FINANCIAL_SPLIT',
-  TEAM_SETTINGS = 'TEAM_SETTINGS', // Accessed via Settings
-  CLINICAL_EXECUTION = 'CLINICAL_EXECUTION' // Accessed inside Patient Record
+  TEAM_SETTINGS = 'TEAM_SETTINGS',
+  CLINICAL_EXECUTION = 'CLINICAL_EXECUTION'
 }
 
-export interface Clinic {
+// --- IDENTITY TYPES (WHO ARE YOU?) ---
+
+export type ProfessionalType = 'DENTIST' | 'PROTETICO' | 'AUXILIAR';
+
+export interface UserCapabilities {
+  isOrgAdmin: boolean;      // Financeiro / Gestão
+  isHealthProfessional: boolean; // Prontuário / Agenda
+  isCourier: boolean;       // Entregas
+  isPatient: boolean;       // Portal do Paciente
+}
+
+// --- PERMISSION TYPES (WHAT CARGO DO YOU HOLD?) ---
+
+export type OrganizationRole = 'admin' | 'member' | 'guest';
+
+export interface Organization {
+  id: number;
+  clerkOrgId: string;
+  name: string;
+  type: 'CLINIC' | 'LAB' | 'RADIOLOGY';
+}
+
+// --- SESSION CONTEXT ---
+
+export type ContextType = 'CLINIC' | 'LAB' | 'PATIENT' | 'COURIER';
+
+export interface AppContext {
+  type: ContextType;
   id: number;
   name: string;
-  allowedModules: string[]; // From DB JSON
-  address?: string;
-  phone?: string;
-}
-
-// Defines the type of organization/business entity
-export type OrganizationType = 'CLINIC' | 'LAB' | 'RADIOLOGY';
-
-export type UserRole =
-  | 'dentist'
-  | 'clinic_owner'
-  | 'patient'
-  | 'lab_admin'
-  | 'lab_tech'
-  | 'courier';
-
-export interface ThemeConfig {
-  mode: 'light' | 'dark';
-  accentColor: string; // Hex Code
-  useGradient: boolean;
+  organizationId?: number; // For CLINIC/LAB contexts
 }
 
 export interface UserSession {
+  id: number;
+  clerkId: string;
   name: string;
   email: string;
-  role: UserRole;
-  avatar?: string;
+
+  // Identity Flags
+  professionalType: ProfessionalType | null;
+
+  // Logical Capability State
+  capabilities: UserCapabilities;
+
+  // Multi-Context Support
+  availableContexts: AppContext[];
+  activeContext: AppContext | null;
+
+  // Legacy (for backward compatibility during migration)
+  activeOrganization: Organization | null;
+  orgRole: OrganizationRole | null;
 }
 
-// Dados coletados no Onboarding
-export interface OnboardingData {
-  role: UserRole;
+// --- BUSINESS DATA ---
+
+export interface Patient {
+  id: number;
+  organizationId: number;
+  name: string;
   cpf?: string;
-  cnpj?: string;
-  clinicName?: string;
-  clinicAddress?: string;
-  cro?: string; // Para dentista ou do responsável técnico
-  responsibleDentistName?: string; // Apenas para Dono de Clínica
-  profileImage?: string; // Base64 ou URL
+  email?: string;
+  phone: string;
+  status?: 'active' | 'pending' | 'completed';
+  lastVisit?: string;
 }
 
-// API Envelope
+export interface Appointment {
+  id: number;
+  organizationId: number;
+  patientId: number;
+  dentistId: number;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
 export interface ApiResponse<T> {
   ok: boolean;
   data?: T;
   error?: string;
 }
 
-export interface Patient {
-  id: number;
-  clinicId: number;
-  name: string;
-  surname?: string; // Adicionado
-  cpf?: string; // Adicionado
-  email?: string;
-  phone: string;
-  status: 'active' | 'pending' | 'completed';
-  lastVisit?: string;
-  age?: number;
-  gender?: string;
-  address?: string;
-  anamnesisAlerts?: string[];
+export interface ThemeConfig {
+  mode: 'light' | 'dark';
+  accentColor: string;
+  useGradient: boolean;
 }
 
-export interface Appointment {
-  id: number;
-  clinicId: number;
-  patientId: number;
-  patientName: string;
-  startTime: string;
-  endTime: string;
-  procedure: string;
-  status: 'scheduled' | 'confirmed' | 'attended' | 'cancelled' | 'no_show';
-}
-
-export interface Procedure {
-  id: number;
-  clinicId: number;
-  name: string;
-  code: string;
-  price: number;
-  duration: number; // Duration in minutes
-  durationMinutes: number; // Alias
-  category: string; // Adicionado para agrupamento nas ilhas
-  description?: string;
-  materialsCost?: number;
-  estimatedProfit?: number;
-}
-
-export interface StockItem {
-  id: number;
-  clinicId: number;
-  name: string;
-  category: string; // Ex: Ortodontia, Cirurgia...
-  quantity: number;
-  minQuantity: number;
-  unit: string;
-  price: number;
-  lastUpdated?: string;
-}
-
-export interface TeamMember {
-  id: number;
-  name: string;
-  role: string;
-  split: number; // Porcentagem de comissão (0-100)
-  active: boolean;
-  color?: string;
-}
-
-export interface LabOrder {
-  id: number;
-  clinicId: number;
-  patientName: string;
-  procedure: string;
-  labName: string;
-  status: 'requested' | 'production' | 'ready' | 'delivered'; // Ajuste os status aqui
-  deadline: string;
-  cost: number;
-  notes?: string;
-}
-
-export interface FinancialEntry {
-  id: number;
-  clinicId: number;
-  type: 'income' | 'expense';
-  description: string;
-  amount: number;
-  dueDate: string;
-  paymentDate?: string;
-  status: 'pending' | 'paid' | 'overdue';
-  category?: string; // 'salary', 'rent', 'materials', 'personal'
-  recurrence?: 'monthly' | 'one_time';
-}
-
-export interface AIMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  actionData?: any; // Se a IA sugerir uma ação (JSON estruturado)
-}
-
-// Declaração global para o elemento do Stripe
 declare global {
   namespace JSX {
     interface IntrinsicElements {
