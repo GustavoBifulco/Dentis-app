@@ -25,7 +25,12 @@ app.get('/', async (c) => {
     where: eq(appointments.organizationId, organizationId),
     with: {
       patient: true,
-      dentist: true
+      dentist: {
+        columns: {
+          name: true,
+          surname: true
+        }
+      }
     },
     orderBy: [desc(appointments.startTime)]
   });

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db';
 import { financial, patients, documents, appointments, clinicalRecords } from '../db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
 const patient = new Hono<{ Variables: { userId: number } }>();
@@ -29,12 +29,25 @@ patient.get('/financials', async (c) => {
 
     // Fetch all financial records for these patients
     const records = await db
-        .select()
+        .select({
+            id: financial.id,
+            type: financial.type,
+            amount: financial.amount,
+            description: financial.description,
+            dueDate: financial.dueDate,
+            paidAt: financial.paidAt,
+            status: financial.status,
+            category: financial.category,
+            createdAt: financial.createdAt
+        })
         .from(financial)
-        .where(eq(financial.patientId, patientIds[0]))
+        .where(and(
+            inArray(financial.patientId, patientIds),
+            eq(financial.organizationId, userPatients[0].organizationId) // Extra safety check
+        ))
         .orderBy(desc(financial.createdAt));
 
-    return c.json({ financials: records });
+    return c.json({ ok: true, financials: records });
 });
 
 /**

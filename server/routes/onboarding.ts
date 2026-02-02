@@ -23,8 +23,18 @@ const onboardingSchema = z.object({
 
 onboarding.post('/complete', zValidator('json', onboardingSchema), async (c) => {
   const data = c.req.valid('json');
+
+  // Sanitização Básica
+  const sanitized = {
+    ...data,
+    name: data.name?.trim(),
+    cpf: data.cpf?.replace(/\D/g, ''), // Somente números
+    cro: data.cro?.trim().toUpperCase(),
+    phone: data.phone?.replace(/\D/g, '')
+  };
+
   try {
-    console.log(`🛠️ [ONBOARDING] Processando userId: [${data.userId}]`);
+    console.log(`🛠️ [ONBOARDING] Processando userId: [${sanitized.userId}]`);
     console.log(`🛠️ [ONBOARDING] Dados recebidos:`, JSON.stringify(data));
 
     if (!data.userId) throw new Error("userId is required");
@@ -36,7 +46,7 @@ onboarding.post('/complete', zValidator('json', onboardingSchema), async (c) => 
     console.log("✅ [ONBOARDING] Metadados Clerk atualizados.");
 
     try {
-      const setupResult = await setupNewUserEnvironment(data.userId, data.role, false, data.orgId, data.clinicName, data.name, undefined, data.cpf);
+      const setupResult = await setupNewUserEnvironment(sanitized.userId, sanitized.role, false, sanitized.orgId, sanitized.clinicName, sanitized.name, undefined, sanitized.cpf);
       if (!setupResult.success) {
         throw new Error(setupResult.message || "Falha no setup do ambiente");
       }

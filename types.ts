@@ -22,32 +22,24 @@ export enum ViewType {
   FINANCIAL_SPLIT = 'FINANCIAL_SPLIT',
   TEAM_SETTINGS = 'TEAM_SETTINGS',
   CLINICAL_EXECUTION = 'CLINICAL_EXECUTION',
-  PATIENT_WALLET = 'PATIENT_WALLET'
+  PATIENT_WALLET = 'PATIENT_WALLET',
+  KIOSK = 'KIOSK'
 }
 
-// --- IDENTITY TYPES (WHO ARE YOU?) ---
+// --- IDENTITY & CAPABILITIES ---
 
 export type ProfessionalType = 'DENTIST' | 'PROTETICO' | 'AUXILIAR';
 
 export interface UserCapabilities {
-  isOrgAdmin: boolean;      // Financeiro / Gestão
-  isHealthProfessional: boolean; // Prontuário / Agenda
-  isCourier: boolean;       // Entregas
-  isPatient: boolean;       // Portal do Paciente
+  isOrgAdmin: boolean;
+  isHealthProfessional: boolean;
+  isCourier: boolean;
+  isPatient: boolean;
 }
-
-// --- PERMISSION TYPES (WHAT CARGO DO YOU HOLD?) ---
 
 export type OrganizationRole = 'admin' | 'member' | 'guest';
 
-export interface Organization {
-  id: number;
-  clerkOrgId: string;
-  name: string;
-  type: 'CLINIC' | 'LAB' | 'RADIOLOGY';
-}
-
-// --- SESSION CONTEXT ---
+// --- SESSION & CONTEXT (Onde o isolamento acontece) ---
 
 export type ContextType = 'CLINIC' | 'LAB' | 'PATIENT' | 'COURIER';
 
@@ -55,59 +47,133 @@ export interface AppContext {
   type: ContextType;
   id: number;
   name: string;
-  organizationId?: number; // For CLINIC/LAB contexts
+  organizationId?: string; // ID da organização no Clerk (clinicId)
 }
 
 export interface UserSession {
-  id: number;
-  clerkId: string;
-  name: string;
-  email: string;
-
-  // Identity Flags
-  professionalType: ProfessionalType | null;
-
-  // Logical Capability State
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'admin' | 'dentist' | 'assistant' | 'patient';
+  };
   capabilities: UserCapabilities;
-
-  // Multi-Context Support
   availableContexts: AppContext[];
   activeContext: AppContext | null;
+  onboardingComplete: boolean;
 
-  // Legacy (for backward compatibility during migration)
-  activeOrganization: Organization | null;
+  // Compatibilidade Legada
+  activeOrganization: any | null;
   orgRole: OrganizationRole | null;
 }
 
-// --- BUSINESS DATA ---
+// --- BUSINESS DATA (Com ClinicId para Multi-tenancy) ---
 
 export interface Patient {
   id: number;
+  clinicId: string; // Fator de isolamento crítico
   organizationId: number;
   name: string;
   cpf?: string;
   email?: string;
   phone: string;
-  status?: 'active' | 'pending' | 'completed';
+  status: 'active' | 'pending' | 'completed' | 'archived';
   lastVisit?: string;
+  photoUrl?: string;
 }
 
 export interface Appointment {
   id: number;
-  organizationId: number;
+  clinicId: string;
   patientId: number;
-  patientName?: string;
+  patientName: string;
   dentistId: number;
   startTime: string;
   endTime: string;
-  procedure?: string;
-  status: string;
+  procedure: string;
+  status: 'scheduled' | 'confirmed' | 'attended' | 'cancelled' | 'no-show';
+  notes?: string;
 }
 
-export interface ApiResponse<T> {
-  ok: boolean;
-  data?: T;
-  error?: string;
+// --- AUDIT LOGS (Requisito LGPD) ---
+
+export type LogActionType = 'CREATE' | 'UPDATE' | 'DELETE' | 'VIEW_SENSITIVE' | 'LOGIN';
+
+export interface AuditLog {
+  id: string;
+  clinicId: string;
+  userId: string;
+  userName: string;
+  action: LogActionType;
+  resource: 'PATIENT' | 'FINANCE' | 'CLINICAL_RECORD' | 'INVENTORY';
+  resourceId: string;
+  details: string;
+  timestamp: string;
+}
+
+// --- FINANCE & PROCEDURES ---
+
+export interface FinancialEntry {
+  id: number;
+  clinicId: string;
+  type: 'income' | 'expense';
+  amount: number;
+  description: string;
+  dueDate: string;
+  status: 'paid' | 'pending' | 'overdue';
+  category?: string;
+}
+
+export interface Procedure {
+  id: number;
+  clinicId: string;
+  name: string;
+  code: string;
+  price: number;
+  durationMinutes: number;
+  category: string;
+}
+
+// --- INVENTORY & LABS ---
+
+export interface StockItem {
+  id: number;
+  clinicId: string;
+  name: string;
+  category: string;
+  quantity: number;
+  minQuantity: number;
+  unit: string;
+  price: number;
+}
+
+export interface LabOrder {
+  id: number;
+  clinicId: string;
+  labName?: string;
+  patientName: string;
+  procedure: string;
+  status: 'requested' | 'production' | 'ready' | 'delivered';
+  deadline: string;
+  cost: number;
+}
+
+// --- PATIENT PORTAL ---
+
+export interface Prescription {
+  id: number;
+  patientId: number;
+  medication: string;
+  instructions: string;
+  expiryDate: string;
+  isActive: boolean;
+}
+
+export interface TreatmentPhase {
+  id: number;
+  title: string;
+  status: 'completed' | 'current' | 'upcoming';
+  progress?: number;
 }
 
 export interface ThemeConfig {
@@ -116,48 +182,7 @@ export interface ThemeConfig {
   useGradient: boolean;
 }
 
-// --- PATIENT PORTAL TYPES ---
-
-export interface Prescription {
-  id: number;
-  patientId: number;
-  medication: string;
-  dosage: string;
-  instructions: string;
-  prescribedDate: string;
-  expiryDate: string;
-  isActive: boolean;
-}
-
-export interface Payment {
-  id: number;
-  patientId: number;
-  amount: number;
-  dueDate: string;
-  paidDate?: string;
-  status: 'paid' | 'pending' | 'overdue';
-  method?: string;
-  receiptUrl?: string;
-}
-
-export interface TreatmentPhase {
-  id: number;
-  title: string;
-  description: string;
-  status: 'completed' | 'current' | 'upcoming';
-  completedDate?: string;
-  estimatedDate?: string;
-  progress?: number;
-}
-
-export interface FinancialSummary {
-  totalContracted: number;
-  totalPaid: number;
-  outstandingBalance: number;
-  paymentHistory: Payment[];
-  pendingPayments: Payment[];
-}
-
+// --- STRIPE INTEGRATION ---
 
 declare global {
   namespace JSX {
@@ -171,55 +196,3 @@ declare global {
     }
   }
 }
-
-
-export interface LabOrder {
-  id: number;
-  organizationId: number;
-  labName?: string;
-  patientName: string;
-  procedure: string;
-  status: 'requested' | 'production' | 'ready' | 'delivered';
-  deadline: string;
-  cost: number;
-  isDigital?: boolean;
-  stlFileUrl?: string;
-  designFileUrl?: string;
-}
-
-export type UserRole = 'clinic_owner' | 'dentist' | 'lab_admin' | 'courier' | 'supplier' | 'patient';
-
-export interface FinancialEntry {
-  id: number;
-  organizationId: number;
-  type: 'income' | 'expense';
-  amount: number;
-  description: string;
-  dueDate: string;
-  status: 'paid' | 'pending' | 'overdue';
-  category?: string;
-}
-
-export interface StockItem {
-  id: number;
-  organizationId: number;
-  name: string;
-  category: string;
-  quantity: number;
-  minQuantity: number;
-  unit: string;
-  price: number;
-}
-
-export interface Procedure {
-  id: number;
-  organizationId: number;
-  name: string;
-  code: string;
-  price: number;
-  durationMinutes: number;
-  duration?: number;
-  category: string;
-}
-
-

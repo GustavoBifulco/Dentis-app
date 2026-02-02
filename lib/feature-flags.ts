@@ -6,28 +6,17 @@ export const FEATURE_FLAGS = {
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS | string;
 
-// LISTA DE E-MAILS QUE TÊM ACESSO TOTAL (VOCÊ)
-const ADMIN_EMAILS = [
-    'gustavosbifulco@gmail.com', // <--- TROQUE PELO SEU E-MAIL REAL
-    'gustavo@dentis.com'
-];
+// Proteção: Admins via Variáveis de Ambiente (.env)
+const ADMIN_EMAILS = (import.meta as any).env.VITE_ADMIN_EMAILS 
+    ? (import.meta as any).env.VITE_ADMIN_EMAILS.split(',') 
+    : [];
 
 export const isFeatureEnabled = (feature: FeatureFlag, user?: UserSession | null): boolean => {
-    // 1. Se não tiver usuário logado, nega tudo que é crítico
-    if (!user) return false;
+    if (!user || !user.email) return false;
 
     if (feature === FEATURE_FLAGS.CLINIC_MANAGEMENT) {
-        // Regra 1: Super Admins (Hardcoded para segurança inicial)
-        if (user.email && ADMIN_EMAILS.includes(user.email)) {
-            return true;
-        }
-
-        // Regra 2: No futuro, verificar flags vindas do banco (ex: user.allowedModules)
-        // if (user.allowedModules?.includes('CLINIC_MANAGEMENT')) return true;
-
-        // Padrão: Bloqueado para o resto do mundo
+        if (ADMIN_EMAILS.includes(user.email)) return true;
         return false;
     }
-
     return false;
 };

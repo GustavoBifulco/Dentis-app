@@ -82,6 +82,7 @@ export const patients = pgTable('patients', {
   cpf: text('cpf'),
   phone: text('phone'),
   email: text('email'),
+  status: text('status').default('active'), // 'active' | 'pending' | 'completed'
   lastVisit: timestamp('last_visit'),
   userId: integer('user_id').references(() => users.id), // Opcional: Link com Identidade se o paciente for usuário do app
 });
