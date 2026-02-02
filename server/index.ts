@@ -82,7 +82,7 @@ app.onError((err, c) => {
 app.use('/assets/*', serveStatic({ root: './dist' }));
 
 // Para qualquer outra rota não-API, serve o index.html (SPA)
-app.get('*', serveStatic({ 
+app.get('*', serveStatic({
   path: './dist/index.html',
   onNotFound: (path, c) => {
     console.log(`⚠️ Arquivo não encontrado: ${path}`);
@@ -98,10 +98,12 @@ app.notFound((c) => {
   return c.text('Página não encontrada', 404);
 });
 
-const port = 3000;
+const port = Number(process.env.PORT) || 3000
+
 console.log(`🚀 Servidor Dentis rodando na porta ${port}`);
 
 serve({
   fetch: app.fetch,
-  port
-});
+  port: port,
+  hostname: '0.0.0.0' // <--- ISSO É OBRIGATÓRIO
+})
