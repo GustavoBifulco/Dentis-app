@@ -46,3 +46,9 @@ export const MOCK_INVENTORY = [
     { id: 4, name: 'Agulhas Gengivais', quantity: 100, unit: 'uni', minLevel: 20 },
     { id: 5, name: 'Sugadores Descartáveis', quantity: 200, unit: 'pacote', minLevel: 15 },
 ];
+
+export const MOCK_MARKETPLACE_PRODUCTS = isDev ? [
+    { id: 1, name: 'Produto Exemplo 1', price: 99.99, description: 'Descrição do produto', category: 'Equipamentos' },
+    { id: 2, name: 'Produto Exemplo 2', price: 149.99, description: 'Outro produto', category: 'Insumos' }
+    // Adicione mais itens conforme necessário
+] : [];
