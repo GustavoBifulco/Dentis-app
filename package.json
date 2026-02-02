@@ -8,12 +8,15 @@
     "dev:server": "tsx watch server/index.ts",
     "build": "vite build && npm run server:build",
     "start": "npm run server:start",
-    "server:build": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"""db:push": "drizzle-kit push:pg --config=drizzle.config.ts",
+    "server:build": "node esbuild.config.mjs",
+    "server:start": "node dist-server/index.js",
+    "server:dev": "npm run dev:server",
+    "db:push": "drizzle-kit push:pg --config=drizzle.config.ts",
     "db:seed": "npx tsx server/db/seed.ts",
     "db:reset": "npx tsx server/db/reset.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.980.0",
+    "@aws-sdk/client-s3": "^3.980.0a",
     "@clerk/clerk-react": "^5.0.0",
     "@clerk/clerk-sdk-node": "^5.0.0",
     "@hono/node-server": "^1.10.0",
