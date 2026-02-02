@@ -1,5 +1,5 @@
 import React from 'react';
-import { ContextType } from '../types';
+import { ContextType, ViewType } from '../types';
 import ClinicalDashboard from './dashboards/ClinicalDashboard';
 import PatientDashboard from './dashboards/PatientDashboard';
 import LabDashboard from './LabDashboard';
@@ -7,9 +7,10 @@ import CourierApp from './CourierApp';
 
 interface DashboardProps {
    activeContextType: ContextType | null;
+   onNavigate?: (view: ViewType) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ activeContextType }) => {
+const Dashboard: React.FC<DashboardProps> = ({ activeContextType, onNavigate }) => {
    if (!activeContextType) {
       return (
          <div className="flex items-center justify-center h-screen">
@@ -29,7 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activeContextType }) => {
          return <LabDashboard />;
 
       case 'PATIENT':
-         return <PatientDashboard />;
+         return <PatientDashboard onNavigate={onNavigate} />;
 
       case 'COURIER':
          return <CourierApp />;

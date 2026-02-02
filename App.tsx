@@ -27,6 +27,7 @@ import TeamConfig from './components/TeamConfig';
 import Labs from './components/Labs';
 import Marketplace from './components/Marketplace';
 import KioskMode from './components/KioskMode';
+import PatientWallet from './components/PatientWallet';
 import { EmptyState } from './components/Shared';
 import { Menu, Bell, Search, Command } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -110,7 +111,7 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case ViewType.DASHBOARD:
-        return <Dashboard activeContextType={session?.activeContext?.type || null} />;
+        return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
       case ViewType.PATIENTS: return <Patients onSelectPatient={handlePatientSelect} />;
       case ViewType.PATIENT_RECORD:
         return selectedPatient
@@ -133,6 +134,7 @@ const AppContent: React.FC = () => {
       case ViewType.TEAM_SETTINGS: return <TeamConfig />;
       case ViewType.CLINICAL_EXECUTION: return <Odontogram />;
       case ViewType.DOCUMENTS: return <SmartPrescription />;
+      case ViewType.PATIENT_WALLET: return <PatientWallet onBack={() => setCurrentView(ViewType.DASHBOARD)} />;
       default: return <EmptyState title="Em Breve" description="Funcionalidade em desenvolvimento." actionLabel="Voltar" onAction={() => setCurrentView(ViewType.DASHBOARD)} />;
     }
   };
@@ -158,6 +160,7 @@ const AppContent: React.FC = () => {
       case ViewType.TEAM_SETTINGS: return 'Equipe';
       case ViewType.CLINICAL_EXECUTION: return 'Odontograma';
       case ViewType.DOCUMENTS: return 'Receituário';
+      case ViewType.PATIENT_WALLET: return 'Carteira Digital';
       default: return 'Dentis';
     }
   };

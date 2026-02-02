@@ -7,7 +7,9 @@
     "build": "vite build",
     "server:build": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist-server/index.js --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
     "server:start": "node dist-server/index.js",
-    "db:push": "drizzle-kit push:pg --config=drizzle.config.ts"
+    "db:push": "drizzle-kit push:pg --config=drizzle.config.ts",
+    "db:seed": "npx tsx server/db/seed.ts",
+    "db:reset": "npx tsx server/db/reset.ts"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.0.0",

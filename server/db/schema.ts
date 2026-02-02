@@ -7,6 +7,7 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   clerkId: text('clerk_id').unique().notNull(),
   email: text('email').unique(),
+  cpf: text('cpf').unique(), // CPF brasileiro para unicidade de identidade
   name: text('name'),
   surname: text('surname'),
   avatarUrl: text('avatar_url'),
@@ -32,6 +33,9 @@ export const courierProfiles = pgTable('courier_profiles', {
   vehicle: text('vehicle'), // MOTO, CARRO, etc.
   licensePlate: text('license_plate'),
   isOnline: boolean('is_online').default(false),
+  latitude: decimal('latitude', { precision: 10, scale: 7 }),
+  longitude: decimal('longitude', { precision: 10, scale: 7 }),
+  lastLocationUpdate: timestamp('last_location_update'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -49,7 +53,7 @@ export const organizations = pgTable('clinics', { // Mantendo nome 'clinics' no 
   id: serial('id').primaryKey(),
   clerkOrgId: text('clerk_org_id').unique().notNull(), // Identificador do Clerk
   name: text('name').notNull(),
-  type: text('type').notNull().default('CLINIC'), // 'CLINIC', 'LAB'
+  type: text('type').notNull().default('CLINIC'), // 'CLINIC', 'LAB', 'SUPPLIER'
   status: text('status').notNull().default('ACTIVE'),
   cnpj: text('cnpj'),
   phone: text('phone'),
@@ -108,16 +112,36 @@ export const catalogItems = pgTable('catalog_items', {
   productionDays: integer('production_days').default(3),
 });
 
+// Tabela de Produtos (SKU) - Para Fornecedores de Insumos (Dentais)
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  organizationId: integer('organization_id').references(() => organizations.id).notNull(), // Fornecedor
+  sku: text('sku').notNull().unique(), // Código do produto
+  name: text('name').notNull(),
+  description: text('description'),
+  brand: text('brand'), // Marca
+  category: text('category'), // Descartáveis, Anestésicos, Resinas, etc.
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  stockQuantity: integer('stock_quantity').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
-  requesterId: integer('clinic_id').references(() => organizations.id).notNull(),
-  providerId: integer('lab_id').references(() => organizations.id),
+  clinicId: integer('clinic_id').references(() => organizations.id).notNull(), // Requester (Clinic)
+  labId: integer('lab_id').references(() => organizations.id), // Provider (Lab)
   dentistId: integer('dentist_id').references(() => users.id).notNull(),
   patientId: integer('patient_id').references(() => patients.id),
-  status: text('status').notNull(),
+  description: text('description').notNull(),
+  status: text('status').notNull(), // PENDING, IN_PRODUCTION, READY, DRIVER_ASSIGNED, IN_TRANSIT, DELIVERED
   price: decimal('price', { precision: 10, scale: 2 }),
+  subtotal: decimal('subtotal', { precision: 10, scale: 2 }), // Lab gets
   deliveryFee: decimal('delivery_fee', { precision: 10, scale: 2 }),
+  paymentStatus: text('payment_status').default('PENDING'), // PENDING, PAID
   courierId: integer('courier_id').references(() => users.id),
+  pickupCode: text('pickup_code'),
+  deliveryCode: text('delivery_code'),
+  deadline: timestamp('deadline'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

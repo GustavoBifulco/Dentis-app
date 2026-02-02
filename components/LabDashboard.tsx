@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { QrCode, ClipboardList, AlertTriangle, DollarSign, Archive, Truck } from 'lucide-react';
 import { IslandCard } from './Shared';
 
-export const LabDashboard = () => {
+const LabDashboard = () => {
     // Mock Data
     const metrics = {
         newOrders: 12,
@@ -87,7 +87,7 @@ export const LabDashboard = () => {
                                     </div>
                                     <div className="text-right">
                                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${order.status === 'Novo' ? 'bg-blue-100 text-blue-600' :
-                                                order.status === 'Atrasado' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
+                                            order.status === 'Atrasado' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
                                             }`}>
                                             {order.status}
                                         </span>
@@ -131,3 +131,5 @@ export const LabDashboard = () => {
         </div>
     );
 };
+
+export default LabDashboard;

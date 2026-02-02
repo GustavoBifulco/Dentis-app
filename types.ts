@@ -20,7 +20,8 @@ export enum ViewType {
   PROCEDURE_ENGINEER = 'PROCEDURE_ENGINEER',
   FINANCIAL_SPLIT = 'FINANCIAL_SPLIT',
   TEAM_SETTINGS = 'TEAM_SETTINGS',
-  CLINICAL_EXECUTION = 'CLINICAL_EXECUTION'
+  CLINICAL_EXECUTION = 'CLINICAL_EXECUTION',
+  PATIENT_WALLET = 'PATIENT_WALLET'
 }
 
 // --- IDENTITY TYPES (WHO ARE YOU?) ---
@@ -110,6 +111,48 @@ export interface ThemeConfig {
   mode: 'light' | 'dark';
   accentColor: string;
   useGradient: boolean;
+}
+
+// --- PATIENT PORTAL TYPES ---
+
+export interface Prescription {
+  id: number;
+  patientId: number;
+  medication: string;
+  dosage: string;
+  instructions: string;
+  prescribedDate: string;
+  expiryDate: string;
+  isActive: boolean;
+}
+
+export interface Payment {
+  id: number;
+  patientId: number;
+  amount: number;
+  dueDate: string;
+  paidDate?: string;
+  status: 'paid' | 'pending' | 'overdue';
+  method?: string;
+  receiptUrl?: string;
+}
+
+export interface TreatmentPhase {
+  id: number;
+  title: string;
+  description: string;
+  status: 'completed' | 'current' | 'upcoming';
+  completedDate?: string;
+  estimatedDate?: string;
+  progress?: number;
+}
+
+export interface FinancialSummary {
+  totalContracted: number;
+  totalPaid: number;
+  outstandingBalance: number;
+  paymentHistory: Payment[];
+  pendingPayments: Payment[];
 }
 
 declare global {

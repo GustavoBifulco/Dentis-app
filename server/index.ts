@@ -10,21 +10,21 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 
 import onboarding from './routes/onboarding';
-import profile from './routes/profile';
+// TEMPORARILY DISABLED - Schema migration needed
+// import profile from './routes/profile';
 import inventory from './routes/inventory';
 import procedures from './routes/procedures';
 import patients from './routes/patients';
 import debug from './routes/debug';
 import checkout from './routes/checkout';
-import ai from './routes/ai';
-import appointments from './routes/appointments';
-import clinical from './routes/clinical';
-import finance from './routes/finance';
-import fiscal from './routes/fiscal';
-import kiosk from './routes/kiosk';
-import marketing from './routes/marketing';
-import uploads from './routes/uploads';
-import { featureGuard } from './middleware/featureGuard';
+// import ai from './routes/ai';
+// import appointments from './routes/appointments';
+// import clinical from './routes/clinical';
+// import finance from './routes/finance';
+// import fiscal from './routes/fiscal';
+// import kiosk from './routes/kiosk';
+// import marketing from './routes/marketing';
+// import uploads from './routes/uploads';
 
 const app = new Hono();
 
@@ -39,17 +39,20 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
 }));
 
-// Guarded Routes (Clinic Management)
-app.use('/api/appointments/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-app.use('/api/clinical/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-app.use('/api/finance/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
-app.use('/api/patients/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
+
+// Feature guards - temporarily disabled routes
+// app.use('/api/appointments/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
+// app.use('/api/clinical/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
+// app.use('/api/finance/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
+// app.use('/api/patients/*', featureGuard('VITE_ENABLE_CLINIC_MANAGEMENT'));
+
+import { featureGuard } from './middleware/featureGuard';
 
 import dashboard from './routes/dashboard';
 
 // ...
 app.route('/api/dashboard', dashboard);
-app.route('/api/profile', profile);
+// app.route('/api/profile', profile); // DISABLED - schema migration needed
 // ...
 app.route('/api/onboarding', onboarding);
 app.route('/api/inventory', inventory);
@@ -57,17 +60,23 @@ app.route('/api/procedures', procedures);
 app.route('/api/patients', patients);
 app.route('/api/debug', debug);
 app.route('/api/checkout', checkout);
-app.route('/api/ai', ai);
-app.route('/api/appointments', appointments);
-app.route('/api/clinical', clinical);
-app.route('/api/finance', finance);
-app.route('/api/fiscal', fiscal);
-app.route('/api/kiosk', kiosk);
-app.route('/api/marketing', marketing);
-app.route('/api/uploads', uploads);
+// TEMPORARILY DISABLED - Schema migration needed:
+// app.route('/api/ai', ai);
+// app.route('/api/appointments', appointments);
+// app.route('/api/clinical', clinical);
+// app.route('/api/finance', finance);
+// app.route('/api/fiscal', fiscal);
+// app.route('/api/kiosk', kiosk);
+// app.route('/api/marketing', marketing);
+// app.route('/api/uploads', uploads);
 
+import courier from './routes/courier';
+import lab from './routes/lab';
 import invites from './routes/invites';
-app.route('/api/invites', invites);
+
+// app.route('/api/invites', invites); // DISABLED - schema migration needed
+app.route('/api/courier', courier);
+app.route('/api/lab', lab);
 
 app.get('/api', (c) => c.json({ status: 'online', version: '1.0.0' }));
 app.use('/assets/*', serveStatic({ root: './dist' }));

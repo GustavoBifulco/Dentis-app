@@ -1,30 +1,45 @@
 import { Hono } from 'hono';
-import { db } from '../db';
-import { inventory } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { authMiddleware } from '../middleware/auth';
 
-const inventoryRouter = new Hono();
+/**
+ * LEGACY INVENTORY ROUTE - TEMPORARILY DISABLED
+ * 
+ * The inventory table has been removed from the schema.
+ * This route needs to be reimplemented or removed completely.
+ * 
+ * TODO: Decide if inventory functionality is still needed
+ */
 
-inventoryRouter.get('/', async (c) => {
-  const userIdRaw = c.req.header('x-user-id');
-  const userId = userIdRaw ? Number(userIdRaw) : 0;
+const inventory = new Hono<{ Variables: { userId: string } }>();
 
-  // LOG DE DEBUG: Vamos ver no terminal quem está pedindo os dados
-  console.log(`🔍 [Inventory API] Buscando estoque para ID: [${userId}]`);
+inventory.use('*', authMiddleware);
 
-  if (!userId) {
-    console.warn("⚠️ [Inventory API] Requisição sem x-user-id!");
-    return c.json([]);
-  }
-
-  try {
-    const items = await db.select().from(inventory).where(eq(inventory.userId, userId));
-    console.log(`✅ [Inventory API] Retornando ${items.length} itens.`);
-    return c.json(items);
-  } catch (error) {
-    console.error("❌ [Inventory API] Erro no banco:", error);
-    return c.json([]);
-  }
+inventory.get('/', async (c) => {
+  return c.json({
+    error: 'Inventory module temporarily disabled',
+    message: 'This feature is being migrated to the new schema',
+  }, 501);
 });
 
-export default inventoryRouter;
+inventory.post('/', async (c) => {
+  return c.json({
+    error: 'Inventory module temporarily disabled',
+    message: 'This feature is being migrated to the new schema',
+  }, 501);
+});
+
+inventory.patch('/:id', async (c) => {
+  return c.json({
+    error: 'Inventory module temporarily disabled',
+    message: 'This feature is being migrated to the new schema',
+  }, 501);
+});
+
+inventory.delete('/:id', async (c) => {
+  return c.json({
+    error: 'Inventory module temporarily disabled',
+    message: 'This feature is being migrated to the new schema',
+  }, 501);
+});
+
+export default inventory;

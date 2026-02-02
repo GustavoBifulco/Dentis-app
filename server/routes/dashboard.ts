@@ -1,10 +1,18 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { db } from '../db';
-import { appointments, financial, users, patients, clinicMembers, procedures } from '../db/schema';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
-
+import { users } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { clerkClient } from '@clerk/clerk-sdk-node';
+
+/**
+ * Dashboard Route - Simplified for Login
+ * 
+ * This has been simplified to allow login to work.
+ * The old version used legacy schema and needs complete rewrite.
+ * 
+ * TODO: Implement proper dashboard stats after completing migration
+ */
 
 const dashboard = new Hono<{ Variables: { userId: string, clerkId: string } }>();
 
@@ -14,91 +22,95 @@ dashboard.get('/stats', async (c) => {
     const userId = Number(c.get('userId'));
     const clerkId = c.get('clerkId');
 
-    // 1. User Info
     const [user] = await db.select().from(users).where(eq(users.id, userId));
 
-    // Fallback Name from Clerk if DB is empty (common in first sync)
-    let displayName = user?.name;
-    if (!displayName) {
-        try {
-            const clerkUser = await clerkClient.users.getUser(clerkId);
-            displayName = clerkUser.firstName || clerkUser.fullName || '';
-        } catch (e) {
-            console.error('Clerk User Fetch Error in Dashboard', e);
-        }
+    if (!user) {
+        return c.json({ error: 'User not found' }, 404);
     }
 
-    // 2. Appointments Today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    // Get user's organizations from Clerk
+    const clerkOrgs = await clerkClient.users.getOrganizationMembershipList({
+        userId: clerkId,
+    });
 
-    // Appointments Count Query
-    const [appCount] = await db.select({ count: sql<number>`count(*)` })
-        .from(appointments)
-        .where(
-            and(
-                eq(appointments.dentistId, userId),
-                gte(appointments.startTime, today),
-                lte(appointments.startTime, tomorrow)
-            )
-        );
+    // Construct availableContexts based on user's profiles and organizations
+    const availableContexts: any[] = [];
 
-    // Revenue Query (Current Month)
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    // Check for professional profile (Dentist)
+    const professionalProfile = await db.query.professionalProfiles.findFirst({
+        where: (profiles, { eq }) => eq(profiles.userId, userId),
+    });
 
-    const [rev] = await db.select({ total: sql<number>`sum(${financial.amount})` })
-        .from(financial)
-        .where(
-            and(
-                eq(financial.userId, userId), // Linked to dentist
-                eq(financial.type, 'income'), // Lowercase to match
-                gte(financial.dueDate, startOfMonth),
-                lte(financial.dueDate, endOfMonth)
-            )
-        );
+    // Check for courier profile
+    const courierProfile = await db.query.courierProfiles.findFirst({
+        where: (profiles, { eq }) => eq(profiles.userId, userId),
+    });
 
-    // Next Appointment (Join with Patients)
-    const [nextApp] = await db.select({
-        startTime: appointments.startTime,
-        patientName: patients.name
-    })
-        .from(appointments)
-        .innerJoin(patients, eq(appointments.patientId, patients.id))
-        .where(
-            and(
-                eq(appointments.dentistId, userId),
-                gte(appointments.startTime, new Date())
-            )
-        )
-        .orderBy(appointments.startTime)
-        .limit(1);
+    // Check for patient profile
+    const patientProfile = await db.query.patientProfiles.findFirst({
+        where: (profiles, { eq }) => eq(profiles.userId, userId),
+    });
 
-    // 4. Data Validity Check (Self-Healing Trigger)
-    let needsSetup = false;
-    const [membership] = await db.select().from(clinicMembers).where(eq(clinicMembers.userId, userId));
+    // Add contexts based on profiles
+    if (professionalProfile) {
+        availableContexts.push({
+            type: 'CLINICAL',
+            label: 'Dashboard Clínico',
+        });
+    }
 
-    if (!membership) {
-        needsSetup = true;
-    } else {
-        const [procCount] = await db.select({ count: sql<number>`count(*)` })
-            .from(procedures)
-            .where(eq(procedures.clinicId, membership.clinicId));
+    if (courierProfile) {
+        availableContexts.push({
+            type: 'COURIER',
+            label: 'App de Entregas',
+        });
+    }
 
-        if (Number(procCount?.count || 0) === 0) {
-            needsSetup = true;
+    if (patientProfile) {
+        availableContexts.push({
+            type: 'PATIENT',
+            label: 'Meu Tratamento',
+        });
+    }
+
+    // Add organization-based contexts
+    for (const orgMembership of clerkOrgs.data) {
+        const org = await db.query.organizations.findFirst({
+            where: (orgs, { eq }) => eq(orgs.clerkOrgId, orgMembership.organization.id),
+        });
+
+        if (org) {
+            if (org.type === 'LAB') {
+                availableContexts.push({
+                    type: 'LAB',
+                    label: org.name,
+                    organizationId: org.id,
+                });
+            } else if (org.type === 'CLINIC') {
+                availableContexts.push({
+                    type: 'CLINICAL',
+                    label: org.name,
+                    organizationId: org.id,
+                });
+            } else if (org.type === 'SUPPLIER') {
+                availableContexts.push({
+                    type: 'SUPPLIER',
+                    label: org.name,
+                    organizationId: org.id,
+                });
+            }
         }
     }
 
     return c.json({
-        userName: displayName || 'Doutor',
-        appointmentsToday: Number(appCount?.count || 0),
-        revenueMonth: Number(rev?.total || 0),
-        nextPatient: nextApp ? nextApp.patientName : null,
-        nextTime: nextApp ? new Date(nextApp.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null,
-        needsSetup
+        stats: {
+            availableContexts,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+            },
+        },
     });
 });
 
