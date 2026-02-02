@@ -1,25 +1,30 @@
-# Build Stage
+# Estágio de Build
 FROM node:20-alpine AS builder
+
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install
+
 COPY . .
+
+# Gera o build do Vite (front) e do Esbuild (server) conforme seu package.json
 RUN npm run build
-RUN npm run server:build
 
-# Production Stage
+# Estágio de Produção
 FROM node:20-alpine
+
 WORKDIR /app
-ENV NODE_ENV=production
 
-COPY --from=builder /app/package.json ./
-# Only production dependencies
-RUN npm install --only=production --legacy-peer-deps
-
+# Copia apenas os builds e dependências necessárias
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/dist-server ./dist-server
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/server/db ./server/db
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
+# Define a porta padrão
+ENV PORT=3000
 EXPOSE 3000
-CMD ["npm", "run", "server:start"]
+
+# Comando para iniciar o servidor Hono que você definiu no package.json
+CMD ["npm", "run", "start"]
