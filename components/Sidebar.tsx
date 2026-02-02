@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ViewType, UserRole } from '../types';
-import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, Sparkles, FileText, PieChart, Layers, ShoppingBag } from 'lucide-react';
+import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, Sparkles, FileText, PieChart, Layers, ShoppingBag, Truck } from 'lucide-react';
 import Logo from './Logo';
 import { FeatureGate } from './guards/FeatureGate';
 import { FEATURE_FLAGS } from '../lib/feature-flags';
@@ -103,7 +103,28 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, userRole, onLog
       }
     ];
 
-    return mgmtItems;
+    // Menu Lab Admin
+    if (userRole === 'lab_admin' || userRole === 'lab_tech') {
+      return [
+        {
+          title: 'Produção',
+          items: [
+            { type: ViewType.DASHBOARD, label: 'Kanban', icon: LayoutDashboard },
+            { type: ViewType.INVENTORY, label: 'Logística', icon: Truck }, // Using Inventory View for Logistics temporarily or create new
+          ]
+        },
+        {
+          title: 'Gestão',
+          items: [
+            { type: ViewType.PROCEDURES, label: 'Catálogo', icon: ShoppingBag },
+            { type: ViewType.FINANCE, label: 'Financeiro', icon: DollarSign },
+          ]
+        }
+      ];
+    }
+
+    const sections = getMenus();
+    return sections;
   };
 
   const sections = getMenus();

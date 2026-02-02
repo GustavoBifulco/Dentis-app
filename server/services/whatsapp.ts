@@ -44,3 +44,8 @@ export class WhatsAppService {
     };
   }
 }
+
+export const sendMessage = async (to: string, text: string) => {
+  console.log(`[WhatsApp Mock] Sending to ${to}: ${text}`);
+  return { ok: true, id: `mock_${Date.now()}` };
+};

@@ -24,7 +24,24 @@ export enum ViewType {
   CLINICAL_EXECUTION = 'CLINICAL_EXECUTION' // Accessed inside Patient Record
 }
 
-export type UserRole = 'dentist' | 'clinic_owner' | 'patient';
+export interface Clinic {
+  id: number;
+  name: string;
+  allowedModules: string[]; // From DB JSON
+  address?: string;
+  phone?: string;
+}
+
+// Defines the type of organization/business entity
+export type OrganizationType = 'CLINIC' | 'LAB' | 'RADIOLOGY';
+
+export type UserRole =
+  | 'dentist'
+  | 'clinic_owner'
+  | 'patient'
+  | 'lab_admin'
+  | 'lab_tech'
+  | 'courier';
 
 export interface ThemeConfig {
   mode: 'light' | 'dark';
@@ -126,7 +143,7 @@ export interface LabOrder {
   patientName: string;
   procedure: string;
   labName: string;
-  status: 'requested' | 'production' | 'ready' | 'delivered';
+  status: 'requested' | 'production' | 'ready' | 'delivered'; // Ajuste os status aqui
   deadline: string;
   cost: number;
   notes?: string;

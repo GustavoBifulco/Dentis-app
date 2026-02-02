@@ -48,7 +48,9 @@ export const setupNewUserEnvironment = async (
     role: string,
     force: boolean = false,
     clerkOrgId?: string,
-    clinicName?: string
+    clinicName?: string,
+    name?: string,
+    email?: string
 ) => {
     console.log('🏁 Iniciando setup do usuário:', clerkId, 'Role:', role, 'Org:', clerkOrgId);
 
@@ -58,6 +60,8 @@ export const setupNewUserEnvironment = async (
         const [newUser] = await db.insert(users).values({
             clerkId,
             role,
+            name: name || null,
+            email: email || null,
             isActive: true,
             onboardingComplete: true
         }).returning();

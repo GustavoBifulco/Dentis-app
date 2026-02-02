@@ -4,7 +4,7 @@ import { Loader2, AlertCircle, FileX, ArrowRight } from 'lucide-react';
 // --- PRIMITIVOS DE DESIGN ---
 
 export const IslandCard: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({ children, className = '', onClick }) => (
-  <div 
+  <div
     onClick={onClick}
     className={`bg-lux-surface border border-lux-border rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md ${className}`}
   >
@@ -12,15 +12,16 @@ export const IslandCard: React.FC<{ children: React.ReactNode; className?: strin
   </div>
 );
 
-export const LuxButton: React.FC<{ 
-  children: React.ReactNode; 
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost'; 
+export const LuxButton: React.FC<{
+  children: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   onClick?: () => void;
   className?: string;
   icon?: React.ReactNode;
-}> = ({ children, variant = 'primary', onClick, className = '', icon }) => {
+  disabled?: boolean;
+}> = ({ children, variant = 'primary', onClick, className = '', icon, disabled }) => {
   const baseStyle = "flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 text-sm tracking-wide disabled:opacity-50 disabled:cursor-not-allowed";
-  
+
   const variants = {
     primary: "bg-lux-gold text-white hover:bg-yellow-600 shadow-lg shadow-yellow-900/10",
     secondary: "bg-lux-charcoal text-lux-background hover:opacity-90",
@@ -29,7 +30,7 @@ export const LuxButton: React.FC<{
   };
 
   return (
-    <button onClick={onClick} className={`${baseStyle} ${variants[variant]} ${className}`}>
+    <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>
       {icon}
       <span>{children}</span>
     </button>
@@ -55,11 +56,11 @@ export const ErrorState: React.FC<{ message: string; onRetry?: () => void }> = (
   </div>
 );
 
-export const EmptyState: React.FC<{ 
-  title: string; 
-  description: string; 
-  actionLabel?: string; 
-  onAction?: () => void 
+export const EmptyState: React.FC<{
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void
 }> = ({ title, description, actionLabel, onAction }) => (
   <div className="flex flex-col items-center justify-center py-24 border border-dashed border-lux-border rounded-[2rem] text-center bg-lux-surface/30">
     <div className="w-16 h-16 rounded-full border border-lux-border flex items-center justify-center mb-6 bg-lux-background">
