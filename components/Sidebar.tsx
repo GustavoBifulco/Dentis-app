@@ -2,6 +2,7 @@ import React from 'react';
 import { ViewType, ContextType, AppContext } from '../types';
 import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package } from 'lucide-react';
 import { useClerk, useUser } from "@clerk/clerk-react";
+import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
 import ContextSwitcher from './ContextSwitcher';
 
@@ -39,20 +40,31 @@ const Sidebar: React.FC<SidebarProps> = ({
     const isActive = currentView === item.type;
 
     return (
-      <button
+      <motion.button
         key={item.type}
         onClick={() => handleNavigation(item.type)}
+        whileHover={{ x: 4, scale: 1.01 }}
+        whileTap={{ scale: 0.98 }}
         className={`
-          w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group
+          w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-colors duration-200 group relative
           ${isActive
             ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-200'
             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }
         `}
       >
-        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="transition-transform group-hover:scale-110" />
-        <span className="text-sm">{item.label}</span>
-      </button>
+        {isActive && (
+          <motion.div
+            layoutId="sidebar-active"
+            className="absolute inset-0 bg-blue-600 rounded-xl z-0"
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          />
+        )}
+        <span className="relative z-10 flex items-center gap-3">
+          <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+          <span className="text-sm">{item.label}</span>
+        </span>
+      </motion.button>
     );
   };
 
@@ -146,9 +158,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     <>
       {isOpen && <div className="fixed inset-0 bg-slate-900/10 z-40 lg:hidden backdrop-blur-sm" onClick={onClose} />}
 
-      <aside className={`
+      <motion.aside
+        initial={{ x: -300, opacity: 0 }}
+        animate={{ x: isOpen ? 0 : 0, opacity: 1 }} // Desktop always visible via CSS, mobile controlled by transform
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={`
         fixed lg:static inset-y-0 left-0 z-50 w-72 h-screen flex flex-col
-        transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]
+        transition-transform duration-300 md:transition-none
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         bg-white border-r border-slate-200
       `}>
@@ -227,7 +243,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
         </div>
-      </aside>
+      </motion.aside>
     </>
   );
 };

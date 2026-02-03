@@ -17,9 +17,20 @@ export const labsService = {
   list: (): Promise<ApiResponse<LabOrder[]>> => Promise.resolve({ ok: true, data: [] }),
 };
 
+
+export const appointmentService = {
+  getAvailability: (token: string, date: string): Promise<any> => api.get(`/appointments/availability?date=${date}`, token),
+  list: (token: string, params?: any): Promise<any[]> => {
+    const query = new URLSearchParams(params).toString();
+    return api.get(`/appointments?${query}`, token);
+  },
+  create: (token: string, data: any): Promise<any> => api.post('/appointments', data, token),
+};
+
 export const Services = {
   patients: patientService,
   inventory: inventoryService,
   procedures: procedureService,
   labs: labsService,
+  appointments: appointmentService,
 };

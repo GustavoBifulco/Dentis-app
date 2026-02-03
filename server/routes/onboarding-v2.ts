@@ -1,3 +1,4 @@
+
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -9,30 +10,37 @@ import { eq } from 'drizzle-orm';
 
 const onboardingV2 = new Hono();
 
+// Schema de validação
 const quickSetupSchema = z.object({
     userId: z.string(), // Clerk ID
     role: z.enum(['dentist', 'clinic_owner', 'patient']),
     name: z.string(),
     cpf: z.string(),
     phone: z.string(),
-    cro: z.string().optional(),
+    cro: z.string().optional().or(z.literal('')), // Aceita string vazia ou qualquer string para evitar bloqueio
     clinicName: z.string().optional(),
 });
 
-/**
- * Nova rota de onboarding simplificada
- * Salva TUDO no DB imediatamente em uma transação atômica
- * Não toca no Clerk ainda (isso será feito depois ou via webhook)
- */
+// Rota principal para setup rápido
 onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c) => {
     const data = c.req.valid('json');
-
-    console.log(`🚀 [ONBOARDING V2] Quick setup para ${data.userId} (${data.role})`);
+    console.log('🚀 [ONBOARDING V2] Iniciando setup:', { role: data.role, name: data.name });
 
     try {
-        // Transação atômica - tudo ou nada
+        // Usa transação para garantir integridade
         const result = await db.transaction(async (tx) => {
-            // 1. Upsert User
+            // 1. Criar ou atualizar User base
+            // Verifica se já existe pelo Clerk ID
+            const existingUser = await tx.query.users.findFirst({
+                where: eq(users.clerkId, data.userId),
+            });
+
+            if (existingUser) {
+                console.log('User já existe, ignorando criação');
+                // Retornar dados existentes
+                return { userId: existingUser.id, existing: true };
+            }
+
             const [userRecord] = await tx
                 .insert(users)
                 .values({
@@ -41,18 +49,7 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                     name: data.name,
                     cpf: data.cpf.replace(/\D/g, ''),
                     phone: data.phone.replace(/\D/g, ''),
-                    email: null, // Será preenchido depois se necessário
-                    onboardingComplete: new Date(),
-                })
-                .onConflictDoUpdate({
-                    target: users.clerkId,
-                    set: {
-                        role: data.role,
-                        name: data.name,
-                        cpf: data.cpf.replace(/\D/g, ''),
-                        phone: data.phone.replace(/\D/g, ''),
-                        onboardingComplete: new Date(),
-                    },
+                    // onboardingComplete: new Date(), // Campo removido do schema users em alguns contextos, mantenha se tiver certeza
                 })
                 .returning();
 
@@ -62,7 +59,7 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
             await tx
                 .insert(patientProfiles)
                 .values({
-                    userId: userRecord.id,
+                    userId: userRecord.id.toString(),
                 })
                 .onConflictDoNothing();
 
@@ -71,7 +68,7 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                 await tx
                     .insert(professionalProfiles)
                     .values({
-                        userId: userRecord.id,
+                        userId: userRecord.id.toString(),
                         type: data.role.toUpperCase(),
                         cro: data.cro?.trim() || null,
                     })
@@ -95,22 +92,17 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                     const [org] = await tx
                         .insert(organizations)
                         .values({
-                            clerkOrgId: clerkOrg.id,
+                            id: clerkOrg.id, // Correção: usar id em vez de clerkOrgId
                             name: data.clinicName,
                         })
                         .returning();
 
                     // Adicionar como membro admin
                     await tx.insert(organizationMembers).values({
-                        userId: userRecord.id,
+                        userId: userRecord.id.toString(),
                         organizationId: org.id,
                         role: 'ADMIN',
                     });
-
-                    // Vincular user à organização diretamente para facilitar Auth
-                    await tx.update(users)
-                        .set({ organizationId: clerkOrg.id })
-                        .where(eq(users.id, userRecord.id));
 
                     console.log(`✅ Organização criada: ${clerkOrg.id}`);
                 } catch (orgErr: any) {
@@ -123,24 +115,30 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
             let shouldSeed = !!orgId;
 
             // Para dentistas autônomos, criamos um workpsace pessoal isolado
-            // Assim eles não compartilham dados com outros dentistas (privacidade)
-            // E o sistema seeda os dados neste workspace pessoal
             if (data.role === 'dentist' && !orgId) {
                 const personalOrgId = `personal-${data.userId}`;
                 seedOrgId = personalOrgId;
                 shouldSeed = true;
 
-                // Salvar o workspace pessoal no usuário
-                // Isso garante que o Auth Middleware pegue o contexto correto
-                await tx.update(users)
-                    .set({ organizationId: personalOrgId })
-                    .where(eq(users.id, userRecord.id));
+                // Criar organização pessoal no banco
+                await tx.insert(organizations).values({
+                    id: personalOrgId,
+                    name: `Consultório - ${data.name}`,
+                    // slug: `consultorio-${data.userId}` // Se existir slug no schema, descomentar e adicionar
+                }).onConflictDoNothing();
+
+                // Adicionar membro
+                await tx.insert(organizationMembers).values({
+                    userId: userRecord.id.toString(),
+                    organizationId: personalOrgId,
+                    role: 'ADMIN',
+                });
 
                 console.log(`✅ Personal Workspace criado para dentista: ${personalOrgId}`);
             }
 
             return {
-                userId: userRecord.id,
+                userId: userRecord.id, // Number
                 clerkId: userRecord.clerkId,
                 role: data.role,
                 orgId,
@@ -157,10 +155,8 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
             });
         }
 
-
-        // Determina se precisa de pagamento
-        const needsPayment = data.role !== 'patient'; // Pacientes não pagam
-        const isFree = false; // Será determinado no frontend quando escolher plano
+        // Determina se precisa de pagamento (lógica simplificada)
+        const needsPayment = data.role !== 'patient';
 
         // Se for paciente, já marca como completo no Clerk
         if (data.role === 'patient') {
@@ -194,37 +190,22 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
 
 /**
  * Marca onboarding como completo no Clerk
- * Chamado quando usuário escolhe plano FREE ou após webhook do Stripe
  */
 onboardingV2.post('/mark-complete', async (c) => {
     const { userId, dbUserId } = await c.req.json();
 
-    if (!userId) {
-        return c.json({ error: 'userId required' }, 400);
-    }
-
     try {
-        // Busca role do DB
-        const [user] = await db.select().from(users).where(eq(users.clerkId, userId)).limit(1);
-
-        if (!user) {
-            return c.json({ error: 'User not found in DB' }, 404);
-        }
-
         await clerkClient.users.updateUser(userId, {
             publicMetadata: {
                 onboardingComplete: true,
-                role: user.role,
-                dbUserId: user.id,
+                dbUserId: dbUserId, // Salva o ID do nosso DB no Clerk
             },
         });
 
-        console.log(`✅ Onboarding marcado como completo para ${userId}`);
-
         return c.json({ success: true });
     } catch (error: any) {
-        console.error('❌ Erro ao marcar complete:', error);
-        return c.json({ error: error.message }, 500);
+        console.error('Erro ao atualizar metadata no Clerk:', error);
+        return c.json({ success: false, error: error.message }, 500);
     }
 });
 

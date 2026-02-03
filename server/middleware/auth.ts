@@ -79,38 +79,53 @@ export const authMiddleware = async (c: Context, next: Next) => {
       contextRole = dbUser.role;
 
       // Resolver Organization ID
-      if (dbUser.organizationId) {
-        contextOrgId = dbUser.organizationId;
+      // Resolver Organization ID via Members Table
+      const memberRel = await db.query.organizationMembers.findFirst({
+        where: eq(organizationMembers.userId, dbUser.id.toString()), // Convert to string if needed
+        with: {
+          organization: true
+        }
+      });
+
+      if (memberRel && memberRel.organization) {
+        contextOrgId = memberRel.organization.id; // Corrected: use .id not .clerkOrgId
       } else {
-        // Tentar buscar via organization_members
-        // Importante: precisamos do clerkOrgId (string), não do ID numérico
-        const memberRel = await db.query.organizationMembers.findFirst({
-          where: eq(organizationMembers.userId, dbUser.id),
-          with: {
-            organization: true
+        // Se for dentista sem org e sem membro, tenta buscar ou criar workspace pessoal
+        if (dbUser.role === 'dentist') {
+          const personalId = `personal-${dbUser.clerkId}`;
+          console.log(`🔧 Resolving personal workspace ${personalId} for user ${dbUser.id}`);
+
+          // Não atualiza users com organizationId pois a coluna não existe mais.
+          // Apenas define o contexto para uso na sessão.
+          // Idealmente, deveria criar o membro se não existir aqui?
+          // Sim, se for self-healing, deve garantir que o membro exista.
+
+          const orgExists = await db.query.organizations.findFirst({
+            where: eq(organizations.id, personalId)
+          });
+
+          if (!orgExists) {
+            console.log(`Creating missing personal org ${personalId}`);
+            await db.insert(organizations).values({
+              id: personalId,
+              name: `Consultório - ${dbUser.name}`
+            }).onConflictDoNothing();
           }
-        });
 
-        if (memberRel && memberRel.organization) {
-          contextOrgId = memberRel.organization.clerkOrgId;
-          // Opcional: Atualizar o usuário para cachear essa info e evitar queries futuras
-          // await db.update(users).set({ organizationId: contextOrgId }).where(eq(users.id, dbUser.id));
-        } else {
-          // Se for dentista sem org, usa org-1
-          if (dbUser.role === 'dentist') {
-            // SELF-HEALING: Cria workspace pessoal para corrigir contas antigas
-            const personalId = `personal-${dbUser.clerkId}`;
-            console.log(`🔧 Self-healing triggered: Creating personal workspace ${personalId} for user ${dbUser.id}`);
+          // Criar membro se não existir
+          const memberExists = await db.query.organizationMembers.findFirst({
+            where: eq(organizationMembers.organizationId, personalId) // Simplificado
+          });
 
-            await db.update(users)
-              .set({ organizationId: personalId })
-              .where(eq(users.id, dbUser.id));
-
-            // Trigger seed async
-            seedDefaultData(personalId).catch(err => console.error('❌ Self-healing seed failed:', err));
-
-            contextOrgId = personalId;
+          if (!memberExists) {
+            await db.insert(organizationMembers).values({
+              userId: dbUser.id.toString(),
+              organizationId: personalId,
+              role: 'ADMIN' // Dentista dono
+            }).onConflictDoNothing();
           }
+
+          contextOrgId = personalId;
         }
       }
 

@@ -67,8 +67,8 @@ app.put('/:id', async (c) => {
         price: body.price,
         supplier: body.supplier,
         link: body.link,
-        minStock: body.minStock,
-        currentStock: body.currentStock,
+        minQuantity: body.minQuantity || body.minStock || 0, // Fallback p/ compatibilidade
+        quantity: body.quantity || body.currentStock || 0,
       })
       .where(eq(inventory.id, id))
       .returning();

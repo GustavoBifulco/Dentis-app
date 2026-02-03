@@ -5,12 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 // --- PRIMITIVOS DE DESIGN ---
 
 export const IslandCard: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({ children, className = '', onClick }) => (
-  <div
+  <motion.div
     onClick={onClick}
-    className={`bg-white border border-slate-200 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-300 ${onClick ? 'cursor-pointer active:scale-[0.98]' : ''} ${className}`}
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    whileHover={onClick ? { y: -4, transition: { type: "spring", stiffness: 400, damping: 17 } } : {}}
+    className={`bg-white border border-slate-200 rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-md ${onClick ? 'cursor-pointer' : ''} ${className}`}
   >
     {children}
-  </div>
+  </motion.div>
 );
 
 export const LuxButton: React.FC<{
@@ -21,20 +24,27 @@ export const LuxButton: React.FC<{
   icon?: React.ReactNode;
   disabled?: boolean;
 }> = ({ children, variant = 'primary', onClick, className = '', icon, disabled }) => {
-  const baseStyle = "flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 text-sm tracking-tight disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
+  const baseStyle = "flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm tracking-tight disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200",
-    secondary: "bg-slate-800 text-white hover:bg-slate-900 shadow-sm shadow-slate-200",
-    outline: "border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 bg-white",
+    primary: "bg-blue-600 text-white shadow-sm shadow-blue-200",
+    secondary: "bg-slate-800 text-white shadow-sm shadow-slate-200",
+    outline: "border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300",
     ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-transparent px-3"
   };
 
   return (
-    <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>
+    <motion.button
+      onClick={onClick}
+      disabled={disabled}
+      whileHover={{ scale: disabled ? 1 : 1.02 }}
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      className={`${baseStyle} ${variants[variant]} ${className}`}
+    >
       {icon && <span className="opacity-90">{icon}</span>}
       <span>{children}</span>
-    </button>
+    </motion.button>
   );
 };
 

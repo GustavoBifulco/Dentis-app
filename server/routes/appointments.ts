@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { appointments, appointmentSettings, appointmentRequests, patients, procedures } from '../db/schema';
 import { scopedDb } from '../db/scoped';
+import { db } from '../db';
 import { authMiddleware } from '../middleware/auth';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 
@@ -35,7 +36,10 @@ app.get('/', async (c) => {
     conditions.push(eq(appointments.patientId, parseInt(patient_id)));
   }
 
-  const query = scoped
+  // Ensure manual OrgID filtering for complex joins
+  conditions.push(eq(appointments.organizationId, auth.organizationId));
+
+  const query = db
     .select({
       appointment: appointments,
       patient: patients,
@@ -61,7 +65,7 @@ app.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
   const scoped = scopedDb(c);
 
-  const [result] = await scoped
+  const [result] = await db
     .select({
       appointment: appointments,
       patient: patients,
@@ -70,7 +74,10 @@ app.get('/:id', async (c) => {
     .from(appointments)
     .leftJoin(patients, eq(appointments.patientId, patients.id))
     .leftJoin(procedures, eq(appointments.procedureId, procedures.id))
-    .where(eq(appointments.id, id));
+    .where(and(
+      eq(appointments.id, id),
+      eq(appointments.organizationId, c.get('auth').organizationId)
+    ));
 
   if (!result) {
     return c.json({ error: 'Appointment not found' }, 404);
@@ -241,7 +248,7 @@ app.get('/settings/get', async (c) => {
   const scoped = scopedDb(c);
 
   try {
-    let [settings] = await scoped
+    let [settings] = await db
       .select()
       .from(appointmentSettings)
       .where(eq(appointmentSettings.organizationId, auth.organizationId));
@@ -317,7 +324,7 @@ app.get('/availability', async (c) => {
 
   try {
     // Get settings
-    const [settings] = await scoped
+    const [settings] = await db
       .select()
       .from(appointmentSettings)
       .where(eq(appointmentSettings.organizationId, auth.organizationId));
@@ -327,12 +334,13 @@ app.get('/availability', async (c) => {
     }
 
     // Get existing appointments for the date
-    const existingAppointments = await scoped
+    const existingAppointments = await db
       .select()
       .from(appointments)
       .where(
         and(
           eq(appointments.scheduledDate, date),
+          eq(appointments.organizationId, auth.organizationId),
           sql`${appointments.status} != 'cancelled'`
         )
       );

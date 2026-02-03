@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { User, Building2, Briefcase, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { User, Building2, Briefcase, ArrowRight, CheckCircle2, Loader2, LogOut } from 'lucide-react';
 import { formatCPF, formatPhone, unformat } from '../lib/formatters';
 
 interface OnboardingV2Props {
@@ -11,7 +11,7 @@ type Role = 'dentist' | 'clinic_owner' | 'patient';
 
 export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
     const { user } = useUser();
-    const { getToken } = useAuth();
+    const { getToken, signOut } = useAuth();
 
     const [step, setStep] = useState<1 | 2>(1);
     const [loading, setLoading] = useState(false);
@@ -58,10 +58,13 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
             return;
         }
 
+        // Validação de CRO removida para permitir cadastro simplificado
+        /* 
         if ((formData.role === 'dentist' || formData.role === 'clinic_owner') && !formData.cro) {
             setError('Informe o CRO');
             return;
         }
+        */
 
         setLoading(true);
 
@@ -110,7 +113,14 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
             }
         } catch (err: any) {
             console.error('[ONBOARDING V2 ERROR]', err);
-            setError(err.message || 'Erro ao salvar dados. Tente novamente.');
+            let errorMessage = err.message || 'Erro ao salvar dados. Tente novamente.';
+
+            // Tratamento específico para erro genérico de validação
+            // if (errorMessage.includes('did not match the expected pattern')) {
+            //    errorMessage = 'Verifique o formato dos campos (CPF, Telefone ou CRO).';
+            // }
+
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -196,6 +206,14 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                             <p>✓ Dados seguros</p>
                             <p>✓ Suporte dedicado</p>
                         </div>
+
+                        <button
+                            onClick={() => signOut()}
+                            className="mt-8 flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors border-t border-slate-800 w-full pt-6"
+                        >
+                            <LogOut size={16} />
+                            Sair e continuar depois
+                        </button>
                     </div>
 
                     {/* Content */}
@@ -207,7 +225,7 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                         )}
 
                         {step === 1 && (
-                            <form onSubmit={handleStep1Submit} className="space-y-6">
+                            <form onSubmit={handleStep1Submit} className="space-y-6" noValidate autoComplete="off">
                                 <div>
                                     <h2 className="text-3xl font-black mb-2">Bem-vindo!</h2>
                                     <p className="text-slate-600">Vamos configurar sua conta em poucos passos.</p>
@@ -444,10 +462,10 @@ function StepIndicator({ current, step, label }: { current: number; step: number
         <div className={`flex items-center gap-3 ${isActive ? 'opacity-100' : 'opacity-50'}`}>
             <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isComplete
-                        ? 'bg-green-500 text-white'
-                        : isActive
-                            ? 'bg-white text-slate-900'
-                            : 'bg-slate-700 text-slate-400'
+                    ? 'bg-green-500 text-white'
+                    : isActive
+                        ? 'bg-white text-slate-900'
+                        : 'bg-slate-700 text-slate-400'
                     }`}
             >
                 {isComplete ? <CheckCircle2 size={16} /> : step}

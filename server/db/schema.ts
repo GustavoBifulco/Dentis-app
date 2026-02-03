@@ -1,3 +1,4 @@
+
 import { pgTable, serial, text, timestamp, integer, jsonb, boolean, numeric, date, time } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -51,6 +52,8 @@ export const procedures = pgTable('procedures', {
   subcategory: text('subcategory'),
   description: text('description'),
   price: numeric('price'),
+  cost: numeric('cost'), // Added
+  code: text('code'), // Added
   duration: integer('duration'),
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -95,6 +98,36 @@ export const templateInventory = pgTable('template_inventory', {
   link: text('link'),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// === Added Missing Tables ===
+
+export const patientProfiles = pgTable('patient_profiles', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(), // References users.id as string (legacy/compat)
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const professionalProfiles = pgTable('professional_profiles', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  type: text('type').notNull(), // DENTIST, CLINIC_OWNER
+  cro: text('cro'), // Nullable by default
+  specialties: jsonb('specialties'),
+  bio: text('bio'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const courierProfiles = pgTable('courier_profiles', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  vehicleType: text('vehicle_type'),
+  plate: text('plate'),
+  cnh: text('cnh'),
+  active: boolean('active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// === End Added Tables ===
 
 // Appointment System Tables
 export const appointments = pgTable('appointments', {
@@ -283,3 +316,124 @@ export const notificationLogsRelations = relations(notificationLogs, ({ one }) =
     references: [patients.id],
   }),
 }));
+
+// === Restored Tables (Fixing Build Errors) ===
+
+export const auditLogs = pgTable('audit_logs', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  userId: text('user_id').notNull(),
+  action: text('action').notNull(),
+  resource: text('resource').notNull(),
+  details: jsonb('details'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const financials = pgTable('financials', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  type: text('type').notNull(), // 'income' | 'expense'
+  amount: numeric('amount').notNull(),
+  category: text('category'),
+  description: text('description'),
+  date: date('date').notNull(),
+  status: text('status').default('paid'),
+  paymentMethod: text('payment_method'),
+  patientId: integer('patient_id'), // Optional link to patient
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const clinicalRecords = pgTable('clinical_records', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+  dentistId: text('dentist_id').notNull(),
+  type: text('type').notNull(), // 'anamnesis', 'exam', 'procedure', 'prescription'
+  description: text('description'),
+  attachments: jsonb('attachments'), // URLs to files
+  date: date('date').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const documents = pgTable('documents', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  type: text('type'), // 'laudo', 'raio-x', 'foto', 'contrato'
+  url: text('url').notNull(),
+  size: integer('size'),
+  uploadedBy: text('uploaded_by'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const campaigns = pgTable('campaigns', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  name: text('name').notNull(),
+  type: text('type').notNull(), // 'email', 'whatsapp', 'sms'
+  status: text('status').default('draft'), // 'draft', 'scheduled', 'sent'
+  content: text('content'),
+  targetAudience: jsonb('target_audience'),
+  scheduledAt: timestamp('scheduled_at'),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const messageLogs = pgTable('message_logs', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  campaignId: integer('campaign_id').references(() => campaigns.id, { onDelete: 'set null' }),
+  recipient: text('recipient').notNull(),
+  channel: text('channel').notNull(),
+  status: text('status').notNull(), // 'sent', 'delivered', 'read', 'failed'
+  error: text('error'),
+  sentAt: timestamp('sent_at').defaultNow(),
+});
+
+export const patientInvitations = pgTable('patient_invitations', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  email: text('email').notNull(),
+  token: text('token').notNull().unique(),
+  status: text('status').default('pending'), // 'pending', 'accepted', 'expired'
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Marketplace / Suppliers
+export const catalogItems = pgTable('catalog_items', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  price: numeric('price').notNull(),
+  imageUrl: text('image_url'),
+  category: text('category'),
+  supplierId: text('supplier_id').notNull(),
+  active: boolean('active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  supplierId: text('supplier_id').notNull(),
+  status: text('status').default('pending'), // 'pending', 'processing', 'shipped', 'delivered', 'cancelled'
+  totalAmount: numeric('total_amount').notNull(),
+  items: jsonb('items').notNull(), // Array of { itemId, quantity, price }
+  placedAt: timestamp('placed_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const chatMessages = pgTable('chat_messages', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  senderId: text('sender_id').notNull(),
+  receiverId: text('receiver_id'), // Null for group/channel messages
+  channelId: text('channel_id'),   // Null for direct messages
+  content: text('content').notNull(),
+  read: boolean('read').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});

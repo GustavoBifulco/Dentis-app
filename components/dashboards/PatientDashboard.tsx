@@ -21,6 +21,7 @@ import { useAppContext } from '../../lib/useAppContext';
 import { useAppointments } from '../../lib/hooks/useAppointments';
 import { useFinancials } from '../../lib/hooks/useFinancials';
 import { usePrescriptions } from '../../lib/hooks/usePrescriptions';
+import AvailableSlotsViewer from '../AvailableSlotsViewer';
 import ContextSwitcher from '../ContextSwitcher';
 
 interface PatientDashboardProps {
@@ -36,6 +37,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
     const { activePrescriptions, isLoading: prescriptionsLoading } = usePrescriptions({ patientId });
 
     const [showPrescriptionsModal, setShowPrescriptionsModal] = useState(false);
+    const [showBookingModal, setShowBookingModal] = useState(false);
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -127,6 +129,24 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-lux-accent/20 rounded-full blur-[80px]" />
                         </motion.div>
                     )}
+
+                    {!nextAppointment && !appointmentsLoading && (
+                        <motion.div
+                            initial={{ x: 20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            className="bg-white border-2 border-dashed border-slate-200 rounded-[40px] p-8 text-center group hover:border-lux-accent transition-colors"
+                        >
+                            <Calendar className="mx-auto text-slate-300 mb-4 group-hover:text-lux-accent transition-colors" size={48} />
+                            <h3 className="text-xl font-black text-slate-800 mb-2">Sem visitas agendadas</h3>
+                            <p className="text-sm text-slate-400 mb-6 font-medium">É hora de cuidar do seu sorriso?</p>
+                            <button
+                                onClick={() => setShowBookingModal(true)}
+                                className="w-full bg-lux-accent text-white py-4 rounded-2xl font-black text-xs uppercase hover:scale-105 transition-transform shadow-lg shadow-lux-accent/30"
+                            >
+                                Agendar Consulta Agora
+                            </button>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
 
                 {/* 2. Cobrança Pendente */}
@@ -211,6 +231,47 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                 </div>
                 <ChevronRight className="text-red-300 group-hover:translate-x-1 transition-transform" />
             </button>
+
+
+            {/* Modal de Agendamento */}
+            <AnimatePresence>
+                {showBookingModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowBookingModal(false)}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl z-10"
+                        >
+                            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-800">Agendar Consulta</h3>
+                                <button
+                                    onClick={() => setShowBookingModal(false)}
+                                    className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition"
+                                >
+                                    <ChevronRight className="rotate-90" size={16} />
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                <AvailableSlotsViewer
+                                    onSelectSlot={(date, time) => {
+                                        // TODO: Chamar API de criação de agendamento
+                                        alert(`Agendar para ${date} às ${time}?`);
+                                        setShowBookingModal(false);
+                                    }}
+                                />
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
         </div>
     );
