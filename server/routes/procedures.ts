@@ -1,17 +1,30 @@
 import { Hono } from 'hono';
-import { db } from '../db';
 import { procedures } from '../db/schema';
-import { eq } from 'drizzle-orm';
-
+import { scopedDb } from '../db/scoped';
 import { authMiddleware } from '../middleware/auth';
+import { seedDefaultData } from '../services/seedData';
 
-const app = new Hono<{ Variables: { organizationId: string } }>();
+const app = new Hono();
+
 app.use('*', authMiddleware);
 
 app.get('/', async (c) => {
-  const organizationId = c.get('organizationId');
-  const items = await db.select().from(procedures).where(eq(procedures.organizationId, organizationId));
-  return c.json(items);
+  const auth = c.get('auth');
+  const scoped = scopedDb(c);
+  let list = await scoped.select(procedures);
+
+  // SEED ON READ: Se vazio, popula e busca de novo
+  if (list.length === 0 && auth.organizationId) {
+    console.log(`Procedures empty for ${auth.organizationId}. Triggering Seed-On-Read.`);
+    try {
+      await seedDefaultData(auth.organizationId);
+      list = await scoped.select(procedures);
+    } catch (e) {
+      console.error("Seed-On-Read failed:", e);
+    }
+  }
+
+  return c.json(list);
 });
 
 export default app;

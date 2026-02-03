@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useUser } from '@clerk/clerk-react'; // Importando Hook Clerk
+import { useUser, useAuth } from '@clerk/clerk-react'; // Importando Hook Clerk
 import { Services } from '../lib/services';
 import { Procedure } from '../types';
 import { LoadingState, EmptyState, SectionHeader } from './Shared';
@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const Procedures: React.FC = () => {
   const { user, isLoaded } = useUser(); // Dados do usuário
+  const { getToken } = useAuth();
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -17,8 +18,10 @@ const Procedures: React.FC = () => {
       if (!isLoaded || !user?.id) return;
 
       try {
-        // Usa getAll(user.id) compatível com o novo services.ts
-        const data = await Services.procedures.getAll(user.id);
+        // Usa getAll(token)
+        const token = await getToken();
+        if (!token) return;
+        const data = await Services.procedures.getAll(token);
 
         if (Array.isArray(data)) {
           const enhancedProcs = data.map((p: any) => ({

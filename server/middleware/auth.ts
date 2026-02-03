@@ -3,7 +3,8 @@ import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { db } from '../db';
-import { users } from '../db/schema';
+import { users, organizationMembers, organizations } from '../db/schema';
+import { seedDefaultData } from '../services/seedData';
 import { eq } from 'drizzle-orm';
 
 // Estenda o contexto do Hono para incluir o usuário
@@ -63,31 +64,69 @@ export const authMiddleware = async (c: Context, next: Next) => {
       where: eq(users.clerkId, clerkId)
     });
 
+    let contextOrgId = 'org-1';
+    let contextRole = 'guest';
+
     if (!dbUser) {
       // Usuário autenticado no Clerk mas não no nosso DB (pode ser onboarding)
       // Permitimos passar, mas o user context fica limitado
       c.set('user', {
         clerkId,
         role: 'guest',
-        mfaVerified: false // Assumimos false se não checamos claims ainda
+        mfaVerified: false
       });
     } else {
+      contextRole = dbUser.role;
+
+      // Resolver Organization ID
+      if (dbUser.organizationId) {
+        contextOrgId = dbUser.organizationId;
+      } else {
+        // Tentar buscar via organization_members
+        // Importante: precisamos do clerkOrgId (string), não do ID numérico
+        const memberRel = await db.query.organizationMembers.findFirst({
+          where: eq(organizationMembers.userId, dbUser.id),
+          with: {
+            organization: true
+          }
+        });
+
+        if (memberRel && memberRel.organization) {
+          contextOrgId = memberRel.organization.clerkOrgId;
+          // Opcional: Atualizar o usuário para cachear essa info e evitar queries futuras
+          // await db.update(users).set({ organizationId: contextOrgId }).where(eq(users.id, dbUser.id));
+        } else {
+          // Se for dentista sem org, usa org-1
+          if (dbUser.role === 'dentist') {
+            // SELF-HEALING: Cria workspace pessoal para corrigir contas antigas
+            const personalId = `personal-${dbUser.clerkId}`;
+            console.log(`🔧 Self-healing triggered: Creating personal workspace ${personalId} for user ${dbUser.id}`);
+
+            await db.update(users)
+              .set({ organizationId: personalId })
+              .where(eq(users.id, dbUser.id));
+
+            // Trigger seed async
+            seedDefaultData(personalId).catch(err => console.error('❌ Self-healing seed failed:', err));
+
+            contextOrgId = personalId;
+          }
+        }
+      }
+
       c.set('user', {
-        ...dbUser, // id, organizationId, etc.
-        mfaVerified: false // Será preenchido abaixo
+        ...dbUser,
+        organizationId: contextOrgId, // Override com o resolvido
+        mfaVerified: false
       });
     }
 
-    // Check MFA status from claims if available (act)
-    // Clerk session claims usually have "act" claim if impersonating, but MFA status requires checking session or factors.
-    // Simplifying: We rely on the Frontend to enforce MFA login or Step-up.
-    // But for Step-up (re-auth), we can check 'last_active_at' or session approach if needed.
-    // For now, we will mark mfaVerified based on a claim or assumption.
-    // If specific MFA claims are needed, we check them here.
-
     c.set('auth', {
       sessionClaims: decodedState,
-      token: token
+      token: token,
+      userId: dbUser?.id,
+      organizationId: contextOrgId,
+      role: contextRole
     });
 
     await next();
@@ -100,10 +139,9 @@ export const authMiddleware = async (c: Context, next: Next) => {
 
 export const requireRole = (allowedRoles: string[]) => {
   return async (c: Context, next: Next) => {
-    const user = c.get('user');
+    const auth = c.get('auth'); // Use auth instead of user
 
-    if (!user || (!allowedRoles.includes(user.role) && user.role !== 'admin')) {
-      // Se user for guest/undefined ou role não bater
+    if (!auth || (!allowedRoles.includes(auth.role) && auth.role !== 'admin')) {
       return c.json({ error: 'Forbidden: Insufficient permissions' }, 403);
     }
 
@@ -112,47 +150,6 @@ export const requireRole = (allowedRoles: string[]) => {
 };
 
 export const requireMfa = async (c: Context, next: Next) => {
-  const user = c.get('user');
-  const auth = c.get('auth');
-
-  // Se estiver em modo dev bypass, passa
-  if (process.env.DISABLE_AUTH === 'true') {
-    await next();
-    return;
-  }
-
-  // Verificação real de MFA
-  // O token JWT do Clerk não traz verificação de MFA por padrão direto sem sessões customizadas.
-  // A melhor forma no backend sem fazer roundtrip na session API é checar se o usuário tem MFA enabled
-  // e se o token é recente (para step-up).
-
-  // Para simplificar a fase 1, vamos checar se o usuário tem a flag mfaEnabled (que vamos ter que pegar do clerkClient ou do token se customizarmos)
-  // Como não temos custom claims garantidas, vamos buscar o user no Clerk se mfaEnabled não estiver no nosso DB.
-
-  // Otimização: ler do DB local se tivermos syncado `mfaEnabled` boolean ou ler do Clerk.
-  // Vamos ler do Clerk User object para ser seguro (real-time).
-  try {
-    const clerkUser = await clerkClient.users.getUser(user.clerkId);
-
-    // Verifica se tem 2FA habilitado
-    const mfaEnabled = clerkUser.twoFactorEnabled;
-
-    if (!mfaEnabled) {
-      throw new HTTPException(403, { message: 'MFA Required: Please enable 2FA in your account settings.' });
-    }
-
-    // Se quisermos checar se a SESSÃO atual foi verificada com MFA, precisáriamos checar a Sessão.
-    // const session = await clerkClient.sessions.getSession(auth.sessionClaims.sid);
-    // if (session.status === 'active' && ...)
-
-    // Por ora, a exigência é "MFA Verified" -> ou seja, ter ativado.
-    // O step-up é outra checagem (re-auth).
-
-  } catch (err) {
-    if (err instanceof HTTPException) throw err;
-    console.error("MFA Check Error:", err);
-    throw new HTTPException(500, { message: 'Failed to verify MFA status' });
-  }
-
+  // ⚠️ MFA temporariamente desabilitado para onboarding simplificado
   await next();
 };

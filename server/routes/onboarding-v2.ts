@@ -4,6 +4,7 @@ import { zValidator } from '@hono/zod-validator';
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { db } from '../db';
 import { users, professionalProfiles, patientProfiles, organizations, organizationMembers } from '../db/schema';
+import { seedDefaultData } from '../services/seedData';
 import { eq } from 'drizzle-orm';
 
 const onboardingV2 = new Hono();
@@ -39,6 +40,7 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                     role: data.role,
                     name: data.name,
                     cpf: data.cpf.replace(/\D/g, ''),
+                    phone: data.phone.replace(/\D/g, ''),
                     email: null, // Será preenchido depois se necessário
                     onboardingComplete: new Date(),
                 })
@@ -48,6 +50,7 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                         role: data.role,
                         name: data.name,
                         cpf: data.cpf.replace(/\D/g, ''),
+                        phone: data.phone.replace(/\D/g, ''),
                         onboardingComplete: new Date(),
                     },
                 })
@@ -104,6 +107,11 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                         role: 'ADMIN',
                     });
 
+                    // Vincular user à organização diretamente para facilitar Auth
+                    await tx.update(users)
+                        .set({ organizationId: clerkOrg.id })
+                        .where(eq(users.id, userRecord.id));
+
                     console.log(`✅ Organização criada: ${clerkOrg.id}`);
                 } catch (orgErr: any) {
                     console.error('⚠️ Erro ao criar organização:', orgErr);
@@ -111,13 +119,44 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                 }
             }
 
+            let seedOrgId = orgId;
+            let shouldSeed = !!orgId;
+
+            // Para dentistas autônomos, criamos um workpsace pessoal isolado
+            // Assim eles não compartilham dados com outros dentistas (privacidade)
+            // E o sistema seeda os dados neste workspace pessoal
+            if (data.role === 'dentist' && !orgId) {
+                const personalOrgId = `personal-${data.userId}`;
+                seedOrgId = personalOrgId;
+                shouldSeed = true;
+
+                // Salvar o workspace pessoal no usuário
+                // Isso garante que o Auth Middleware pegue o contexto correto
+                await tx.update(users)
+                    .set({ organizationId: personalOrgId })
+                    .where(eq(users.id, userRecord.id));
+
+                console.log(`✅ Personal Workspace criado para dentista: ${personalOrgId}`);
+            }
+
             return {
                 userId: userRecord.id,
                 clerkId: userRecord.clerkId,
                 role: data.role,
                 orgId,
+                seedOrgId,
+                shouldSeed,
             };
         });
+
+        // Executar seed fora da transação
+        if ((result as any).shouldSeed && (result as any).seedOrgId) {
+            // Não dar await para não travar a resposta
+            seedDefaultData((result as any).seedOrgId).then(() => {
+                console.log(`🌱 Seed process started for org ${(result as any).seedOrgId}`);
+            });
+        }
+
 
         // Determina se precisa de pagamento
         const needsPayment = data.role !== 'patient'; // Pacientes não pagam

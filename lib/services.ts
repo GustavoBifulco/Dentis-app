@@ -1,22 +1,16 @@
 import { ApiResponse, Patient, StockItem, Procedure, LabOrder } from '../types';
-
-const getHeaders = (userId: string) => {
-  return {
-    'x-user-id': userId,
-    'Content-Type': 'application/json'
-  };
-};
+import { api } from './api';
 
 export const inventoryService = {
-  getAll: (userId: string): Promise<StockItem[]> => fetch('/api/inventory', { headers: getHeaders(userId) }).then(res => res.json()),
+  getAll: (token: string): Promise<StockItem[]> => api.get('/inventory', token),
 };
 
 export const procedureService = {
-  getAll: (userId: string): Promise<Procedure[]> => fetch('/api/procedures', { headers: getHeaders(userId) }).then(res => res.json()),
+  getAll: (token: string): Promise<Procedure[]> => api.get('/procedures', token),
 };
 
 export const patientService = {
-  getAll: (userId: string): Promise<Patient[]> => fetch('/api/patients', { headers: getHeaders(userId) }).then(res => res.json()),
+  getAll: (token: string): Promise<Patient[]> => api.get('/patients', token),
 };
 
 export const labsService = {

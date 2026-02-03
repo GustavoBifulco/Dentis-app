@@ -34,6 +34,7 @@ import Labs from './components/Labs';
 import Marketplace from './components/Marketplace';
 import KioskMode from './components/KioskMode';
 import PatientWallet from './components/PatientWallet';
+import PatientRegister from './pages/PatientRegister';
 
 // Componente de Loading leve
 const LoadingFallback = () => (
@@ -207,7 +208,10 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Public routes that don't require authentication
   if (window.location.pathname === '/kiosk') return <Suspense fallback={<LoadingFallback />}><KioskMode /></Suspense>;
+  if (window.location.pathname.startsWith('/register/')) return <PatientRegister />;
+
   return (
     <AppContextProvider>
       <AppContent />

@@ -16,6 +16,7 @@ import debug from './routes/debug';
 import checkout from './routes/checkout';
 import ai from './routes/ai';
 import appointments from './routes/appointments';
+import appointmentRequests from './routes/appointment-requests';
 import clinical from './routes/clinical';
 import finance from './routes/finance';
 import fiscal from './routes/fiscal';
@@ -31,6 +32,8 @@ import session from './routes/session';
 import auth from './routes/auth';
 import chat from './routes/chat';
 import telehealth from './routes/telehealth';
+import patientImport from './routes/patient-import';
+import patientInvite from './routes/patient-invite';
 
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
@@ -79,6 +82,7 @@ app.route('/api/procedures', procedures);
 app.route('/api/patients', patients);
 app.route('/api/patient', patient); // Check conflicts later
 app.route('/api/appointments', appointments);
+app.route('/api/appointment-requests', appointmentRequests);
 app.route('/api/clinical', clinical);
 app.route('/api/finance', finance);
 app.route('/api/fiscal', fiscal);
@@ -94,6 +98,8 @@ app.route('/api/checkout', checkout);
 app.route('/api/ai', ai);
 app.route('/api/chat', chat);
 app.route('/api/telehealth', telehealth);
+app.route('/api/patient-import', patientImport);
+app.route('/api/patient-invite', patientInvite);
 app.route('/api/debug', debug);
 
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));

@@ -90,6 +90,7 @@ export type ApiResponse<T> = {
 export interface Patient {
     id: number;
     organizationId: string;
+    userId?: string; // Clerk user ID when patient creates account
     name: string;
     cpf?: string;
     email?: string;
@@ -150,11 +151,16 @@ export interface StockItem {
     id: number;
     organizationId: string;
     name: string;
-    category: string;
+    category?: string;
     quantity: number;
     minQuantity: number;
     unit: string;
-    price: number;
+    price?: number;
+    supplier?: string;
+    link?: string;
+    minStock?: number;
+    currentStock?: number;
+    photoUrl?: string;
 }
 
 export interface LabOrder {

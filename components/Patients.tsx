@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useUser } from '@clerk/clerk-react'; // Import necessário
+import { useUser, useAuth } from '@clerk/clerk-react'; // Import necessário
 import { Services } from '../lib/services';
 import { Patient } from '../types';
 import { LoadingState, EmptyState, SectionHeader, ErrorState, IslandCard, LuxButton } from './Shared';
-import { Search, Plus, Filter, ArrowRight } from 'lucide-react';
+import { Search, Plus, Filter, ArrowRight, Upload } from 'lucide-react';
+import PatientImport from './PatientImport';
+import NewPatientModal from './NewPatientModal';
 
 interface PatientsProps {
   onSelectPatient?: (patient: Patient) => void;
@@ -11,10 +13,13 @@ interface PatientsProps {
 
 const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
   const { user, isLoaded } = useUser(); // Hook do Clerk
+  const { getToken } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [showImport, setShowImport] = useState(false);
+  const [showNewPatient, setShowNewPatient] = useState(false);
 
   const loadPatients = async () => {
     if (!user?.id) return;
@@ -22,8 +27,10 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
     setLoading(true);
     setError(null);
     try {
-      // Chama a função correta 'getAll' passando o ID
-      const data = await Services.patients.getAll(user.id);
+      // Chama a função correta passando o token
+      const token = await getToken();
+      if (!token) return;
+      const data = await Services.patients.getAll(token);
 
       if (Array.isArray(data)) {
         setPatients(data);
@@ -55,7 +62,22 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
         title="Pacientes"
         subtitle="Gestão completa de prontuários e históricos."
         action={
-          <LuxButton icon={<Plus size={18} />}>Novo Paciente</LuxButton>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowImport(true)}
+              className="px-4 py-2 rounded-xl font-bold text-lux-text hover:bg-lux-subtle transition flex items-center gap-2"
+            >
+              <Upload size={18} />
+              Importar
+            </button>
+            <button
+              onClick={() => setShowNewPatient(true)}
+              className="px-4 py-2 rounded-xl font-bold bg-lux-accent text-white hover:bg-opacity-90 transition flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Novo Paciente
+            </button>
+          </div>
         }
       />
 
@@ -135,6 +157,18 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
           </div>
         )}
       </IslandCard>
+
+      <PatientImport
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onSuccess={loadPatients}
+      />
+
+      <NewPatientModal
+        isOpen={showNewPatient}
+        onClose={() => setShowNewPatient(false)}
+        onSuccess={loadPatients}
+      />
     </div>
   );
 };

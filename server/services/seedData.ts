@@ -1,95 +1,77 @@
 import { db } from '../db';
-import { procedures, inventory } from '../db/schema';
+import { procedures, inventory, patients, templateProcedures, templateInventory } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
 export const seedDefaultData = async (organizationId: string) => {
     console.log(`🌱 Seeding default data for organization ${organizationId}...`);
 
     try {
-        // 1. Procedimentos Padrão
-        const defaultProcedures = [
-            {
-                name: 'Consulta Inicial / Avaliação',
-                description: 'Avaliação clínica completa para planejamento do tratamento.',
-                price: '150.00',
+        // Check if data already exists to avoid duplication
+        const existingProcedures = await db.select().from(procedures).where(eq(procedures.organizationId, organizationId)).limit(1);
+
+        if (existingProcedures.length > 0) {
+            console.log(`⚠️ Data already exists for org ${organizationId}, skipping seed.`);
+            return { success: true, skipped: true };
+        }
+
+        // 1. Procedimentos via Template
+        const tProcs = await db.select().from(templateProcedures);
+        if (tProcs.length > 0) {
+            const newProcedures = tProcs.map(t => ({
+                name: t.name,
+                description: t.description,
+                price: t.price,
                 organizationId,
+            }));
+            await db.insert(procedures).values(newProcedures);
+            console.log(`✅ ${newProcedures.length} procedures copied from templates`);
+        } else {
+            console.log('⚠️ No template procedures found');
+        }
+
+        // 2. Estoque via Template
+        const tInv = await db.select().from(templateInventory);
+
+        if (tInv.length > 0) {
+            const newInventory = tInv.map(t => ({
+                name: t.name,
+                category: t.category,
+                quantity: t.quantity,
+                minQuantity: t.minQuantity,
+                unit: t.unit,
+                price: t.price,
+                supplier: t.supplier,
+                link: t.link,
+                organizationId,
+            }));
+            await db.insert(inventory).values(newInventory);
+            console.log(`✅ ${newInventory.length} inventory items copied from templates`);
+        } else {
+            console.log('⚠️ No template inventory found');
+        }
+
+        // 3. Pacientes de Exemplo
+        const defaultPatients = [
+            {
+                name: 'Maria Silva (Exemplo)',
+                phone: '11999999999',
+                cpf: '12345678900',
+                email: 'maria.exemplo@email.com',
+                organizationId,
+                createdAt: new Date(),
             },
             {
-                name: 'Profilaxia (Limpeza)',
-                description: 'Remoção de placa bacteriana e tártaro + polimento coronário.',
-                price: '250.00',
+                name: 'João Santos (Exemplo)',
+                phone: '11888888888',
+                cpf: '98765432100',
+                email: 'joao.exemplo@email.com',
                 organizationId,
-            },
-            {
-                name: 'Restauração em Resina (1 face)',
-                description: 'Restauração estética em dente posterior ou anterior.',
-                price: '300.00',
-                organizationId,
-            },
-            {
-                name: 'Extração Simples',
-                description: 'Exodontia de dente permanente erupcionado.',
-                price: '400.00',
-                organizationId,
-            },
-            {
-                name: 'Clareamento Consultório',
-                description: 'Sessão de clareamento com gel de alta concentração.',
-                price: '800.00',
-                organizationId,
-            },
+                createdAt: new Date(),
+            }
         ];
 
-        await db.insert(procedures).values(defaultProcedures);
-        console.log('✅ Default procedures created');
-
-        // 2. Estoque Padrão (Materiais Básicos)
-        const defaultInventory = [
-            {
-                name: 'Luvas de Procedimento P',
-                quantity: 5,
-                unit: 'caixa',
-                organizationId,
-            },
-            {
-                name: 'Luvas de Procedimento M',
-                quantity: 5,
-                unit: 'caixa',
-                organizationId,
-            },
-            {
-                name: 'Máscaras Descartáveis',
-                quantity: 10,
-                unit: 'caixa',
-                organizationId,
-            },
-            {
-                name: 'Anestésico Lidocaína',
-                quantity: 20,
-                unit: 'ampola',
-                organizationId,
-            },
-            {
-                name: 'Gaze Estéril',
-                quantity: 50,
-                unit: 'pacote',
-                organizationId,
-            },
-            {
-                name: 'Kit Resina Composta (A1, A2, A3)',
-                quantity: 1,
-                unit: 'kit',
-                organizationId,
-            },
-            {
-                name: 'Sugadores Descartáveis',
-                quantity: 2,
-                unit: 'pacote',
-                organizationId,
-            },
-        ];
-
-        await db.insert(inventory).values(defaultInventory);
-        console.log('✅ Default inventory created');
+        await db.insert(patients).values(defaultPatients);
+        console.log('✅ Default patients created');
 
         return { success: true };
     } catch (error) {
