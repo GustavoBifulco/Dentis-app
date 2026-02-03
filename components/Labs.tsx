@@ -12,6 +12,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { LabOrder } from '../types';
+import { Services } from '../lib/services';
 import CreateLabOrder from './CreateLabOrder';
 
 // Configuração das Colunas do Kanban
@@ -62,10 +63,9 @@ export default function Labs() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await fetch('/api/orders');
-      const data = await res.json();
-      if (data.orders) {
-        setOrders(data.orders);
+      const res = await Services.labs.list();
+      if (res.data) {
+        setOrders(res.data);
       }
     } catch (err) {
       console.error('Erro ao buscar pedidos:', err);

@@ -12,10 +12,10 @@ const ADMIN_EMAILS = (import.meta as any).env.VITE_ADMIN_EMAILS
     : [];
 
 export const isFeatureEnabled = (feature: FeatureFlag, user?: UserSession | null): boolean => {
-    if (!user || !user.email) return false;
+    if (!user || !user.primaryEmailAddress?.emailAddress) return false;
 
     if (feature === FEATURE_FLAGS.CLINIC_MANAGEMENT) {
-        if (ADMIN_EMAILS.includes(user.email)) return true;
+        if (ADMIN_EMAILS.includes(user.primaryEmailAddress?.emailAddress)) return true;
         return false;
     }
     return false;

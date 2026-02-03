@@ -1,9 +1,8 @@
 import React, { Suspense, useMemo } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stage, Center } from '@react-three/drei';
+// @ts-ignore
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
-import * as THREE from 'three';
-import { Loader2 } from 'lucide-react';
 
 interface STLViewerProps {
     url: string;
@@ -54,7 +53,7 @@ export default function STLViewer({ url, className = "h-64 w-full", color }: STL
                 </Suspense>
             </Canvas>
 
-            {/* Loading Overlay (Handled by Suspense above roughly, but for smoother UX we could add a html overlay) */}
+            {/* Loading Overlay */}
             <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm pointer-events-none">
                 Visualizador 3D
             </div>

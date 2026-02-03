@@ -100,11 +100,11 @@ courierRoute.get('/jobs', async (c) => {
  * Accept a delivery job
  */
 courierRoute.post('/accept', async (c) => {
-    const session = c.get('session');
+    const userId = c.get('userId');
     const { orderId } = await c.req.json();
 
-    if (!session?.capabilities.isCourier) {
-        return c.json({ error: 'Unauthorized: Courier profile required' }, 403);
+    if (!userId) {
+        return c.json({ error: 'Unauthorized' }, 403);
     }
 
     if (!orderId) {
@@ -135,7 +135,7 @@ courierRoute.post('/accept', async (c) => {
     const [updatedOrder] = await db
         .update(orders)
         .set({
-            courierId: session.id,
+            courierId: parseInt(userId),
             status: 'DRIVER_ASSIGNED',
             pickupCode,
             deliveryCode,
@@ -160,11 +160,11 @@ courierRoute.post('/accept', async (c) => {
  * Update courier's real-time location
  */
 courierRoute.post('/update-location', async (c) => {
-    const session = c.get('session');
+    const userId = c.get('userId');
     const { latitude, longitude } = await c.req.json();
 
-    if (!session?.capabilities.isCourier) {
-        return c.json({ error: 'Unauthorized: Courier profile required' }, 403);
+    if (!userId) {
+        return c.json({ error: 'Unauthorized' }, 403);
     }
 
     if (!latitude || !longitude) {
@@ -179,7 +179,7 @@ courierRoute.post('/update-location', async (c) => {
             longitude: longitude.toString(),
             lastLocationUpdate: new Date(),
         })
-        .where(eq(courierProfiles.userId, session.id));
+        .where(eq(courierProfiles.userId, parseInt(userId)));
 
     return c.json({ success: true });
 });
@@ -189,16 +189,16 @@ courierRoute.post('/update-location', async (c) => {
  * Toggle courier online/offline status
  */
 courierRoute.post('/toggle-online', async (c) => {
-    const session = c.get('session');
+    const userId = c.get('userId');
 
-    if (!session?.capabilities.isCourier) {
-        return c.json({ error: 'Unauthorized: Courier profile required' }, 403);
+    if (!userId) {
+        return c.json({ error: 'Unauthorized' }, 403);
     }
 
     const [profile] = await db
         .select()
         .from(courierProfiles)
-        .where(eq(courierProfiles.userId, session.id));
+        .where(eq(courierProfiles.userId, parseInt(userId)));
 
     if (!profile) {
         return c.json({ error: 'Courier profile not found' }, 404);
@@ -207,7 +207,7 @@ courierRoute.post('/toggle-online', async (c) => {
     const [updated] = await db
         .update(courierProfiles)
         .set({ isOnline: !profile.isOnline })
-        .where(eq(courierProfiles.userId, session.id))
+        .where(eq(courierProfiles.userId, parseInt(userId)))
         .returning();
 
     return c.json({

@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { organizationId: number } }>();
+const app = new Hono<{ Variables: { organizationId: string } }>();
 app.use('*', authMiddleware);
 
 app.get('/', async (c) => {

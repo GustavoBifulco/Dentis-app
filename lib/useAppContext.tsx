@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, Dispatch, SetStateAction } from 'react';
 import { AppContext as AppContextType, UserSession } from '../types';
 
 interface AppContextState {
     session: UserSession | null;
-    setSession: (session: UserSession | null) => void;
+    setSession: Dispatch<SetStateAction<UserSession | null>>;
     switchContext: (context: AppContextType) => void;
     showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
     toast: { message: string, type: 'success' | 'error' | 'info' } | null;
@@ -12,6 +12,7 @@ interface AppContextState {
 const AppContextContext = createContext<AppContextState | undefined>(undefined);
 
 export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    console.log("AppContextProvider rendering");
     const [session, setSession] = useState<UserSession | null>(null);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -31,6 +32,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
 
         // Atualização reativa sem reload
+        console.log(`Switching to context: ${context.name} (${context.organizationId})`);
         setSession(prev => prev ? ({
             ...prev,
             activeContext: context,

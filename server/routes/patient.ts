@@ -1,16 +1,16 @@
 import { Hono } from 'hono';
 import { db } from '../db';
-import { financial, patients, documents, appointments, clinicalRecords } from '../db/schema';
+import { financials, patients, documents, appointments, clinicalRecords } from '../db/schema';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const patient = new Hono<{ Variables: { userId: number } }>();
+const patient = new Hono<{ Variables: { userId: string } }>();
 
 patient.use('*', authMiddleware);
 
 /**
  * GET /api/patient/financials
- * Returns all financial records for the patient contexts associated with the current user
+ * Returns all financials records for the patient contexts associated with the current user
  */
 patient.get('/financials', async (c) => {
     const userId = c.get('userId');
@@ -27,25 +27,23 @@ patient.get('/financials', async (c) => {
 
     const patientIds = userPatients.map(p => p.id);
 
-    // Fetch all financial records for these patients
+    // Fetch all financials records for these patients
     const records = await db
         .select({
-            id: financial.id,
-            type: financial.type,
-            amount: financial.amount,
-            description: financial.description,
-            dueDate: financial.dueDate,
-            paidAt: financial.paidAt,
-            status: financial.status,
-            category: financial.category,
-            createdAt: financial.createdAt
+            id: financials.id,
+            amount: financials.amount,
+            description: financials.description,
+            dueDate: financials.dueDate,
+            paidAt: financials.paidAt,
+            status: financials.status,
+            createdAt: financials.createdAt
         })
-        .from(financial)
+        .from(financials)
         .where(and(
-            inArray(financial.patientId, patientIds),
-            eq(financial.organizationId, userPatients[0].organizationId) // Extra safety check
+            inArray(financials.patientId, patientIds),
+            eq(financials.organizationId, userPatients[0].organizationId) // Extra safety check
         ))
-        .orderBy(desc(financial.createdAt));
+        .orderBy(desc(financials.createdAt));
 
     return c.json({ ok: true, financials: records });
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { SignedIn, SignedOut, useUser, useClerk, useAuth } from "@clerk/clerk-react";
-import { ViewType, ThemeConfig, Patient } from './types';
+import { ViewType, ThemeConfig, Patient, UserRole } from './types';
 import { AppContextProvider, useAppContext } from './lib/useAppContext';
 import { useNavigation } from './lib/navigation';
 import Sidebar from './components/Sidebar';
@@ -8,31 +8,32 @@ import MobileHeader from './components/MobileHeader';
 import { Toast } from './components/Shared';
 import { AnimatePresence, motion } from 'framer-motion';
 
-// Lazy Loading: Carrega os módulos sob demanda (Sugestão do Grok)
-const Dashboard = lazy(() => import('./components/Dashboard'));
-const Patients = lazy(() => import('./components/Patients'));
-const PatientRecord = lazy(() => import('./components/PatientRecord'));
-const Schedule = lazy(() => import('./components/Schedule'));
-const Finance = lazy(() => import('./components/Finance'));
-const Landing = lazy(() => import('./components/Landing'));
-const Auth = lazy(() => import('./components/Auth'));
-const Onboarding = lazy(() => import('./components/Onboarding'));
-const Profile = lazy(() => import('./components/Profile'));
-const Settings = lazy(() => import('./components/Settings'));
-const TreatmentJourney = lazy(() => import('./components/TreatmentJourney'));
-const Anamnesis = lazy(() => import('./components/Anamnesis'));
-const ManagementHub = lazy(() => import('./components/ManagementHub'));
-const Inventory = lazy(() => import('./components/Inventory'));
-const Procedures = lazy(() => import('./components/Procedures'));
-const ProcedureEngineer = lazy(() => import('./components/ProcedureEngineer'));
-const FinancialSplit = lazy(() => import('./components/FinancialSplit'));
-const Odontogram = lazy(() => import('./components/Odontogram'));
-const SmartPrescription = lazy(() => import('./components/SmartPrescription'));
-const TeamConfig = lazy(() => import('./components/TeamConfig'));
-const Labs = lazy(() => import('./components/Labs'));
-const Marketplace = lazy(() => import('./components/Marketplace'));
-const KioskMode = lazy(() => import('./components/KioskMode'));
-const PatientWallet = lazy(() => import('./components/PatientWallet'));
+// Static Imports for stability
+import Dashboard from './components/Dashboard';
+import Patients from './components/Patients';
+import PatientRecord from './components/PatientRecord';
+import Schedule from './components/Schedule';
+import Finance from './components/Finance';
+import Landing from './components/Landing';
+import Auth from './components/Auth';
+import Onboarding from './components/Onboarding';
+import OnboardingV2 from './components/OnboardingV2';
+import Profile from './components/Profile';
+import Settings from './components/Settings';
+import TreatmentJourney from './components/TreatmentJourney';
+import Anamnesis from './components/Anamnesis';
+import ManagementHub from './components/ManagementHub';
+import Inventory from './components/Inventory';
+import Procedures from './components/Procedures';
+import ProcedureEngineer from './components/ProcedureEngineer';
+import FinancialSplit from './components/FinancialSplit';
+import Odontogram from './components/Odontogram';
+import SmartPrescription from './components/SmartPrescription';
+import TeamConfig from './components/TeamConfig';
+import Labs from './components/Labs';
+import Marketplace from './components/Marketplace';
+import KioskMode from './components/KioskMode';
+import PatientWallet from './components/PatientWallet';
 
 // Componente de Loading leve
 const LoadingFallback = () => (
@@ -78,33 +79,33 @@ const AppContent: React.FC = () => {
     window.history.pushState({}, '', '/');
   };
 
-  // Inicialização de Sessão Otimizada
-  useEffect(() => {
-    const initSession = async () => {
-      if (!user || session) return;
+  // Inicialização de Sessão
+  const initSession = async (force = false) => {
+    if (!user || (session && !force)) return;
+    try {
+      const token = await getToken();
       try {
-        const token = await getToken();
-        // Tenta conectar ao backend, se falhar usa modo offline seguro
-        try {
-          const res = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
-          if (res.ok) {
-            const data = await res.json();
-            setSession(data.session);
-            return;
-          }
-        } catch (e) { console.warn("Backend offline, inicializando modo seguro"); }
+        const res = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setSession(data.session);
+          return;
+        }
+      } catch (e) { console.warn("Backend offline or error, using fallback"); }
 
-        // Fallback seguro (conforme Grok)
-        setSession({
-          user: { id: user.id, email: user.primaryEmailAddress?.emailAddress || '', name: user.fullName || '', role: 'dentist' },
-          activeContext: null,
-          availableContexts: [],
-          onboardingComplete: user.publicMetadata?.onboardingComplete as boolean,
-          capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false },
-          activeOrganization: null, orgRole: 'admin'
-        });
-      } catch (e) { console.error(e); }
-    };
+      // Fallback
+      setSession({
+        user: { id: user.id, email: user.primaryEmailAddress?.emailAddress || '', name: user.fullName || '', role: (user.publicMetadata?.role as string) || UserRole.DENTIST },
+        activeContext: null,
+        availableContexts: [],
+        onboardingComplete: !!user.publicMetadata?.onboardingComplete,
+        capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false },
+        activeOrganization: null, orgRole: 'admin'
+      });
+    } catch (e) { console.error("Session Init Fatal Error:", e); }
+  };
+
+  useEffect(() => {
     if (isLoaded && user) initSession();
   }, [user, isLoaded]);
 
@@ -113,69 +114,91 @@ const AppContent: React.FC = () => {
     navigate(ViewType.PATIENT_RECORD);
   };
 
-  // Renderização Dinâmica com Suspense
-  const renderContent = () => (
-    <Suspense fallback={<LoadingFallback />}>
-      {currentView === ViewType.DASHBOARD && <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />}
-      {currentView === ViewType.PATIENTS && <Patients onSelectPatient={handlePatientSelect} />}
-      {currentView === ViewType.PATIENT_RECORD && (selectedPatient ? <PatientRecord patient={selectedPatient} onBack={() => setCurrentView(ViewType.PATIENTS)} /> : <Patients onSelectPatient={handlePatientSelect} />)}
-      {currentView === ViewType.SCHEDULE && <Schedule />}
-      {currentView === ViewType.FINANCE && <Finance userRole="dentist" />}
-      {currentView === ViewType.PROFILE && <Profile userRole="dentist" onLogout={() => signOut()} />}
-      {currentView === ViewType.SETTINGS && <Settings config={{ mode: 'light', accentColor: '#B59410', useGradient: false }} onConfigChange={() => { }} onNavigate={setCurrentView} />}
-      {currentView === ViewType.TREATMENT_JOURNEY && <TreatmentJourney />}
-      {currentView === ViewType.ANAMNESIS && <Anamnesis />}
-      {currentView === ViewType.MANAGEMENT_HUB && <ManagementHub onNavigate={setCurrentView} />}
-      {currentView === ViewType.INVENTORY && <Inventory />}
-      {currentView === ViewType.LABS && <Labs />}
-      {currentView === ViewType.MARKETPLACE && <Marketplace />}
-      {currentView === ViewType.PROCEDURES && <Procedures />}
-      {currentView === ViewType.PROCEDURE_ENGINEER && <ProcedureEngineer />}
-      {currentView === ViewType.FINANCIAL_SPLIT && <FinancialSplit />}
-      {currentView === ViewType.TEAM_SETTINGS && <TeamConfig />}
-      {currentView === ViewType.CLINICAL_EXECUTION && <Odontogram />}
-      {currentView === ViewType.DOCUMENTS && <SmartPrescription />}
-      {currentView === ViewType.PATIENT_WALLET && <PatientWallet onBack={() => setCurrentView(ViewType.DASHBOARD)} />}
-    </Suspense>
-  );
+  // Renderização
+  const renderContent = () => {
+    switch (currentView) {
+      case ViewType.DASHBOARD: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
+      case ViewType.PATIENTS: return <Patients onSelectPatient={handlePatientSelect} />;
+      case ViewType.PATIENT_RECORD: return selectedPatient ? <PatientRecord patient={selectedPatient} onBack={() => setCurrentView(ViewType.PATIENTS)} /> : <Patients onSelectPatient={handlePatientSelect} />;
+      case ViewType.SCHEDULE: return <Schedule />;
+      case ViewType.FINANCE: return <Finance userRole={UserRole.DENTIST} />;
+      case ViewType.PROFILE: return <Profile userRole={UserRole.DENTIST} onLogout={() => signOut()} />;
+      case ViewType.SETTINGS: return <Settings config={{ mode: 'light', accentColor: '#B59410', useGradient: false }} onConfigChange={() => { }} onNavigate={setCurrentView} />;
+      case ViewType.TREATMENT_JOURNEY: return <TreatmentJourney />;
+      case ViewType.ANAMNESIS: return <Anamnesis />;
+      case ViewType.MANAGEMENT_HUB: return <ManagementHub onNavigate={setCurrentView} />;
+      case ViewType.INVENTORY: return <Inventory />;
+      case ViewType.LABS: return <Labs />;
+      case ViewType.MARKETPLACE: return <Marketplace />;
+      case ViewType.PROCEDURES: return <Procedures />;
+      case ViewType.PROCEDURE_ENGINEER: return <ProcedureEngineer />;
+      case ViewType.FINANCIAL_SPLIT: return <FinancialSplit />;
+      case ViewType.TEAM_SETTINGS: return <TeamConfig />;
+      case ViewType.CLINICAL_EXECUTION: return <Odontogram />;
+      case ViewType.DOCUMENTS: return <SmartPrescription />;
+      case ViewType.PATIENT_WALLET: return <PatientWallet onBack={() => setCurrentView(ViewType.DASHBOARD)} />;
+      default: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
+    }
+  };
 
   if (!isLoaded) return <LoadingFallback />;
 
   return (
     <>
       <SignedOut>
-        <Suspense fallback={<LoadingFallback />}>
+        <AnimatePresence mode="wait">
           {authView ? (
-            <Auth
-              mode={authView}
-              onSwitchMode={(mode) => setAuthView(mode)}
-              onBack={handleBackToLanding}
-            />
+            <motion.div
+              key={authView}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <Auth
+                mode={authView}
+                onSwitchMode={(mode) => setAuthView(mode)}
+                onBack={handleBackToLanding}
+              />
+            </motion.div>
           ) : (
-            <Landing onStart={handleStartAuth} onLogin={handleLogin} />
+            <motion.div
+              key="landing"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <Landing onStart={handleStartAuth} onLogin={handleLogin} />
+            </motion.div>
           )}
-        </Suspense>
+        </AnimatePresence>
       </SignedOut>
 
       <SignedIn>
-        {!(user?.publicMetadata?.onboardingComplete) ? (
-          <Suspense fallback={<LoadingFallback />}><Onboarding onComplete={() => setSession(prev => prev ? { ...prev, onboardingComplete: true } : null)} /></Suspense>
+        {!(user?.publicMetadata?.onboardingComplete || session?.onboardingComplete) ? (
+          <OnboardingV2 onComplete={() => {
+            // Reload session after onboarding
+            initSession(true);
+          }} />
         ) : (
-          <div className="flex h-screen overflow-hidden bg-lux-background text-lux-text">
+          <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
             <Sidebar currentView={currentView} setView={setCurrentView} availableContexts={session?.availableContexts || []} activeContext={session?.activeContext || null} onContextSwitch={switchContext} onLogout={() => signOut()} isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
             <main className="flex-1 flex flex-col h-full overflow-hidden relative">
               <MobileHeader currentView={currentView} onMenuClick={() => setIsMobileMenuOpen(true)} onBackClick={goBack} title="Dentis" />
-              <div className="flex-1 overflow-y-auto p-8 relative">
-                <div className="max-w-[1400px] mx-auto pb-20">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar">
+                <div className="max-w-[1600px] mx-auto pb-20">
                   <AnimatePresence mode='wait'>
-                    <motion.div key={currentView} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <motion.div key={currentView} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                       {renderContent()}
                     </motion.div>
                   </AnimatePresence>
                 </div>
               </div>
             </main>
-            {toast && <Toast message={toast.message} type={toast.type} />}
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => { }} />}
           </div>
         )}
       </SignedIn>

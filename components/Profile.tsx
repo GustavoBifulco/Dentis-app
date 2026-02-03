@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole } from '../types';
 import { SectionHeader, LuxButton } from './Shared';
 import { User, MapPin, Phone, Mail, FileBadge, Building, Upload, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
+import { UserRole, ViewType } from '../types';
 import { useAuth } from '@clerk/clerk-react';
 
 interface UserProfileData {

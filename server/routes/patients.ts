@@ -1,20 +1,31 @@
-import { Router } from 'express';
-import { db } from '../db';
+import { Hono } from 'hono';
 import { patients } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
-import { requireRole } from '../middleware/auth';
+import { scopedDb } from '../db/scoped';
+import { requireMfa } from '../middleware/auth';
 
-const router = Router();
+const app = new Hono();
 
-// LISTAR: Apenas pacientes DA CLÍNICA ativa do usuário
-router.get("/", requireRole(['dentist', 'admin']), async (req: any, res) => {
-  const allPatients = await db.query.patients.findMany({
-    where: and(
-      eq(patients.clinicId, req.clinicId), // FILTRO CRÍTICO DE ISOLAMENTO
-      eq(patients.active, true)
-    )
-  });
-  res.json({ patients: allPatients });
+app.get('/', requireMfa, async (c) => {
+  const auth = c.get('auth');
+  if (auth.role !== 'dentist') return c.json({ error: 'Acesso negado' }, 403);
+
+  const scoped = scopedDb(c);
+  const list = await scoped.select().from(patients);
+  return c.json(list);
 });
 
-export default router;
+app.post('/', requireMfa, async (c) => {
+  const auth = c.get('auth');
+  if (auth.role !== 'dentist') return c.json({ error: 'Acesso negado' }, 403);
+
+  const body = await c.req.json();
+  const scoped = scopedDb(c);
+  const [newPatient] = await scoped.insert(patients).values({
+    ...body,
+    organizationId: auth.organizationId,
+  }).returning();
+
+  return c.json(newPatient, 201);
+});
+
+export default app;

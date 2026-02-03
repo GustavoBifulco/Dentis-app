@@ -20,7 +20,7 @@ async function resetDatabase() {
         console.log('🗑️  Removendo todas as tabelas...');
 
         // Drop all tables in correct order (respecting foreign keys)
-        await db.execute(sql`DROP TABLE IF EXISTS financial CASCADE`);
+        await db.execute(sql`DROP TABLE IF EXISTS financials CASCADE`);
         await db.execute(sql`DROP TABLE IF EXISTS appointments CASCADE`);
         await db.execute(sql`DROP TABLE IF EXISTS orders CASCADE`);
         await db.execute(sql`DROP TABLE IF EXISTS products CASCADE`);

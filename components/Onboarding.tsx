@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback } from 'react';
-import { useUser, useOrganizationList } from '@clerk/clerk-react';
+import { useUser, useOrganizationList, useAuth } from '@clerk/clerk-react';
 import { completeOnboarding } from '../lib/api';
 import SetupWizard from './SetupWizard';
 import { User, Building2, CheckCircle2, Zap, Shield, Star, Briefcase, X } from 'lucide-react';
@@ -28,6 +28,7 @@ interface OnboardingProps {
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
   const { user, isLoaded: userLoaded } = useUser();
+  const { getToken } = useAuth();
   const { createOrganization, isLoaded: orgsLoaded } = useOrganizationList();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -112,11 +113,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     if (!user) return;
     setLoading(true);
 
-    // Only go to SetupWizard (Step 4) if NOT a patient
     const isPatient = formData.role === 'patient';
-    if (!isPatient) {
-      setStep(4);
-    }
 
     try {
       let orgId = '';
@@ -133,6 +130,11 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
       const finalCro = formData.role === 'clinic_owner' && !isOwnerDentist ? formData.responsibleDentistCro : formData.cro;
 
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Falha na autenticação. Por favor, faça login novamente.');
+      }
+
       await completeOnboarding({
         userId: user.id,
         name: user.fullName || '',
@@ -142,21 +144,23 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         cro: finalCro,
         clinicName: formData.clinicName,
         orgId: orgId
-      });
+      }, token);
 
-      // Recarrega os dados do usuário do Clerk para garantir que o frontend veja o onboardingComplete: true
+      // Recarrega os dados do usuário do Clerk e aguarda propagação
       await user.reload();
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // If patient, we are done!
+      // Pacientes vão direto pro dashboard, profissionais vão pro SetupWizard
       if (isPatient) {
-        setTimeout(() => {
-          onComplete();
-        }, 300);
+        onComplete();
+      } else {
+        setStep(4);
       }
     } catch (err: any) {
-      console.error(err);
-      alert("Erro no setup: " + err.message);
-      if (!isPatient) setStep(3);
+      console.error('[ONBOARDING ERROR]', err);
+      const errorMessage = err.message || 'Erro ao completar cadastro. Tente novamente.';
+      alert(errorMessage);
+      setStep(isPatient ? 2 : 3);
     } finally {
       setLoading(false);
     }

@@ -24,5 +24,7 @@ export const usePrescriptions = ({ patientId }: { patientId: number | null }) =>
         fetchPrescriptions();
     }, [patientId, getToken]);
 
-    return { prescriptions, isLoading };
+    const activePrescriptions = prescriptions.filter(p => p.isActive);
+
+    return { prescriptions, activePrescriptions, isLoading };
 };

@@ -129,7 +129,7 @@ const Procedures: React.FC = () => {
                               <tr key={proc.id} className="hover:bg-white transition group">
                                 <td className="px-6 py-4 text-sm font-mono text-slate-500">{proc.code}</td>
                                 <td className="px-6 py-4 font-bold text-slate-900">{proc.name}</td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{proc.duration || proc.durationMinutes} min</td>
+                                <td className="px-6 py-4 text-sm text-slate-500">{proc.durationMinutes || proc.duration} min</td>
                                 <td className="px-6 py-4 text-right font-black text-slate-800">R$ {Number(proc.price).toFixed(2)}</td>
                                 <td className="px-6 py-4 text-right">
                                   <button className="text-indigo-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Editar</button>

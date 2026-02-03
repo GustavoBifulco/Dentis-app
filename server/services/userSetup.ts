@@ -10,7 +10,9 @@ export const setupNewUserEnvironment = async (
     clinicName?: string,
     userName?: string,
     email?: string,
-    cpf?: string
+    cpf?: string,
+    phone?: string,
+    cro?: string
 ) => {
     try {
         console.log(`Setting up environment for user ${clerkId} (Role: ${role})`);
@@ -22,18 +24,22 @@ export const setupNewUserEnvironment = async (
         if (!userRecord) {
             const [newUser] = await db.insert(users).values({
                 clerkId,
+                role,
                 email: email || null,
-                name: userName || null,
+                name: userName || "Novo Usuário",
                 cpf: cpf || null,
-                onboardingComplete: true
+                phone: phone || null,
+                onboardingComplete: new Date()
             }).returning();
             userRecord = newUser;
         } else {
             // Update existing user
             await db.update(users)
                 .set({
-                    onboardingComplete: true,
+                    role: role, // Always update role
+                    onboardingComplete: new Date(),
                     cpf: cpf || userRecord.cpf || null,
+                    phone: phone || userRecord.phone || null,
                     name: userName || userRecord.name || null
                 })
                 .where(eq(users.id, userRecord.id));
@@ -50,10 +56,10 @@ export const setupNewUserEnvironment = async (
             await db.insert(professionalProfiles).values({
                 userId: userRecord.id,
                 type: role.toUpperCase(),
+                cro: cro || null,
             }).onConflictDoNothing();
         }
 
-        // 3. Setup Organization if provided
         if (clerkOrgId && clinicName) {
             let org = await db.query.organizations.findFirst({
                 where: eq(organizations.clerkOrgId, clerkOrgId)

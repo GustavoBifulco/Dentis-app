@@ -16,16 +16,16 @@ app.post('/checkin', zValidator('json', checkinSchema), async (c) => {
   const { cpf, kioskToken } = c.req.valid('json');
   const cpfDigits = cpf.replace(/\D/g, '');
 
-  let organizationId: number | null = null;
+  let organizationId: string | null = null;
   if (kioskToken) {
     const clinic = await db.query.organizations.findFirst({
-      where: eq(organizations.kioskToken, kioskToken),
+      where: eq(organizations.clerkOrgId, kioskToken),
     });
 
     if (!clinic) {
       return c.json({ ok: false, error: 'Kiosk token invalido' }, 401);
     }
-    organizationId = clinic.id;
+    organizationId = String(clinic.id);
   }
 
   const patient = await db.query.patients.findFirst({

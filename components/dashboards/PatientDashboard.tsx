@@ -76,7 +76,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
             <div className="px-2">
                 <h2 className="text-5xl font-editorial font-medium text-lux-text leading-tight">
                     Bom dia, <br />
-                    <span className="italic text-lux-accent">{session?.name.split(' ')[0] || 'Paciente'}.</span>
+                    <span className="italic text-lux-accent">{session?.user?.name?.split(' ')[0] || 'Paciente'}.</span>
                 </h2>
             </div>
 
@@ -95,7 +95,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                                 <div className="flex justify-between items-center mb-8">
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-lux-accent mb-1">Próxima Visita</span>
-                                        <span className="text-2xl font-bold">{formatDate(nextAppointment.startTime)} às {formatTime(nextAppointment.startTime)}</span>
+                                        <span className="text-2xl font-bold">{formatDate(String(nextAppointment.startTime))} às {formatTime(String(nextAppointment.startTime))}</span>
                                     </div>
                                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10">
                                         <Calendar className="text-lux-accent" size={24} />

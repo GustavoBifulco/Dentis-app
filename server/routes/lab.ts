@@ -6,7 +6,7 @@ import { authMiddleware } from '../middleware/auth';
 
 import type { UserSession } from '../../types';
 
-const labRoute = new Hono<{ Variables: { organizationId: number; userId: number; session: UserSession } }>();
+const labRoute = new Hono<{ Variables: { organizationId: string; userId: string; session: UserSession } }>();
 
 // Apply auth middleware to all routes
 labRoute.use('*', authMiddleware);

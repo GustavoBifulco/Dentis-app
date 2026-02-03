@@ -117,7 +117,7 @@ const TreatmentJourney: React.FC = () => {
                                         </span>
                                     </div>
                                     <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">
-                                        {phase.description}
+                                        {"Descrição não disponível"}
                                     </p>
 
                                     {isCurrent && (

@@ -24,7 +24,7 @@ export const useFinancials = ({ patientId }: { patientId: number | null }) => {
                         const data = await res.json();
                         setRawData(data);
                     }
-                } catch(e) { console.warn("Erro no fetch financeiro"); }
+                } catch (e) { console.warn("Erro no fetch financeiro"); }
             } finally {
                 setIsLoading(false);
             }
@@ -34,8 +34,22 @@ export const useFinancials = ({ patientId }: { patientId: number | null }) => {
 
     // Otimização: Memoização para evitar re-render desnecessário
     const stats = useMemo(() => {
-        if (!rawData) return { totalPaid: 0, outstandingBalance: 0, totalContracted: 0 };
-        return rawData;
+        if (!rawData) return {
+            totalPaid: 0,
+            outstandingBalance: 0,
+            totalContracted: 0,
+            totalIncome: 0,
+            totalExpense: 0,
+            balance: 0,
+            pendingAmount: 0
+        };
+        // Add mapping for standard return expected by PatientDashboard
+        return {
+            ...rawData,
+            totalPaid: rawData.balance > 0 ? rawData.balance : 0,
+            outstandingBalance: rawData.pendingAmount || 0,
+            totalContracted: rawData.totalIncome || 0
+        };
     }, [rawData]);
 
     return { ...stats, isLoading, financialData: rawData };

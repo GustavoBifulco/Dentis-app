@@ -45,7 +45,7 @@ invitesRoute.post('/lab', async (c) => {
     // If we don't have authenticated user context handy, we might need it passed or mock it.
     // Let's assume passed in body for the "Viral Loop" test
     const inviterUserId = 1; // MOCK or get from Context
-    const inviterOrganizationId = organizationId || 1; // MOCK
+    const inviterOrganizationId = organizationId || '1'; // Standardized naming and string
 
     await db.insert(invites).values({
         token,

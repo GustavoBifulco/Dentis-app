@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { completeOnboarding } from '../lib/api';
 import SetupWizard from './SetupWizard';
 import { unformat } from '../lib/formatters';
@@ -10,6 +10,7 @@ interface OnboardingSuccessProps {
 
 export default function OnboardingSuccess({ onComplete }: OnboardingSuccessProps) {
     const { user } = useUser();
+    const { getToken } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +27,7 @@ export default function OnboardingSuccess({ onComplete }: OnboardingSuccessProps
 
             try {
                 const data = JSON.parse(savedData);
+                const token = await getToken() || '';
                 await completeOnboarding({
                     userId: user.id,
                     name: user.fullName || '',
@@ -33,7 +35,7 @@ export default function OnboardingSuccess({ onComplete }: OnboardingSuccessProps
                     cpf: unformat(data.cpf),
                     phone: unformat(data.phone),
                     cro: data.cro,
-                });
+                }, token);
 
                 // Recarrega Clerk
                 await user.reload();

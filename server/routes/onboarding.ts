@@ -39,22 +39,35 @@ onboarding.post('/complete', zValidator('json', onboardingSchema), async (c) => 
 
     if (!data.userId) throw new Error("userId is required");
 
-    await clerkClient.users.updateUser(data.userId, {
-      publicMetadata: { onboardingComplete: true, role: data.role }
-    });
-
-    console.log("✅ [ONBOARDING] Metadados Clerk atualizados.");
-
+    // IMPORTANTE: Fazer setup PRIMEIRO, só atualizar Clerk se der certo
     try {
-      const setupResult = await setupNewUserEnvironment(sanitized.userId, sanitized.role, false, sanitized.orgId, sanitized.clinicName, sanitized.name, undefined, sanitized.cpf);
+      const setupResult = await setupNewUserEnvironment(
+        sanitized.userId,
+        sanitized.role,
+        false,
+        sanitized.orgId,
+        sanitized.clinicName,
+        sanitized.name,
+        undefined,
+        sanitized.cpf,
+        sanitized.phone,
+        sanitized.cro
+      );
+
       if (!setupResult.success) {
         throw new Error(setupResult.message || "Falha no setup do ambiente");
       }
       console.log("✅ [ONBOARDING] Setup de ambiente concluído.");
     } catch (setupErr: any) {
       console.error("❌ [ONBOARDING] Erro no setup de ambiente:", setupErr);
-      throw setupErr; // Vai cair no catch principal e retornar JSON 500
+      throw setupErr;
     }
+
+    // Só atualiza Clerk se o setup funcionou
+    await clerkClient.users.updateUser(data.userId, {
+      publicMetadata: { onboardingComplete: true, role: data.role }
+    });
+    console.log("✅ [ONBOARDING] Metadados Clerk atualizados.");
 
     return c.json({ success: true });
   } catch (error: any) {

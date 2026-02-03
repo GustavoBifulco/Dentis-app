@@ -28,5 +28,7 @@ export const useAppointments = ({ patientId }: { patientId: number | null }) => 
         fetchAppointments();
     }, [patientId, getToken]);
 
-    return { appointments, isLoading, error };
+    const nextAppointment = appointments.find(a => new Date(a.startTime) > new Date()) || null;
+
+    return { appointments, nextAppointment, isLoading, error };
 };

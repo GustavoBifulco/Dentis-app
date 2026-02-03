@@ -43,14 +43,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         key={item.type}
         onClick={() => handleNavigation(item.type)}
         className={`
-          w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group
+          w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group
           ${isActive
-            ? 'bg-lux-accent text-lux-contrast font-medium shadow-md shadow-lux-accent/20'
-            : 'text-lux-text-secondary hover:text-lux-text hover:bg-lux-subtle'
+            ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-200'
+            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }
         `}
       >
-        <Icon size={18} strokeWidth={isActive ? 2 : 1.5} className="transition-transform group-hover:scale-105" />
+        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="transition-transform group-hover:scale-110" />
         <span className="text-sm">{item.label}</span>
       </button>
     );
@@ -144,33 +144,35 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/20 z-40 lg:hidden backdrop-blur-sm" onClick={onClose} />}
+      {isOpen && <div className="fixed inset-0 bg-slate-900/10 z-40 lg:hidden backdrop-blur-sm" onClick={onClose} />}
 
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 h-screen flex flex-col
+        fixed lg:static inset-y-0 left-0 z-50 w-72 h-screen flex flex-col
         transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        glass-panel border-r border-lux-border
+        bg-white border-r border-slate-200
       `}>
         <div className="p-8 flex justify-between items-center">
           <Logo size="md" />
-          <button onClick={onClose} className="lg:hidden text-lux-text"><X size={20} /></button>
+          <button onClick={onClose} className="lg:hidden text-slate-500 hover:text-slate-900"><X size={20} /></button>
         </div>
 
         {/* Context Switcher */}
-        <ContextSwitcher
-          availableContexts={availableContexts}
-          activeContext={activeContext}
-          onSwitch={onContextSwitch}
-        />
+        <div className="px-4 mb-6">
+          <ContextSwitcher
+            availableContexts={availableContexts}
+            activeContext={activeContext}
+            onSwitch={onContextSwitch}
+          />
+        </div>
 
         <nav className="flex-1 px-4 space-y-8 overflow-y-auto py-2">
           {sections.map((section) => (
             <div key={section.title}>
-              <p className="px-3 text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-2 opacity-70">
+              <p className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
                 {section.title}
               </p>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {section.items.map((item) => renderMenuItem(item))}
               </div>
             </div>
@@ -179,30 +181,30 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* Sistema & Ajustes */}
           {activeContext?.type !== 'PATIENT' && (
             <div>
-              <p className="px-3 text-[11px] font-semibold text-lux-text-secondary uppercase tracking-wider mb-2 opacity-70">
+              <p className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
                 Sistema
               </p>
               <button
                 onClick={() => handleNavigation(ViewType.SETTINGS)}
                 className={`
-                  w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group
+                  w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group
                   ${currentView === ViewType.SETTINGS
-                    ? 'bg-lux-accent text-lux-contrast font-medium shadow-md shadow-lux-accent/20'
-                    : 'text-lux-text-secondary hover:text-lux-text hover:bg-lux-subtle'
+                    ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }
                 `}
               >
-                <SettingsIcon size={18} strokeWidth={currentView === ViewType.SETTINGS ? 2 : 1.5} className="transition-transform group-hover:scale-105" />
+                <SettingsIcon size={18} strokeWidth={currentView === ViewType.SETTINGS ? 2.5 : 2} className="transition-transform group-hover:scale-110" />
                 <span className="text-sm">Ajustes</span>
               </button>
             </div>
           )}
         </nav>
 
-        <div className="mt-auto p-4 border-t border-lux-border bg-lux-background/50 backdrop-blur-md sticky bottom-0">
+        <div className="mt-auto p-4 border-t border-slate-100 bg-slate-50/50 backdrop-blur-md sticky bottom-0">
           <div className="flex items-center justify-between gap-3 px-2">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full overflow-hidden border border-lux-border flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex-shrink-0">
                 <img
                   src={user?.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`}
                   alt={user?.fullName || ''}
@@ -210,18 +212,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                 />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold text-lux-text truncate">{user?.fullName || 'Usuário'}</span>
-                <span className="text-[10px] text-lux-text-secondary truncate opacity-70">
+                <span className="text-sm font-bold text-slate-900 truncate">{user?.fullName || 'Usuário'}</span>
+                <span className="text-[11px] text-slate-500 truncate font-medium">
                   {user?.primaryEmailAddress?.emailAddress}
                 </span>
               </div>
             </div>
             <button
               onClick={() => signOut({ redirectUrl: '/' })}
-              className="p-2 text-lux-text-secondary hover:text-red-500 hover:bg-rose-50 transition-all rounded-xl"
+              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-xl"
               title="Sair"
             >
-              <LogOut size={18} />
+              <LogOut size={18} strokeWidth={2.5} />
             </button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { pgTable, serial, text, integer, boolean, timestamp, decimal } from 'dri
 
 export const labOrders = pgTable('lab_orders', {
   id: serial('id').primaryKey(),
-  clinicId: text('clinic_id').notNull(),
+  organizationId: text('organization_id').notNull(),
   patientName: text('patient_name').notNull(),
   procedure: text('procedure').notNull(),
   labName: text('lab_name'),

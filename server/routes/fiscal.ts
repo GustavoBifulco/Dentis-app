@@ -2,11 +2,11 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db';
-import { financial, patients, procedures } from '../db/schema';
+import { financials, patients, procedures } from '../db/schema';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { organizationId: number } }>();
+const app = new Hono<{ Variables: { organizationId: string } }>();
 app.use('*', authMiddleware);
 
 const tissSchema = z.object({
@@ -22,7 +22,7 @@ const invoiceSchema = z.object({
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 const formatTime = (date: Date) => date.toISOString().slice(11, 19);
 
-const buildTissXml = (organizationId: number, patient: any, procs: any[]) => {
+const buildTissXml = (organizationId: string, patient: any, procs: any[]) => {
   const now = new Date();
   const guideNumber = `SP${now.getTime()}`;
   const patientName =
@@ -128,18 +128,18 @@ app.post('/invoice', zValidator('json', invoiceSchema), async (c) => {
     return c.json({ ok: false, error: 'Paciente nao encontrado' }, 404);
   }
 
-  const entry = await db.query.financial.findFirst({
-    where: and(eq(financial.organizationId, organizationId), eq(financial.patientId, patient.id)),
-    orderBy: [desc(financial.dueDate)],
+  const entry = await db.query.financials.findFirst({
+    where: and(eq(financials.organizationId, organizationId), eq(financials.patientId, patient.id)),
+    orderBy: [desc(financials.dueDate)],
   });
 
   if (!entry) {
     return c.json({ ok: false, error: 'Nenhuma cobranca encontrada' }, 404);
   }
 
-  const [updated] = await db.update(financial)
+  const [updated] = await db.update(financials)
     .set({ status: 'INVOICED' })
-    .where(eq(financial.id, entry.id))
+    .where(eq(financials.id, entry.id))
     .returning();
 
   const invoiceUrl = `https://nfe.dentis.app/invoices/${updated?.id || entry.id}.pdf`;

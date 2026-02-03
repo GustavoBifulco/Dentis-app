@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Package, CheckCircle2, ShieldCheck, DollarSign, Power, History } from 'lucide-react';
+import { UserSession } from '../types';
 
 interface Job {
     id: number;
@@ -19,10 +20,43 @@ const CourierApp: React.FC = () => {
     const [earnings, setEarnings] = useState(120.50);
     const [validationCode, setValidationCode] = useState('');
 
+    // Mock user for demonstration purposes, as the original code doesn't provide one
+    // In a real app, this would come from an authentication context (e.g., Clerk, Auth0)
+    const [user, setUser] = useState<any | null>({
+        id: 'user_123',
+        email: 'courier@example.com',
+        fullName: 'Motoboy Teste',
+        publicMetadata: {
+            userId: 'user_123',
+            role: 'courier',
+            name: 'Motoboy Teste'
+        },
+        primaryEmailAddress: { emailAddress: 'courier@example.com' }
+    });
+
     // Mock Fetching Jobs
     useEffect(() => {
         if (isOnline) {
             // Simulate polling
+            // The userSession definition was moved here to be within the component's scope
+            // and to ensure 'user' is defined.
+            const userSession: UserSession | null = user ? {
+                user: {
+                    id: String(user.publicMetadata?.userId || user.id),
+                    email: user.primaryEmailAddress?.emailAddress || '',
+                    name: user.fullName || '',
+                    role: user.publicMetadata?.role as string || 'patient'
+                },
+                primaryEmailAddress: user.primaryEmailAddress,
+                name: user.fullName || '',
+                capabilities: { isOrgAdmin: false, isHealthProfessional: false, isCourier: true, isPatient: false }, // Adjusted for courier role
+                availableContexts: [],
+                activeContext: null,
+                onboardingComplete: true,
+                activeOrganization: null,
+                orgRole: null
+            } : null;
+
             const mockJobs: Job[] = [
                 {
                     id: 101,
@@ -49,7 +83,7 @@ const CourierApp: React.FC = () => {
         } else {
             setAvailableJobs([]);
         }
-    }, [isOnline]);
+    }, [isOnline, user]); // Added user to dependency array
 
     const handleToggleOnline = () => {
         setIsOnline(!isOnline);
@@ -95,6 +129,8 @@ const CourierApp: React.FC = () => {
                 <h1 className="text-4xl font-black uppercase mb-2">Sucesso!</h1>
                 <p className="text-xl">Corrida finalizada.</p>
                 <p className="text-3xl font-bold mt-4">+ R$ {activeJob.price.toFixed(2)}</p>
+                {/* Added the new h1 tag, ensuring 'user' is checked for existence */}
+                {user && <h1 className="text-3xl font-bold mb-6">Bem-vindo, {(user.publicMetadata?.name as string) || 'Paciente'}</h1>}
             </div>
         );
     }
@@ -123,8 +159,8 @@ const CourierApp: React.FC = () => {
                     <button
                         onClick={handleToggleOnline}
                         className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-lg shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95 ${isOnline
-                                ? 'bg-red-500 hover:bg-red-600 text-white'
-                                : 'bg-green-500 hover:bg-green-600 text-slate-900'
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                            : 'bg-green-500 hover:bg-green-600 text-slate-900'
                             }`}
                     >
                         <Power size={24} strokeWidth={3} />
@@ -134,7 +170,7 @@ const CourierApp: React.FC = () => {
             </div>
 
             {/* ACTIVE JOB MODE */}
-            {activeJob && activeJob.status !== 'DELIVERED' && (
+            {activeJob && (activeJob.status as string) !== 'DELIVERED' && (
                 <div className="p-4 space-y-4 -mt-4 relative z-10">
                     {/* STATUS CARD */}
                     <div className="bg-white text-slate-900 rounded-2xl p-5 shadow-2xl border-l-8 border-indigo-500">

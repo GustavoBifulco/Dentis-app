@@ -1,9 +1,9 @@
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stage, Center, Environment } from '@react-three/drei';
+import { OrbitControls, Stage, Center } from '@react-three/drei';
+// @ts-ignore
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { useLoader } from '@react-three/fiber';
-import { Loader2 } from 'lucide-react';
 
 interface ThreeDViewerProps {
     url: string;
@@ -32,7 +32,7 @@ export default function ThreeDViewer({ url, className = "h-[400px] w-full", colo
             <Canvas shadows dpr={[1, 2]} camera={{ fov: 45, position: [0, 0, 80] }}>
                 <color attach="background" args={['#F8FAFC']} />
                 <Suspense fallback={null}>
-                    <Stage environment="studio" intensity={0.5} contactShadow={{ opacity: 0.2, blur: 2 }}>
+                    <Stage environment="studio" intensity={0.5}>
                         <Center>
                             <Model url={url} color={color} />
                         </Center>

@@ -8,7 +8,7 @@ import { eq, and, lte, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { HTTPException } from 'hono/http-exception';
 
-const app = new Hono<{ Variables: { organizationId: number; userId: number; role: string } }>();
+const app = new Hono<{ Variables: { organizationId: string; userId: string; role: string } }>();
 
 app.use('*', authMiddleware);
 
