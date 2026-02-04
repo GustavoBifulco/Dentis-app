@@ -29,18 +29,83 @@ export const organizationMembers = pgTable('organization_members', {
   joinedAt: timestamp('joined_at').defaultNow(),
 });
 
+// Address Table (New, Normalized)
+export const addresses = pgTable('addresses', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  street: text('street'),
+  number: text('number'),
+  complement: text('complement'),
+  neighborhood: text('neighborhood'),
+  city: text('city'),
+  state: text('state'),
+  postalCode: text('postal_code'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export const patients = pgTable('patients', {
   id: serial('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
+
+  // Dados Pessoais
   name: text('name').notNull(),
+  socialName: text('social_name'),
+  gender: text('gender'),
+  birthdate: text('birthdate'),
+  placeOfBirth: text('place_of_birth'),
+  maritalStatus: text('marital_status'),
+  occupation: text('occupation'),
+  educationLevel: text('education_level'),
+
+  // Documentos
   cpf: text('cpf'),
+  rg: text('rg'),
+  cns: text('cns'), // Cartão SUS
+
+  // Contato
   phone: text('phone'),
   email: text('email'),
-  birthdate: text('birthdate'),
+  contactPreference: text('contact_preference'), // 'whatsapp', 'email', 'phone'
+
+  // Endereço (Link)
+  addressId: integer('address_id').references(() => addresses.id),
+  // Legacy address field (keep for back-compat or migration)
   address: text('address'),
+
+  // Responsável Legal (<18 ou incapaz)
+  legalGuardianName: text('legal_guardian_name'),
+  legalGuardianRelationship: text('legal_guardian_relationship'),
+  legalGuardianPhone: text('legal_guardian_phone'),
+
+  // Empresa/Benefício
+  companyName: text('company_name'),
+
+  // Dados Clínicos (Legacy/Summary)
   medicalHistory: text('medical_history'),
   allergies: text('allergies'),
   medications: text('medications'),
+
+  status: text('status').default('active'), // active, archived
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Emergency Contacts (1:N)
+export const patientEmergencyContacts = pgTable('patient_emergency_contacts', {
+  id: serial('id').primaryKey(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  relationship: text('relationship'),
+  phone: text('phone').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Insurances (1:N)
+export const patientInsurances = pgTable('patient_insurances', {
+  id: serial('id').primaryKey(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+  providerName: text('provider_name').notNull(),
+  cardNumber: text('card_number'),
+  validUntil: text('valid_until'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -260,6 +325,35 @@ export const notificationLogs = pgTable('notification_logs', {
 });
 
 // Relations
+export const patientsRelations = relations(patients, ({ one, many }) => ({
+  address: one(addresses, {
+    fields: [patients.addressId],
+    references: [addresses.id],
+  }),
+  emergencyContacts: many(patientEmergencyContacts),
+  insurances: many(patientInsurances),
+  appointments: many(appointments),
+  anamnesisResponses: many(anamnesisResponses),
+}));
+
+export const addressesRelations = relations(addresses, ({ many }) => ({
+  patients: many(patients), // Technically 1:1 usually, but schema allows N
+}));
+
+export const patientEmergencyContactsRelations = relations(patientEmergencyContacts, ({ one }) => ({
+  patient: one(patients, {
+    fields: [patientEmergencyContacts.patientId],
+    references: [patients.id],
+  }),
+}));
+
+export const patientInsurancesRelations = relations(patientInsurances, ({ one }) => ({
+  patient: one(patients, {
+    fields: [patientInsurances.patientId],
+    references: [patients.id],
+  }),
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
   organizationMembers: many(organizationMembers),
 }));
@@ -317,6 +411,8 @@ export const notificationLogsRelations = relations(notificationLogs, ({ one }) =
   }),
 }));
 
+
+
 // === Restored Tables (Fixing Build Errors) ===
 
 export const auditLogs = pgTable('audit_logs', {
@@ -345,6 +441,7 @@ export const financials = pgTable('financials', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// DEPRECATED - Migrating to 'encounters' and specific tables
 export const clinicalRecords = pgTable('clinical_records', {
   id: serial('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
@@ -354,6 +451,168 @@ export const clinicalRecords = pgTable('clinical_records', {
   description: text('description'),
   attachments: jsonb('attachments'), // URLs to files
   date: date('date').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// === PHASE 1: CLINICAL CORE ===
+
+// 1. Encounters (Atendimentos SOAP)
+export const encounters = pgTable('encounters', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  dentistId: text('dentist_id').notNull(),
+
+  date: date('date').notNull().defaultNow(),
+  startTime: time('start_time'),
+  endTime: time('end_time'),
+  type: text('type').default('consulta'), // consulta, retorno, urgencia, cirurgia
+
+  // SOAP Fields
+  subjective: text('subjective'), // Queixa principal / História
+  objective: text('objective'),   // Exame físico
+  assessment: text('assessment'), // Diagnóstico / Hipótese
+  plan: text('plan'),             // Plano de tratamento / Conduta
+
+  // Status & Security
+  status: text('status').default('draft'), // draft, signed, locked
+  signedAt: timestamp('signed_at'),
+  signedBy: text('signed_by'),
+
+  appointmentId: integer('appointment_id').references(() => appointments.id, { onDelete: 'set null' }),
+
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// 2. Prescriptions (Receitas)
+export const prescriptions = pgTable('prescriptions', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  encounterId: integer('encounter_id').references(() => encounters.id, { onDelete: 'cascade' }),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  dentistId: text('dentist_id').notNull(),
+
+  // Structured Content
+  medications: jsonb('medications').notNull(), // Array of { name, dosage, frequency, duration, route }
+  instructions: text('instructions'),
+
+  // PDF / Signature
+  pdfUrl: text('pdf_url'),
+  signatureToken: text('signature_token'),
+
+  status: text('status').default('draft'), // draft, signed
+  issuedAt: timestamp('issued_at'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// 3. Exam Orders (Pedidos de Exames)
+export const examOrders = pgTable('exam_orders', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  encounterId: integer('encounter_id').references(() => encounters.id, { onDelete: 'cascade' }),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  dentistId: text('dentist_id').notNull(),
+
+  type: text('type').notNull(), // laboratoriais, imagem, outros
+  exams: jsonb('exams').notNull(), // List of exam names/codes
+  justification: text('justification'),
+  clinicalNotes: text('clinical_notes'),
+
+  status: text('status').default('ordered'), // ordered, scheduled, completed, cancelled
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// 4. Documents Emitted (Atestados, Relatórios, Encaminhamentos)
+export const documentsEmitted = pgTable('documents_emitted', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  encounterId: integer('encounter_id').references(() => encounters.id, { onDelete: 'cascade' }),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  dentistId: text('dentist_id').notNull(),
+
+  type: text('type').notNull(), // atestado, relatorio, encaminhamento
+  title: text('title').notNull(),
+  content: text('content').notNull(), // HTML or Text content
+
+  // Duration (for sick notes)
+  daysOff: integer('days_off'),
+  startDate: date('start_date'),
+  cid: text('cid'),
+
+  status: text('status').default('draft'), // draft, signed
+  signedAt: timestamp('signed_at'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// === PHASE 2: SECURITY & QUALITY ===
+
+// 5. Clinical Alerts (Alertas Clínicos & Alergias)
+export const patientAlerts = pgTable('patient_alerts', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+
+  type: text('type').notNull(), // 'allergy', 'condition', 'observation'
+  severity: text('severity').default('low'), // 'low', 'medium', 'high'
+  description: text('description').notNull(),
+
+  active: boolean('active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  createdBy: text('created_by'), // userId
+});
+
+// 6. Consents (Consentimentos Informados)
+export const patientConsents = pgTable('patient_consents', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+
+  title: text('title').notNull(),
+  content: text('content').notNull(), // HTML or Text of what was agreed
+
+  signedAt: timestamp('signed_at').defaultNow(),
+  signedByIp: text('signed_by_ip'),
+  userAgent: text('user_agent'),
+
+  revokedAt: timestamp('revoked_at'), // If the patient revokes consent
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// 7. Problem List (Lista de Problemas)
+export const patientProblems = pgTable('patient_problems', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+
+  code: text('code'), // CID-10, CIAP-2, etc. optional
+  name: text('name').notNull(), // "Hypertension"
+
+  status: text('status').default('active'), // 'active', 'resolved', 'inactive'
+  diagnosedAt: date('diagnosed_at'),
+  resolvedAt: date('resolved_at'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// 8. Continuous Medications (Medicações em Uso)
+export const patientMedications = pgTable('patient_medications', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+
+  name: text('name').notNull(),
+  dosage: text('dosage'),
+  frequency: text('frequency'),
+
+  status: text('status').default('active'), // 'active', 'discontinued'
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -465,4 +724,269 @@ export const anamnesisResponses = pgTable('anamnesis_responses', {
   templateId: integer('template_id').references(() => anamnesisTemplates.id),
   answers: jsonb('answers'), // { [questionId]: value }
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const notificationPreferences = pgTable('notification_preferences', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().unique(), // Link with Clerk ID
+
+  // Email Channels
+  emailAppointments: boolean('email_appointments').default(true),
+  emailPayments: boolean('email_payments').default(true),
+  emailMarketing: boolean('email_marketing').default(false),
+
+  // Security
+  securityAlerts: boolean('security_alerts').default(true),
+
+  // Other Channels
+  whatsappEnabled: boolean('whatsapp_enabled').default(false),
+  pushEnabled: boolean('push_enabled').default(false),
+
+  updatedAt: timestamp('updated_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const encountersRelations = relations(encounters, ({ one, many }) => ({
+  patient: one(patients, {
+    fields: [encounters.patientId],
+    references: [patients.id],
+  }),
+  appointment: one(appointments, {
+    fields: [encounters.appointmentId],
+    references: [appointments.id],
+  }),
+  prescriptions: many(prescriptions),
+  examOrders: many(examOrders),
+  documentsEmitted: many(documentsEmitted),
+  attachments: many(documents), // Reusing generic documents table as attachments for now
+}));
+
+export const prescriptionsRelations = relations(prescriptions, ({ one }) => ({
+  encounter: one(encounters, {
+    fields: [prescriptions.encounterId],
+    references: [encounters.id],
+  }),
+  patient: one(patients, {
+    fields: [prescriptions.patientId],
+    references: [patients.id],
+  }),
+}));
+
+export const examOrdersRelations = relations(examOrders, ({ one }) => ({
+  encounter: one(encounters, {
+    fields: [examOrders.encounterId],
+    references: [encounters.id],
+  }),
+  patient: one(patients, {
+    fields: [examOrders.patientId],
+    references: [patients.id],
+  }),
+}));
+
+export const documentsEmittedRelations = relations(documentsEmitted, ({ one }) => ({
+  encounter: one(encounters, {
+    fields: [documentsEmitted.encounterId],
+    references: [encounters.id],
+  }),
+  patient: one(patients, {
+    fields: [documentsEmitted.patientId],
+    references: [patients.id],
+  }),
+}));
+
+// === PHASE 3: ODONTOLOGY ADVANCED ===
+
+export const odontogram = pgTable('odontogram', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+
+  tooth: integer('tooth').notNull(), // FDI Number (11, 18, 21, etc.)
+  surface: text('surface'), // 'distal', 'mesial', 'occlusal', 'lingual', 'buccal', 'root', 'whole'
+
+  condition: text('condition').notNull(), // 'decay', 'restoration', 'missing', 'implant', 'crown', 'canal'
+  material: text('material'), // 'resin', 'amalgam', 'porcelain'
+  notes: text('notes'),
+
+  status: text('status').default('current'), // 'current', 'planned', 'completed' (history)
+
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const treatmentPlans = pgTable('treatment_plans', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  dentistId: text('dentist_id'),
+
+  title: text('title').notNull(), // "Plano Reabilitação 2024"
+  status: text('status').default('draft'), // draft, presented, approved, declined, completed
+
+  totalCost: numeric('total_cost'),
+  discount: numeric('discount'),
+  finalPrice: numeric('final_price'),
+
+  installments: integer('installments'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+  expiresAt: timestamp('expires_at'),
+});
+
+export const planItems = pgTable('plan_items', {
+  id: serial('id').primaryKey(),
+  planId: integer('plan_id').references(() => treatmentPlans.id, { onDelete: 'cascade' }).notNull(),
+
+  procedureId: integer('procedure_id').references(() => procedures.id),
+  name: text('name').notNull(), // Snapshot of name
+
+  tooth: integer('tooth'),
+  surface: text('surface'),
+
+  price: numeric('price').notNull(), // Snapshot of price
+  quantity: integer('quantity').default(1),
+
+  status: text('status').default('planned'), // planned, scheduled, prohibited, completed
+});
+
+export const treatmentPlansRelations = relations(treatmentPlans, ({ many }) => ({
+  items: many(planItems),
+}));
+
+export const planItemsRelations = relations(planItems, ({ one }) => ({
+  plan: one(treatmentPlans, {
+    fields: [planItems.planId],
+    references: [treatmentPlans.id],
+  }),
+  procedure: one(procedures, {
+    fields: [planItems.procedureId],
+    references: [procedures.id],
+  }),
+}));
+
+// --- WAVE 0 FOUNDATION ---
+
+// P2. Unified Timeline
+export const timelineEvents = pgTable('timeline_events', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(), // Tenant
+  unitId: text('unit_id'), // Multi-unit support
+  patientId: integer('patient_id'), // Optional, as some events might be system-wide or non-patient related
+
+  eventType: text('event_type').notNull(), // 'clinical', 'financial', 'logistic', 'system'
+  refType: text('ref_type').notNull(), // 'encounter', 'payment', 'shipment'
+  refId: text('ref_id').notNull(), // ID of the referenced entity
+
+  title: text('title').notNull(),
+  summary: text('summary'),
+  metadata: jsonb('metadata'), // Extra context
+
+  createdAt: timestamp('created_at').defaultNow(),
+  createdBy: text('created_by'), // User ID
+});
+
+// P4. Access Logs (Read-only Telemetry fo LGPD)
+export const accessLogs = pgTable('access_logs', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  userId: text('user_id').notNull(),
+
+  patientId: integer('patient_id'), // If accessing patient data
+
+  action: text('action').notNull(), // 'VIEW', 'DOWNLOAD', 'SEARCH'
+  resourceType: text('resource_type').notNull(), // 'patient_record', 'attachment', 'financial_report'
+  resourceId: text('resource_id'),
+
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Defining relations for new logs if necessary (usually they are standalone or loosly coupled)
+export const timelineEventsRelations = relations(timelineEvents, ({ one }) => ({
+  patient: one(patients, {
+    fields: [timelineEvents.patientId],
+    references: [patients.id],
+  }),
+}));
+
+// P5. RBAC Granular & Unit Scopes
+export const roles = pgTable('roles', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  name: text('name').notNull(), // 'admin', 'dentist_lead', 'receptionist'
+  description: text('description'),
+  isSystem: boolean('is_system').default(false), // If true, cannot be deleted
+});
+
+export const permissions = pgTable('permissions', {
+  id: serial('id').primaryKey(),
+  module: text('module').notNull(), // 'clinical', 'financial', 'schedule'
+  action: text('action').notNull(), // 'view', 'edit', 'delete', 'sign'
+  description: text('description'),
+});
+
+export const rolePermissions = pgTable('role_permissions', {
+  id: serial('id').primaryKey(),
+  roleId: integer('role_id').references(() => roles.id, { onDelete: 'cascade' }).notNull(),
+  permissionId: integer('permission_id').references(() => permissions.id, { onDelete: 'cascade' }).notNull(),
+});
+
+export const userRoles = pgTable('user_roles', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(), // Link to users table (Clerk ID or internal ID? Internal users.id is serial. We need consistency.)
+  // Wait, users table has id: serial, clerkId: text. Most refs use patientId (int). 
+  // Let's use internal ID (integer) for user relations if possible, but middleware uses clerkId often.
+  // Checking existing schema: organization_members uses userId: text.
+  // Let's stick to text to match organization_members for now to avoid migration pain, assuming it holds stringified ID or ClerkID.
+
+  roleId: integer('role_id').references(() => roles.id, { onDelete: 'cascade' }).notNull(),
+  organizationId: text('organization_id').notNull(),
+});
+
+export const userUnitScopes = pgTable('user_unit_scopes', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  organizationId: text('organization_id').notNull(),
+  unitId: text('unit_id').notNull(), // The unit strictly allowed
+});
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  permissions: many(rolePermissions),
+}));
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  role: one(roles, { fields: [rolePermissions.roleId], references: [roles.id] }),
+  permission: one(permissions, { fields: [rolePermissions.permissionId], references: [permissions.id] }),
+}));
+
+// P3. Attachment Links (Many-to-Many / Polymorphic)
+export const attachmentLinks = pgTable('attachment_links', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+
+  documentId: integer('document_id').references(() => documents.id, { onDelete: 'cascade' }).notNull(),
+
+  refType: text('ref_type').notNull(), // 'encounter', 'lab_case', 'expense'
+  refId: text('ref_id').notNull(),
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const attachmentLinksRelations = relations(attachmentLinks, ({ one }) => ({
+  document: one(documents, { fields: [attachmentLinks.documentId], references: [documents.id] }),
+}));
+
+// P1. Status Lock & Addendums (Immutable Corrections)
+export const addendums = pgTable('addendums', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+
+  refType: text('ref_type').notNull(), // 'encounter'
+  refId: text('ref_id').notNull(),
+
+  content: text('content').notNull(), // The correction text
+
+  createdAt: timestamp('created_at').defaultNow(),
+  createdBy: text('created_by').notNull(), // User ID
 });

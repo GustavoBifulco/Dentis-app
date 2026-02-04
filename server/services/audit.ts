@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { auditLogs } from '../db/schema';
+import { auditLogs, accessLogs } from '../db/schema';
 
 type AuditEvent = {
     userId?: number;
@@ -30,7 +30,40 @@ export const logAudit = async (event: AuditEvent) => {
             timestamp: new Date()
         });
     } catch (error) {
-        // Audit logging failure should not crash the app, but must be reported
         console.error('CRITICAL: Failed to write audit log', error);
     }
 };
+
+type AccessEvent = {
+    organizationId: string;
+    userId: string;
+    patientId?: number;
+    action: 'VIEW' | 'DOWNLOAD' | 'SEARCH';
+    resourceType: string;
+    resourceId?: string;
+    ip?: string;
+    userAgent?: string;
+};
+
+/**
+ * Logs read access to detailed records (Privacy/LGPD).
+ * Must be called whenever a sensitive record is opened.
+ */
+export const logAccess = async (event: AccessEvent) => {
+    try {
+        await db.insert(accessLogs).values({
+            organizationId: event.organizationId,
+            userId: event.userId,
+            patientId: event.patientId,
+            action: event.action,
+            resourceType: event.resourceType,
+            resourceId: event.resourceId,
+            ip: event.ip || '0.0.0.0',
+            userAgent: event.userAgent,
+            createdAt: new Date()
+        });
+    } catch (error) {
+        console.error('CRITICAL: Failed to write access log', error);
+    }
+};
+

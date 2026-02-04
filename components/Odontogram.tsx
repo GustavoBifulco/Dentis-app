@@ -1,152 +1,171 @@
 import React, { useState, useEffect } from 'react';
-import { IslandCard, LuxButton, SectionHeader } from './Shared';
-import { Plus, Check, AlertCircle, Mic, MicOff } from 'lucide-react';
-import { useDentalVoice } from './VoiceControl'; // Hook de Voz
+import { useAuth } from '@clerk/clerk-react';
+import { Check, X, AlertCircle, Info } from 'lucide-react';
 
-// Representação abstrata dos dentes
-const TEETH_MAP = [
-  { id: 18, label: '18', status: 'healthy' }, { id: 17, label: '17', status: 'treatment' },
-  { id: 16, label: '16', status: 'healthy' }, { id: 15, label: '15', status: 'healthy' },
-  { id: 14, label: '14', status: 'missing' }, { id: 13, label: '13', status: 'healthy' },
-  { id: 12, label: '12', status: 'healthy' }, { id: 11, label: '11', status: 'healthy' },
-  { id: 21, label: '21', status: 'healthy' }, { id: 22, label: '22', status: 'restored' },
-  { id: 23, label: '23', status: 'healthy' }, { id: 24, label: '24', status: 'healthy' },
-  { id: 25, label: '25', status: 'healthy' }, { id: 26, label: '26', status: 'healthy' },
-  { id: 27, label: '27', status: 'healthy' }, { id: 28, label: '28', status: 'healthy' },
+interface ToothState {
+  tooth: number;
+  surface: string;
+  condition: string;
+  notes?: string;
+}
+
+const TEETH_ADULT = [
+  18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28,
+  48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38
 ];
 
-const Odontogram: React.FC = () => {
+// Simplified status mapping
+const STATUS_COLORS: Record<string, string> = {
+  'healthy': 'bg-white border-slate-300',
+  'decay': 'bg-red-100 border-red-500 text-red-500',
+  'restoration': 'bg-blue-100 border-blue-500 text-blue-500',
+  'missing': 'bg-slate-800 border-slate-900 text-slate-400 opacity-50',
+  'crown': 'bg-amber-100 border-amber-500 text-amber-600',
+  'canal': 'bg-purple-100 border-purple-500 text-purple-600'
+};
+
+const Odontogram = () => {
+  // For MVP, we pass patientId via context or props. 
+  // Assuming context isn't fully robust yet, we might need to rely on parent props.
+  // However, Odontogram is used inside PatientRecord which has activePatient.
+  // We should probably accept `patientId` as prop.
+  return <p className="text-red-500">Error: Missing patientId prop</p>;
+};
+
+interface OdontogramProps {
+  patientId: number;
+}
+
+const OdontogramComponent: React.FC<OdontogramProps> = ({ patientId }) => {
+  const { getToken } = useAuth();
+  const [teethState, setTeethState] = useState<Record<number, ToothState>>({});
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // --- INTEGRAÇÃO DE VOZ ---
-  const { isListening, lastCommand, intent, toggleListening } = useDentalVoice();
-
-  // Reação aos comandos de voz
   useEffect(() => {
-    if (intent && intent.type === 'TOOTH') {
-      const toothNum = intent.tooth;
-      // Verifica se o dente existe no mapa (simplificado)
-      if (toothNum >= 11 && toothNum <= 48) {
-        setSelectedTooth(toothNum);
+    fetchOdontogram();
+  }, [patientId]);
+
+  const fetchOdontogram = async () => {
+    try {
+      const token = await getToken();
+      const res = await fetch(`/api/records/odontogram/${patientId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data: ToothState[] = await res.json();
+        const map: Record<number, ToothState> = {};
+        data.forEach(t => map[t.tooth] = t);
+        setTeethState(map);
       }
+    } catch (e) {
+      console.error(e);
     }
-  }, [intent]);
+  };
+
+  const updateTooth = async (condition: string) => {
+    if (!selectedTooth) return;
+
+    // Optimistic update
+    const newState = {
+      tooth: selectedTooth,
+      surface: 'whole',
+      condition,
+      status: 'current'
+    };
+
+    setTeethState(prev => ({ ...prev, [selectedTooth]: newState }));
+
+    try {
+      const token = await getToken();
+      await fetch('/api/records/odontogram', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ patientId, ...newState })
+      });
+      setSelectedTooth(null);
+    } catch (e) {
+      console.error("Failed to save");
+      fetchOdontogram(); // Revert
+    }
+  };
+
+  const renderTooth = (id: number) => {
+    const state = teethState[id];
+    const condition = state?.condition || 'healthy';
+    const style = STATUS_COLORS[condition] || STATUS_COLORS['healthy'];
+
+    return (
+      <div
+        key={id}
+        onClick={() => setSelectedTooth(id)}
+        className={`
+                    w-12 h-16 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 shadow-sm
+                    ${style} ${selectedTooth === id ? 'ring-4 ring-blue-200 z-10' : ''}
+                `}
+      >
+        <span className="text-xs font-bold mb-1 opacity-50">{id}</span>
+        {condition === 'missing' && <X size={20} />}
+        {condition === 'decay' && <AlertCircle size={20} />}
+        {condition === 'restoration' && <div className="w-3 h-3 rounded-full bg-blue-500" />}
+      </div>
+    );
+  };
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col animate-in fade-in duration-500">
+    <div className="flex flex-col h-full bg-slate-50 relative">
+      {/* Toolbar / Legend */}
+      <div className="bg-white border-b border-slate-200 p-4 flex gap-4 overflow-x-auto text-xs">
+        {Object.entries(STATUS_COLORS).map(([key, cls]) => (
+          <div key={key} className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-200">
+            <div className={`w-3 h-3 rounded-full border ${cls.split(' ')[0]} ${cls.split(' ')[1]}`} />
+            <span className="capitalize">{key}</span>
+          </div>
+        ))}
+      </div>
 
-      {/* Header com Controle de Voz */}
-      <div className="flex justify-between items-end mb-6">
-        <SectionHeader title="Execução Clínica" subtitle="Selecione um elemento para registrar procedimentos." />
+      {/* Mouth Map */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-8 bg-slate-50/50 p-8">
+        {/* Maxilla (Upper) */}
+        <div className="flex gap-2">
+          {TEETH_ADULT.slice(0, 16).map(t => renderTooth(t))}
+        </div>
 
-        <div className="flex flex-col items-end gap-2">
-          {lastCommand && (
-            <span className="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded">
-              "{lastCommand}"
-            </span>
-          )}
-          <button
-            onClick={toggleListening}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all border ${isListening
-              ? 'bg-rose-500 text-white border-rose-600 animate-pulse shadow-lg'
-              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-              }`}
-          >
-            {isListening ? <Mic size={18} /> : <MicOff size={18} />}
-            {isListening ? 'Ouvindo...' : 'Comando de Voz'}
-          </button>
+        {/* Mandible (Lower) */}
+        <div className="flex gap-2">
+          {TEETH_ADULT.slice(16).map(t => renderTooth(t))}
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8 h-full overflow-hidden">
-        {/* MAPA VISUAL (Esquerda) */}
-        <div className="lg:col-span-2 h-full">
-          <IslandCard className="h-full flex flex-col justify-center items-center bg-slate-50 relative overflow-hidden">
-            <div className="absolute top-6 left-6 flex gap-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                <div className="w-3 h-3 rounded-full bg-white border border-slate-200"></div> Saudável
-              </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                <div className="w-3 h-3 rounded-full bg-rose-100 border border-rose-300"></div> Em Tratamento
-              </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                <div className="w-3 h-3 rounded-full bg-blue-100 border border-blue-300"></div> Restaurado
-              </div>
-            </div>
-
-            {/* Arco Superior */}
-            <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
-              {TEETH_MAP.map(tooth => (
-                <button
-                  key={tooth.id}
-                  onClick={() => setSelectedTooth(tooth.id)}
-                  className={`
-                    w-12 h-16 rounded-xl border-2 flex flex-col items-center justify-end pb-2 transition-all duration-300
-                    ${selectedTooth === tooth.id ? 'scale-110 shadow-xl border-slate-900 z-10' : 'hover:-translate-y-1'}
-                    ${tooth.status === 'treatment' ? 'bg-rose-50 border-rose-200 text-rose-500' :
-                      tooth.status === 'restored' ? 'bg-blue-50 border-blue-200 text-blue-500' :
-                        tooth.status === 'missing' ? 'opacity-30 border-dashed bg-transparent' : 'bg-white border-slate-200 text-slate-400'}
-                  `}
-                >
-                  <span className="text-xs font-black">{tooth.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-8 text-center text-slate-400 text-xs uppercase font-bold tracking-widest">
-              Arco Superior (Vista Vestibular)
-            </div>
-
-          </IslandCard>
+      {/* Context Menu / Action Bar */}
+      {selectedTooth && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 flex gap-4 animate-in slide-in-from-bottom-4">
+          <div className="border-r pr-4 mr-2">
+            <span className="text-xs font-bold text-slate-400 block uppercase">Dente</span>
+            <span className="text-2xl font-black text-slate-800">{selectedTooth}</span>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => updateTooth('healthy')} className="p-2 hover:bg-slate-100 rounded-lg flex flex-col items-center gap-1 min-w-[60px]">
+              <Check className="text-green-500" /> <span className="text-[10px]">Saudável</span>
+            </button>
+            <button onClick={() => updateTooth('decay')} className="p-2 hover:bg-red-50 rounded-lg flex flex-col items-center gap-1 min-w-[60px]">
+              <AlertCircle className="text-red-500" /> <span className="text-[10px]">Cárie</span>
+            </button>
+            <button onClick={() => updateTooth('restoration')} className="p-2 hover:bg-blue-50 rounded-lg flex flex-col items-center gap-1 min-w-[60px]">
+              <div className="w-5 h-5 bg-blue-500 rounded-full" /> <span className="text-[10px]">Restaurado</span>
+            </button>
+            <button onClick={() => updateTooth('missing')} className="p-2 hover:bg-slate-100 rounded-lg flex flex-col items-center gap-1 min-w-[60px]">
+              <X className="text-slate-500" /> <span className="text-[10px]">Ausente</span>
+            </button>
+          </div>
+          <button onClick={() => setSelectedTooth(null)} className="absolute -top-2 -right-2 bg-slate-900 text-white rounded-full p-1"><X size={12} /></button>
         </div>
-
-        {/* PAINEL DE AÇÃO (Direita) */}
-        <div className="flex flex-col gap-6 h-full">
-          {selectedTooth ? (
-            <IslandCard className="flex-1 p-6 animate-in slide-in-from-right-4 flex flex-col">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-black text-slate-900">Dente {selectedTooth}</h3>
-                <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">Cárie Oclusal</span>
-              </div>
-
-              <div className="space-y-4 flex-1 overflow-y-auto">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Procedimentos Sugeridos</p>
-
-                <button className="w-full p-4 rounded-2xl border border-slate-100 bg-white hover:border-slate-900 hover:shadow-lg transition-all text-left group">
-                  <div className="flex justify-between">
-                    <span className="font-bold text-slate-900">Restauração 1 Face</span>
-                    <span className="font-black text-slate-900">R$ 350</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1 group-hover:text-blue-600">Resina Z350 • 45 min</p>
-                </button>
-
-                <button className="w-full p-4 rounded-2xl border border-slate-100 bg-white hover:border-slate-900 hover:shadow-lg transition-all text-left">
-                  <div className="flex justify-between">
-                    <span className="font-bold text-slate-900">Endodontia (Canal)</span>
-                    <span className="font-black text-slate-900">R$ 850</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">Sessão Única</p>
-                </button>
-              </div>
-
-              <div className="mt-auto pt-6 border-t border-slate-100">
-                <div className="mb-4">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Observações</p>
-                  <textarea className="w-full bg-slate-50 rounded-xl p-3 text-sm outline-none resize-none h-24" placeholder="Adicione notas clínicas aqui..."></textarea>
-                </div>
-                <LuxButton className="w-full justify-center" icon={<Plus size={18} />}>Adicionar ao Plano</LuxButton>
-              </div>
-            </IslandCard>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-300 p-8 border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white">
-              <AlertCircle size={48} className="mb-4 opacity-50" />
-              <p className="text-center font-medium max-w-[200px]">Selecione um dente no mapa para lançar procedimentos.</p>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export default Odontogram;
+export default OdontogramComponent;

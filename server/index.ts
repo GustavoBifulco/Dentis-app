@@ -36,6 +36,8 @@ import patientImport from './routes/patient-import';
 import patientInvite from './routes/patient-invite';
 import treatment from './routes/treatment';
 import anamnesis from './routes/anamnesis';
+import settings from './routes/settings';
+import records from './routes/records';
 
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
@@ -46,24 +48,8 @@ import { redactPII } from './utils/privacy';
 const app = new Hono();
 
 // 1. Middlewares Globais de Segurança e Logs
-app.use('*', async (c, next) => {
-  const start = Date.now();
-  await next();
-  const ms = Date.now() - start;
-  // Custom Redacted Logger
-  const method = c.req.method;
-  const path = c.req.path;
-  const status = c.res.status;
-
-  // Safe logging (Redacted path if it contains PII in params)
-  // For params like /patients/123, it is fine, but /search?q=CPF needs care.
-  // URL params are usually fine unless search queries.
-  // We can Redact query params.
-
-  if (process.env.NODE_ENV !== 'test') {
-    console.log(`[${method}] ${path} ${status} - ${ms}ms`);
-  }
-});
+import { requestLogger } from './middleware/logger';
+app.use('*', requestLogger);
 // app.use('*', logger()); // Disable default logger to avoid PII leak
 app.use('*', secureHeaders()); // Proteção contra XSS, Clickjacking, etc.
 app.use('*', cors({
@@ -86,6 +72,7 @@ app.route('/api/patient', patient); // Check conflicts later
 app.route('/api/appointments', appointments);
 app.route('/api/appointment-requests', appointmentRequests);
 app.route('/api/clinical', clinical);
+app.route('/api/records', records); // NEW: Clinical Records (Phase 1)
 app.route('/api/finance', finance);
 app.route('/api/fiscal', fiscal);
 app.route('/api/kiosk', kiosk);
@@ -105,6 +92,7 @@ app.route('/api/patient-invite', patientInvite);
 app.route('/api/debug', debug);
 app.route('/api/treatment', treatment);
 app.route('/api/anamnesis', anamnesis);
+app.route('/api/settings', settings);
 
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 

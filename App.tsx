@@ -124,7 +124,7 @@ const AppContent: React.FC = () => {
       case ViewType.SCHEDULE: return <Schedule />;
       case ViewType.FINANCE: return <Finance userRole={UserRole.DENTIST} />;
       case ViewType.PROFILE: return <Profile userRole={UserRole.DENTIST} onLogout={() => signOut()} />;
-      case ViewType.SETTINGS: return <Settings config={{ mode: 'light', accentColor: '#B59410', useGradient: false }} onConfigChange={() => { }} onNavigate={setCurrentView} />;
+      case ViewType.SETTINGS: return <Settings onNavigate={setCurrentView} />;
       case ViewType.TREATMENT_JOURNEY: return <TreatmentJourney />;
       case ViewType.ANAMNESIS: return <Anamnesis />;
       case ViewType.MANAGEMENT_HUB: return <ManagementHub onNavigate={setCurrentView} />;

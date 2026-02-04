@@ -92,17 +92,71 @@ export interface Patient {
     organizationId: string;
     userId?: string; // Clerk user ID when patient creates account
     name: string;
+    socialName?: string;
+    gender?: string;
+
     cpf?: string;
+    rg?: string;
+    cns?: string;
+
     email?: string;
     phone: string;
+    contactPreference?: 'whatsapp' | 'email' | 'phone';
+
     status: 'active' | 'pending' | 'completed' | 'archived';
     lastVisit?: string;
     photoUrl?: string;
     birthdate?: string;
-    address?: string;
+    placeOfBirth?: string;
+    maritalStatus?: string;
+    occupation?: string;
+    educationLevel?: string;
+
+    // Address
+    address?: string; // Legacy
+    addressId?: number;
+    addressDetails?: Address;
+
+    // Contact
+    emergencyContacts?: EmergencyContact[];
+
+    // Legal
+    legalGuardianName?: string;
+    legalGuardianRelationship?: string;
+    legalGuardianPhone?: string;
+
+    // Insurance / Business
+    companyName?: string;
+    insurances?: Insurance[];
+
     medicalHistory?: string;
     allergies?: string;
     medications?: string;
+}
+
+export interface Address {
+    id?: number;
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    postalCode: string;
+}
+
+export interface EmergencyContact {
+    id?: number;
+    name: string;
+    relationship: string;
+    phone: string;
+}
+
+export interface Insurance {
+    id?: number;
+    providerName: string;
+    cardNumber?: string;
+    validUntil?: string;
 }
 
 export interface Appointment {

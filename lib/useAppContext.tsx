@@ -82,6 +82,16 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     }, []);
 
+    // Helper to adjust brightness (simple hex manipulation)
+    const adjustBrightness = (hex: string, percent: number) => {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+    };
+
     // Apply Theme Side Effects
     useEffect(() => {
         const root = window.document.documentElement;
@@ -94,9 +104,10 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
 
         // 2. Accent Color
-        // Updating CSS variables dynamically
-        // Use a tiny helper to generate lighter/darker shades if needed or just use the main color
         root.style.setProperty('--primary', theme.accentColor);
+        // Generate a 15% darker shade for hover
+        root.style.setProperty('--primary-hover', adjustBrightness(theme.accentColor, -20));
+
         // Ensure persist
         localStorage.setItem('dentis-theme', JSON.stringify(theme));
 

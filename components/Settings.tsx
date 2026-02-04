@@ -1,53 +1,111 @@
-import React, { useState } from 'react';
-import { ThemeConfig, ViewType } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ViewType } from '../types';
 import {
   Moon, Sun, Check, Palette, Users2, ChevronRight,
   Bell, Lock, Globe, Database, Zap, Shield, Mail,
-  CreditCard, FileText, Settings as SettingsIcon
+  CreditCard, FileText, Settings as SettingsIcon,
+  LogOut, UserCircle
 } from 'lucide-react';
 import { SectionHeader } from './Shared';
 import { useAppContext } from '../lib/useAppContext';
+import { UserProfile, useClerk } from '@clerk/clerk-react';
 
 interface SettingsProps {
-  config: ThemeConfig;
-  onConfigChange: (c: ThemeConfig) => void;
   onNavigate: (view: ViewType) => void;
 }
 
 const COLORS = [
   { name: 'Ouro Real', hex: '#B59410' },
-  { name: 'Azul Safira', hex: '#0047AB' },
-  { name: 'Violeta', hex: '#5b21b6' },
+  { name: 'Azul Safira', hex: '#2563EB' },
+  { name: 'Violeta', hex: '#7c3aed' },
   { name: 'Esmeralda', hex: '#059669' },
-  { name: 'Titânio', hex: '#334155' },
-  { name: 'Rubi', hex: '#be123c' },
+  { name: 'Titânio', hex: '#475569' },
+  { name: 'Rubi', hex: '#dc2626' },
 ];
 
-const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate }) => {
-  const { showToast } = useAppContext();
+const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
+  const { showToast, theme, setTheme, session } = useAppContext();
+  const { openUserProfile } = useClerk(); // Clerk hook to open profile modal
+
+  const [loading, setLoading] = useState(true);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [notifications, setNotifications] = useState({
-    appointments: true,
-    payments: true,
-    marketing: false,
+    emailAppointments: true,
+    emailPayments: true,
+    emailMarketing: false,
+    securityAlerts: true,
+    whatsappEnabled: false,
+    pushEnabled: false,
   });
+
+  // Carregar preferências do servidor
+  useEffect(() => {
+    async function fetchPrefs() {
+      if (!session?.user?.id) return;
+      try {
+        setLoading(true);
+        // Em produção, o token deve ir no header Authorization.
+        // Aqui estamos usando header customizado para simplificar ou conforme middleware.
+        const res = await fetch('/api/settings/notifications', {
+          headers: { 'X-User-Id': session.user.id }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Remover campos de metadados se vierem
+          const { id, userId, createdAt, updatedAt, ...prefs } = data;
+          setNotifications(prev => ({ ...prev, ...prefs }));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar configurações", error);
+        showToast("Erro ao carregar preferências", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPrefs();
+  }, [session?.user?.id]);
+
+  // Função para salvar no servidor
+  const updateNotification = async (key: string, value: boolean) => {
+    const newPrefs = { ...notifications, [key]: value };
+    setNotifications(newPrefs); // Atualização otimista
+
+    try {
+      const res = await fetch('/api/settings/notifications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': session?.user?.id || ''
+        },
+        body: JSON.stringify({ [key]: value })
+      });
+
+      if (!res.ok) throw new Error();
+
+      showToast('Preferência salva', 'success');
+    } catch (error) {
+      setNotifications(notifications); // Reverte em caso de erro
+      showToast('Erro ao salvar preferência', 'error');
+    }
+  };
 
   const SettingRow = ({ icon: Icon, label, description, children, onClick }: any) => (
     <div
       onClick={onClick}
-      className={`flex items-center justify-between p-5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-all ${onClick ? 'cursor-pointer group' : ''}`}
+      className={`flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all ${onClick ? 'cursor-pointer group' : ''}`}
     >
       <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
+        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-slate-700 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all">
           <Icon size={20} strokeWidth={2.5} />
         </div>
         <div>
-          <span className="block font-bold text-slate-900 text-sm">{label}</span>
-          {description && <span className="text-xs text-slate-500 mt-0.5 block">{description}</span>}
+          <span className="block font-bold text-slate-900 dark:text-white text-sm">{label}</span>
+          {description && <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">{description}</span>}
         </div>
       </div>
       <div className="flex items-center gap-3">
         {children}
-        {onClick && <ChevronRight size={18} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" strokeWidth={2.5} />}
+        {onClick && <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all" strokeWidth={2.5} />}
       </div>
     </div>
   );
@@ -55,16 +113,14 @@ const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate 
   const Toggle = ({ enabled, onChange }: { enabled: boolean; onChange: () => void }) => (
     <button
       onClick={onChange}
-      className={`w-11 h-6 rounded-full transition-all duration-300 relative ${enabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+      disabled={loading}
+      className={`w-11 h-6 rounded-full transition-all duration-300 relative ${enabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'} ${loading ? 'opacity-50 cursor-wait' : ''}`}
     >
       <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-sm ${enabled ? 'left-6' : 'left-1'}`}></div>
     </button>
   );
 
-  const handleNotificationToggle = (key: keyof typeof notifications) => {
-    setNotifications({ ...notifications, [key]: !notifications[key] });
-    showToast(`Notificações ${!notifications[key] ? 'ativadas' : 'desativadas'}`, 'success');
-  };
+  if (!session) return null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
@@ -75,9 +131,9 @@ const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate 
       />
 
       {/* Aparência */}
-      <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-        <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200">
-          <h3 className="font-black text-slate-900 flex items-center gap-2">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Palette size={20} />
             Aparência
           </h3>
@@ -85,62 +141,70 @@ const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate 
 
         {/* Tema Claro/Escuro */}
         <SettingRow
-          icon={config.mode === 'light' ? Sun : Moon}
+          icon={theme.mode === 'light' ? Sun : Moon}
           label="Modo de Cor"
           description="Escolha entre tema claro ou escuro"
         >
-          <div className="flex bg-slate-100 p-1 rounded-lg">
+          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
             <button
-              onClick={() => onConfigChange({ ...config, mode: 'light' })}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${config.mode === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+              onClick={() => setTheme({ ...theme, mode: 'light' })}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
             >
               Claro
             </button>
             <button
-              onClick={() => onConfigChange({ ...config, mode: 'dark' })}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${config.mode === 'dark' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500'}`}
+              onClick={() => setTheme({ ...theme, mode: 'dark' })}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'dark' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
             >
               Escuro
             </button>
           </div>
         </SettingRow>
 
-        {/* Efeitos Visuais */}
-        <SettingRow
-          icon={Zap}
-          label="Efeitos Visuais"
-          description="Gradientes e animações suaves"
-        >
-          <Toggle
-            enabled={config.useGradient}
-            onChange={() => onConfigChange({ ...config, useGradient: !config.useGradient })}
-          />
-        </SettingRow>
-
         {/* Cor de Destaque */}
         <div className="p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-              <Palette size={20} strokeWidth={2.5} />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
+                <Palette size={20} strokeWidth={2.5} />
+              </div>
+              <div>
+                <span className="block font-bold text-slate-900 dark:text-white text-sm">Cor Principal</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Identidade visual da clínica</span>
+              </div>
             </div>
-            <div>
-              <span className="block font-bold text-slate-900 text-sm">Cor Principal</span>
-              <span className="text-xs text-slate-500">Identidade visual da clínica</span>
+
+            {/* Seletor Customizado Moderno */}
+            <div className="relative">
+              <label className="flex items-center gap-2 cursor-pointer bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <div
+                  className="w-5 h-5 rounded-full border border-slate-200 shadow-sm"
+                  style={{ backgroundColor: theme.accentColor }}
+                ></div>
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Customizar</span>
+                <input
+                  type="color"
+                  value={theme.accentColor}
+                  onChange={(e) => setTheme({ ...theme, accentColor: e.target.value })}
+                  className="absolute opacity-0 inset-0 w-full h-full cursor-pointer"
+                />
+              </label>
             </div>
           </div>
+
           <div className="flex gap-3 flex-wrap">
             {COLORS.map((c) => (
               <button
                 key={c.hex}
                 onClick={() => {
-                  onConfigChange({ ...config, accentColor: c.hex });
+                  setTheme({ ...theme, accentColor: c.hex });
                   showToast(`Cor alterada para ${c.name}`, 'success');
                 }}
-                className={`w-10 h-10 rounded-lg shadow-md transition-all hover:scale-110 flex items-center justify-center border-2 ${config.accentColor === c.hex ? 'border-white ring-2 ring-blue-500' : 'border-transparent'}`}
+                className={`w-10 h-10 rounded-lg shadow-md transition-all hover:scale-110 flex items-center justify-center border-2 ${theme.accentColor === c.hex ? 'border-white ring-2 ring-blue-500' : 'border-transparent'}`}
                 style={{ backgroundColor: c.hex }}
                 title={c.name}
               >
-                {config.accentColor === c.hex && <Check size={16} strokeWidth={3} className="text-white" />}
+                {theme.accentColor === c.hex && <Check size={16} strokeWidth={3} className="text-white" />}
               </button>
             ))}
           </div>
@@ -162,8 +226,8 @@ const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate 
           description="Lembretes de consultas agendadas"
         >
           <Toggle
-            enabled={notifications.appointments}
-            onChange={() => handleNotificationToggle('appointments')}
+            enabled={notifications.emailAppointments}
+            onChange={() => updateNotification('emailAppointments', !notifications.emailAppointments)}
           />
         </SettingRow>
 
@@ -173,8 +237,8 @@ const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate 
           description="Alertas de pagamentos recebidos"
         >
           <Toggle
-            enabled={notifications.payments}
-            onChange={() => handleNotificationToggle('payments')}
+            enabled={notifications.emailPayments}
+            onChange={() => updateNotification('emailPayments', !notifications.emailPayments)}
           />
         </SettingRow>
 
@@ -184,8 +248,8 @@ const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate 
           description="Dicas e atualizações do sistema"
         >
           <Toggle
-            enabled={notifications.marketing}
-            onChange={() => handleNotificationToggle('marketing')}
+            enabled={notifications.emailMarketing}
+            onChange={() => updateNotification('emailMarketing', !notifications.emailMarketing)}
           />
         </SettingRow>
       </div>
@@ -208,10 +272,12 @@ const Settings: React.FC<SettingsProps> = ({ config, onConfigChange, onNavigate 
 
         <SettingRow
           icon={Shield}
-          label="Segurança e Privacidade"
-          description="Autenticação e proteção de dados"
-          onClick={() => showToast('Em breve: Configurações de segurança', 'info')}
-        />
+          label="Segurança da Conta"
+          description="Senha, Autenticação de Dois Fatores (2FA) e Sessões"
+          onClick={() => openUserProfile()}
+        >
+          <button onClick={() => openUserProfile()} className="text-xs font-bold text-blue-600 hover:underline px-2">Gerenciar</button>
+        </SettingRow>
       </div>
 
       {/* Sistema */}
