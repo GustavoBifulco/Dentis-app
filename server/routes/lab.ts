@@ -1,165 +1,92 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { db } from '../db';
-import { orders, organizations, patients } from '../db/schema';
-import { eq, and, sql, desc } from 'drizzle-orm';
-import { authMiddleware } from '../middleware/auth';
+import { labCases } from '../db/schema';
+import { eq, and, desc } from 'drizzle-orm';
+import { logTimelineEvent } from '../services/timeline';
 
-import type { UserSession } from '../../types';
+const app = new Hono<{ Variables: { user: any; organizationId: string } }>();
 
-const labRoute = new Hono<{ Variables: { organizationId: string; userId: string; session: UserSession } }>();
-
-// Apply auth middleware to all routes
-labRoute.use('*', authMiddleware);
-
-/**
- * GET /api/lab/dashboard
- * Fetch lab-specific dashboard statistics
- */
-labRoute.get('/dashboard', async (c) => {
-    const session = c.get('session');
-
-    if (!session?.activeOrganization) {
-        return c.json({ error: 'No active organization' }, 400);
-    }
-
-    const labId = session.activeOrganization.id;
-
-    // Count orders by status
-    const statusCounts = await db
-        .select({
-            status: orders.status,
-            count: sql<number>`count(*)::int`,
-        })
-        .from(orders)
-        .where(eq(orders.labId, labId))
-        .groupBy(orders.status);
-
-    // Calculate revenue metrics
-    const revenueData = await db
-        .select({
-            totalRevenue: sql<string>`COALESCE(SUM(CAST(${orders.subtotal} AS DECIMAL)), 0)`,
-            paidRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${orders.paymentStatus} = 'PAID' THEN CAST(${orders.subtotal} AS DECIMAL) ELSE 0 END), 0)`,
-            pendingRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${orders.paymentStatus} = 'PENDING' THEN CAST(${orders.subtotal} AS DECIMAL) ELSE 0 END), 0)`,
-        })
-        .from(orders)
-        .where(eq(orders.labId, labId));
-
-    const stats = {
-        pending: statusCounts.find(s => s.status === 'PENDING')?.count || 0,
-        inProduction: statusCounts.find(s => s.status === 'IN_PRODUCTION')?.count || 0,
-        ready: statusCounts.find(s => s.status === 'READY')?.count || 0,
-        delivered: statusCounts.find(s => s.status === 'DELIVERED')?.count || 0,
-        totalRevenue: parseFloat(revenueData[0]?.totalRevenue || '0'),
-        paidRevenue: parseFloat(revenueData[0]?.paidRevenue || '0'),
-        pendingRevenue: parseFloat(revenueData[0]?.pendingRevenue || '0'),
-    };
-
-    return c.json({ stats });
+const labCaseSchema = z.object({
+    patientId: z.number(),
+    laboratoryName: z.string(),
+    type: z.string(),
+    description: z.string().optional(),
+    dueDate: z.string().optional(),
+    price: z.number().optional(),
 });
 
-/**
- * GET /api/lab/orders
- * Fetch all orders for the lab with optional status filter
- */
-labRoute.get('/orders', async (c) => {
-    const session = c.get('session');
-    const statusFilter = c.req.query('status');
+// GET /api/lab
+app.get('/', async (c) => {
+    const organizationId = c.get('organizationId');
+    const cases = await db.select().from(labCases)
+        .where(eq(labCases.organizationId, organizationId))
+        .orderBy(desc(labCases.createdAt));
+    return c.json(cases);
+});
 
-    if (!session?.activeOrganization) {
-        return c.json({ error: 'No active organization' }, 400);
-    }
+// POST /api/lab (Create OS)
+app.post('/', zValidator('json', labCaseSchema), async (c) => {
+    const organizationId = c.get('organizationId');
+    const user = c.get('user');
+    const body = c.req.valid('json');
 
-    const labId = session.activeOrganization.id;
+    const [newCase] = await db.insert(labCases).values({
+        organizationId,
+        patientId: body.patientId,
+        laboratoryName: body.laboratoryName,
+        type: body.type,
+        description: body.description,
+        dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        price: body.price ? String(body.price) : null,
+        status: 'planned'
+    } as any).returning();
 
-    const conditions = [eq(orders.labId, labId)];
-    if (statusFilter) {
-        conditions.push(eq(orders.status, statusFilter));
-    }
-
-    const labOrders = await db
-        .select({
-            id: orders.id,
-            description: orders.description,
-            status: orders.status,
-            price: orders.price,
-            subtotal: orders.subtotal,
-            deliveryFee: orders.deliveryFee,
-            paymentStatus: orders.paymentStatus,
-            deadline: orders.deadline,
-            createdAt: orders.createdAt,
-            clinicName: organizations.name,
-            patientName: patients.name,
-        })
-        .from(orders)
-        .leftJoin(organizations, eq(orders.organizationId, organizations.id))
-        .leftJoin(patients, eq(orders.patientId, patients.id))
-        .where(and(...conditions))
-        .orderBy(desc(orders.createdAt));
-
-    return c.json({
-        orders: labOrders.map(order => ({
-            id: order.id,
-            description: order.description,
-            status: order.status,
-            price: order.price,
-            subtotal: order.subtotal,
-            deliveryFee: order.deliveryFee,
-            paymentStatus: order.paymentStatus,
-            deadline: order.deadline,
-            createdAt: order.createdAt,
-            clinic: order.clinicName,
-            patient: order.patientName,
-        }))
+    logTimelineEvent({
+        organizationId,
+        patientId: body.patientId,
+        eventType: 'lab',
+        refType: 'lab_case',
+        refId: String(newCase.id),
+        title: `OS de Laboratório Criada`,
+        summary: `${body.type} - ${body.laboratoryName}`,
+        createdBy: user.id
     });
+
+    return c.json(newCase);
 });
 
-/**
- * PATCH /api/lab/orders/:id/status
- * Update order status (for kanban drag-and-drop)
- */
-labRoute.patch('/orders/:id/status', async (c) => {
-    const session = c.get('session');
-    const orderId = parseInt(c.req.param('id'));
+// PUT /api/lab/:id/status (Send/Receive)
+app.put('/:id/status', async (c) => {
+    const id = Number(c.req.param('id'));
+    const organizationId = c.get('organizationId');
+    const user = c.get('user');
     const { status } = await c.req.json();
 
-    if (!session?.activeOrganization) {
-        return c.json({ error: 'No active organization' }, 400);
-    }
-
-    const validStatuses = ['PENDING', 'IN_PRODUCTION', 'READY', 'IN_TRANSIT', 'DELIVERED'];
-    if (!validStatuses.includes(status)) {
-        return c.json({ error: 'Invalid status' }, 400);
-    }
-
-    // Verify order belongs to this lab
-    const [order] = await db
-        .select()
-        .from(orders)
-        .where(
-            and(
-                eq(orders.id, orderId),
-                eq(orders.labId, session.activeOrganization.id)
-            )
-        );
-
-    if (!order) {
-        return c.json({ error: 'Order not found or unauthorized' }, 404);
-    }
-
-    // Update status
-    const [updated] = await db
-        .update(orders)
-        .set({ status })
-        .where(eq(orders.id, orderId))
+    const [updated] = await db.update(labCases)
+        .set({
+            status,
+            updatedAt: new Date(),
+            sentDate: status === 'sent' ? new Date() : undefined,
+            receivedDate: status === 'received' ? new Date() : undefined
+        })
+        .where(and(eq(labCases.id, id), eq(labCases.organizationId, organizationId)))
         .returning();
 
-    return c.json({
-        success: true,
-        order: {
-            id: updated.id,
-            status: updated.status,
-        }
-    });
+    if (updated) {
+        logTimelineEvent({
+            organizationId,
+            patientId: updated.patientId,
+            eventType: 'lab',
+            refType: 'lab_case',
+            refId: String(id),
+            title: `Laboratório: ${status.toUpperCase()}`,
+            createdBy: user.id
+        });
+    }
+
+    return c.json(updated);
 });
 
-export default labRoute;
+export default app;

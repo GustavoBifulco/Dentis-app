@@ -6,7 +6,7 @@ type TimelineEventInput = {
     unitId?: string;
     patientId?: number;
     eventType: 'clinical' | 'financial' | 'logistic' | 'system' | 'lab';
-    refType: 'encounter' | 'payment' | 'shipment' | 'lab_case' | 'document' | 'alert';
+    refType: 'encounter' | 'payment' | 'shipment' | 'lab_case' | 'document' | 'alert' | 'odontogram';
     refId: string;
     title: string;
     summary?: string;

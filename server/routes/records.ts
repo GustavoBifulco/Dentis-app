@@ -12,12 +12,14 @@ import {
     patientConsents,
     patientProblems,
     patientMedications,
-    odontogram, treatmentPlans, planItems
+    odontogram, treatmentPlans, planItems, timelineEvents
 } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { authMiddleware, requireMfa } from '../middleware/auth';
 import { checkTenantAccess } from '../utils/tenant';
 import { logAudit, logAccess } from '../services/audit';
+import { getLockReason } from '../utils/status';
+import { logTimelineEvent } from '../services/timeline';
 
 const app = new Hono<{ Variables: { user: any; organizationId: string; userId: string } }>();
 
@@ -42,7 +44,11 @@ app.get('/timeline/:patientId', async (c) => {
 
     checkTenantAccess(user, organizationId, 'view_clinical_record');
 
-    // Fetch all clinical events in parallel
+    // Fetch new Unified Timeline Events
+    const newEvents = await db.select().from(timelineEvents)
+        .where(and(eq(timelineEvents.patientId, patientId), eq(timelineEvents.organizationId, organizationId)));
+
+    // Fetch all legacy clinical events in parallel
     const [
         encountersList,
         prescriptionsList,
@@ -59,6 +65,11 @@ app.get('/timeline/:patientId', async (c) => {
 
     // Normalize and Merge
     const timeline = [
+        ...newEvents.map(e => ({
+            type: 'timeline_event', // Frontend helper to handle generic events
+            date: e.createdAt,
+            data: e
+        })),
         ...encountersList.map(e => ({ type: 'encounter', date: e.date, data: e })),
         ...prescriptionsList.map(p => ({ type: 'prescription', date: p.issuedAt || p.createdAt, data: p })),
         ...examsList.map(x => ({ type: 'exam_order', date: x.createdAt, data: x })),
@@ -263,6 +274,21 @@ app.post('/odontogram', async (c) => {
         status: 'current'
     }).returning();
 
+    // W1.3 Odontogram Timeline
+    const user = c.get('user');
+    if (user) {
+        logTimelineEvent({
+            organizationId,
+            patientId: body.patientId,
+            eventType: 'clinical',
+            refType: 'odontogram',
+            refId: String(entry.id),
+            title: `Odontograma: Dente ${body.tooth}`,
+            summary: `${body.condition} (${body.surface})`,
+            createdBy: user.id
+        });
+    }
+
     return c.json(entry);
 });
 
@@ -376,6 +402,17 @@ app.post('/encounters', zValidator('json', encounterSchema), async (c) => {
         date: new Date().toISOString()
     } as any).returning();
 
+    // W1.2 Timeline Event
+    logTimelineEvent({
+        organizationId,
+        patientId: body.patientId,
+        eventType: 'clinical',
+        refType: 'encounter',
+        refId: String(newEncounter.id),
+        title: `Atendimento Iniciado (${body.type})`,
+        createdBy: user.id
+    });
+
     return c.json({ ok: true, data: newEncounter });
 });
 
@@ -390,8 +427,11 @@ app.put('/encounters/:id', zValidator('json', encounterSchema.partial()), async 
     const existing = await db.select().from(encounters).where(and(eq(encounters.id, id), eq(encounters.organizationId, organizationId))).limit(1);
 
     if (!existing.length) return c.json({ error: 'Not found' }, 404);
-    if (existing[0].status === 'locked' || existing[0].status === 'signed') {
-        return c.json({ error: 'Cannot edit signed record. Use addendum.' }, 403);
+
+    // W1.1 Status Lock Check
+    const lockReason = getLockReason(existing[0]);
+    if (lockReason) {
+        return c.json({ error: lockReason }, 403);
     }
 
     const [updated] = await db.update(encounters)
@@ -401,6 +441,8 @@ app.put('/encounters/:id', zValidator('json', encounterSchema.partial()), async 
         })
         .where(eq(encounters.id, id))
         .returning();
+
+    // Log meaningful updates? Or just keeping the noise low. Only log major state changes.
 
     return c.json({ ok: true, data: updated });
 });
@@ -422,6 +464,18 @@ app.post('/encounters/:id/sign', requireMfa, async (c) => {
         })
         .where(eq(encounters.id, id))
         .returning();
+
+    // W1.2 Timeline Event
+    logTimelineEvent({
+        organizationId,
+        patientId: existing[0].patientId,
+        eventType: 'clinical',
+        refType: 'encounter',
+        refId: String(id),
+        title: `Atendimento Assinado`,
+        summary: `Assinado por ${user.name}`,
+        createdBy: user.id
+    });
 
     logAudit({
         userId: user.id,

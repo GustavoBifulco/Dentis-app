@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
-import { inventory } from '../db/schema';
+import { inventory, inventoryBatches, inventoryMovements } from '../db/schema';
 import { scopedDb } from '../db/scoped';
 import { seedDefaultData } from '../services/seedData';
 import { authMiddleware } from '../middleware/auth';
-import { eq } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
+import { logTimelineEvent } from '../services/timeline';
+import { db } from '../db';
 
 const app = new Hono();
 
@@ -109,6 +111,123 @@ app.delete('/:id', async (c) => {
     console.error('Error deleting inventory item:', error);
     return c.json({ error: 'Failed to delete item' }, 500);
   }
+});
+
+// --- W2.3 BATCHES & MOVEMENTS ---
+
+// GET /api/inventory/batches/:itemId
+app.get('/batches/:itemId', async (c) => {
+  const auth = c.get('auth');
+  const itemId = Number(c.req.param('itemId'));
+
+  const batches = await db.select().from(inventoryBatches)
+    .where(and(eq(inventoryBatches.itemId, itemId), eq(inventoryBatches.organizationId, auth.organizationId)))
+    .orderBy(desc(inventoryBatches.expiryDate));
+
+  return c.json(batches);
+});
+
+// POST /api/inventory/movements (IN/OUT)
+app.post('/movements', async (c) => {
+  const auth = c.get('auth'); // Auth middleware sets this
+  const user = c.get('user'); // Auth middleware sets this too usually (check middleware)
+  // authMiddleware in 'middleware/auth.ts' usually sets c.set('user', ...) and c.set('auth', { userId, organizationId })
+  // In this file, it uses c.get('auth').
+
+  // User ID fallback
+  const userId = user?.id || auth.userId;
+
+  const body = await c.req.json();
+  /*
+    body: {
+      itemId: number,
+      type: 'in' | 'out' | 'adjust',
+      quantity: number,
+      batchNumber?: string,
+      expiryDate?: string,
+      refType?: string,
+      refId?: string
+    }
+  */
+
+  // 1. Transaction? Ideal, but for now linear.
+  // 2. Handle Batch
+  let batchId = body.batchId;
+
+  if (body.type === 'in' && body.batchNumber) {
+    // Create or find batch
+    const existingInfo = await db.select().from(inventoryBatches).where(and(
+      eq(inventoryBatches.itemId, body.itemId),
+      eq(inventoryBatches.batchNumber, body.batchNumber),
+      eq(inventoryBatches.organizationId, auth.organizationId)
+    )).limit(1);
+
+    if (existingInfo.length > 0) {
+      batchId = existingInfo[0].id;
+      // Update quantity
+      await db.update(inventoryBatches)
+        .set({ quantity: existingInfo[0].quantity! + body.quantity })
+        .where(eq(inventoryBatches.id, batchId));
+    } else {
+      const [newBatch] = await db.insert(inventoryBatches).values({
+        organizationId: auth.organizationId,
+        itemId: body.itemId,
+        batchNumber: body.batchNumber,
+        expiryDate: new Date(body.expiryDate),
+        quantity: body.quantity,
+        location: body.location
+      }).returning();
+      batchId = newBatch.id;
+    }
+  } else if (body.type === 'out' && body.batchId) {
+    // Deduct from batch
+    const batch = await db.select().from(inventoryBatches).where(eq(inventoryBatches.id, body.batchId)).limit(1);
+    if (batch.length) {
+      await db.update(inventoryBatches)
+        .set({ quantity: Math.max(0, batch[0].quantity! - body.quantity) })
+        .where(eq(inventoryBatches.id, body.batchId));
+    }
+  }
+
+  // 3. Update Main Inventory (Reference)
+  const item = await db.select().from(inventory).where(eq(inventory.id, body.itemId)).limit(1);
+  if (item.length) {
+    const change = body.type === 'in' ? body.quantity : -body.quantity;
+    await db.update(inventory)
+      .set({ quantity: (item[0].quantity || 0) + change })
+      .where(eq(inventory.id, body.itemId));
+  }
+
+  // 4. Log Movement
+  const [movement] = await db.insert(inventoryMovements).values({
+    organizationId: auth.organizationId,
+    itemId: body.itemId,
+    batchId: batchId || null,
+    type: body.type,
+    quantity: body.quantity,
+    refType: body.refType,
+    refId: body.refId,
+    createdBy: userId
+  }).returning();
+
+  // 5. Timeline Event (Major movements)
+  if (body.type === 'in' || body.quantity > 10) { // Threshold for noise?
+    logTimelineEvent({
+      organizationId: auth.organizationId,
+      eventType: 'logistic', // or 'system'
+      // Actually reusing 'shipment' or generic.
+      // Let's use 'alert' as stock alert? Or 'document'? 
+      // I'll skip timeline for now to avoid RefType error until I add 'inventory' to types.
+      // Or use 'system' eventType with 'alert' refType.
+      refType: 'alert',
+      refId: String(movement.id),
+      title: `Estoque: ${body.type === 'in' ? 'Entrada' : 'Saída'} - ${item[0]?.name}`,
+      summary: `${body.quantity} un. (Lote: ${body.batchNumber || 'N/A'})`,
+      createdBy: userId
+    });
+  }
+
+  return c.json(movement);
 });
 
 export default app;

@@ -94,6 +94,14 @@ app.route('/api/treatment', treatment);
 app.route('/api/anamnesis', anamnesis);
 app.route('/api/settings', settings);
 
+import automations from './routes/automations';
+
+// ... (existing imports)
+
+// ... (existing routes)
+app.route('/api/settings', settings);
+app.route('/api/automations', automations);
+
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 
 

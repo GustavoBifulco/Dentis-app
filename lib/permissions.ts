@@ -7,19 +7,31 @@ import { UserCapabilities, UserSession, OrganizationRole } from '../types';
 export const PermissionManager = {
 
     /**
-     * Verifica se o usuário pode acessar dados financeiros.
-     * Requer role 'admin' na organização.
+     * Verifica se o usuário tem uma permissão granular específica.
+     * Ex: hasPermission(session, 'clinical', 'view')
+     */
+    hasPermission: (session: UserSession, module: string, action: string): boolean => {
+        if (!session.user.permissions) return false;
+        // Admin or '*' wildcard
+        if (session.user.permissions.includes('*:*')) return true;
+        if (session.user.permissions.includes(`${module}:*`)) return true;
+        return session.user.permissions.includes(`${module}:${action}`);
+    },
+
+    /**
+     * Verifica se pode acessar dados financeiros.
+     * Requer role 'admin' na organização OU permissão 'financial:view'.
      */
     canAccessFinancial: (session: UserSession): boolean => {
-        return session.capabilities.isOrgAdmin;
+        return session.capabilities.isOrgAdmin || PermissionManager.hasPermission(session, 'financial', 'view');
     },
 
     /**
      * Verifica se pode acessar prontuários e agenda clínica.
-     * Requer ser profissional de saúde OU admin.
+     * Requer ser profissional de saúde OU admin OU permissão 'clinical:view'.
      */
     canAccessClinical: (session: UserSession): boolean => {
-        return session.capabilities.isHealthProfessional || session.capabilities.isOrgAdmin;
+        return session.capabilities.isHealthProfessional || session.capabilities.isOrgAdmin || PermissionManager.hasPermission(session, 'clinical', 'view');
     },
 
     /**
@@ -27,7 +39,7 @@ export const PermissionManager = {
      * Requer ser estritamente Profissional de Saúde.
      */
     canExecuteClinical: (session: UserSession): boolean => {
-        return session.capabilities.isHealthProfessional;
+        return session.capabilities.isHealthProfessional; // Strict? Or allow 'clinical:execute'?
     },
 
     /**

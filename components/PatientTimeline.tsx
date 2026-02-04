@@ -8,40 +8,47 @@ import {
     Pill,
     Paperclip,
     ChevronRight,
-    ChevronDown,
-    Stethoscope
+    Stethoscope,
+    Truck,
+    FlaskConical,
+    DollarSign,
+    AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-interface TimelineEvent {
-    type: 'encounter' | 'prescription' | 'exam_order' | 'document_emitted' | 'attachment';
-    date: string;
-    data: any;
-}
+import { TimelineItem, UnifiedTimelineEvent } from '../types';
 
 interface PatientTimelineProps {
-    events: TimelineEvent[];
+    events: TimelineItem[];
     loading?: boolean;
-    onSelectEvent?: (event: TimelineEvent) => void;
+    onSelectEvent?: (event: TimelineItem) => void;
 }
 
-const EventIcon = ({ type }: { type: string }) => {
+const EventIcon = ({ type, subType }: { type: string, subType?: string }) => {
     switch (type) {
         case 'encounter': return <Stethoscope size={20} className="text-blue-500" />;
         case 'prescription': return <Pill size={20} className="text-green-500" />;
         case 'exam_order': return <Activity size={20} className="text-purple-500" />;
         case 'document_emitted': return <FileText size={20} className="text-orange-500" />;
+        case 'timeline_event':
+            switch (subType) {
+                case 'lab': return <FlaskConical size={20} className="text-pink-500" />;
+                case 'logistic': return <Truck size={20} className="text-indigo-500" />;
+                case 'financial': return <DollarSign size={20} className="text-emerald-500" />;
+                default: return <AlertCircle size={20} className="text-gray-500" />;
+            }
         default: return <Paperclip size={20} className="text-gray-500" />;
     }
 };
 
-const EventCard = ({ event, onClick }: { event: TimelineEvent; onClick?: () => void }) => {
+const EventCard = ({ event, onClick }: { event: TimelineItem; onClick?: () => void }) => {
     const { type, date, data } = event;
     const formattedDate = format(new Date(date), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR });
 
     let title = 'Evento';
     let details = '';
+    let status = data.status;
+    let subType = '';
 
     if (type === 'encounter') {
         title = `Atendimento (${data.type || 'Consulta'})`;
@@ -55,6 +62,12 @@ const EventCard = ({ event, onClick }: { event: TimelineEvent; onClick?: () => v
     } else if (type === 'document_emitted') {
         title = data.title || 'Documento';
         details = data.type;
+    } else if (type === 'timeline_event') {
+        const tObj = data as UnifiedTimelineEvent;
+        title = tObj.title;
+        details = tObj.summary || '';
+        subType = tObj.eventType;
+        // Status might be in metadata or implied
     }
 
     return (
@@ -64,7 +77,7 @@ const EventCard = ({ event, onClick }: { event: TimelineEvent; onClick?: () => v
             onClick={onClick}
         >
             <div className={`p-3 rounded-full h-fit flex items-center justify-center bg-gray-50`}>
-                <EventIcon type={type} />
+                <EventIcon type={type} subType={subType} />
             </div>
             <div className="flex-1">
                 <div className="flex justify-between items-start">
@@ -75,9 +88,9 @@ const EventCard = ({ event, onClick }: { event: TimelineEvent; onClick?: () => v
                 </div>
                 <p className="text-sm text-gray-600 mt-1 line-clamp-2">{details}</p>
 
-                {data.status && (
+                {status && (
                     <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
-                        ${data.status === 'draft' ? 'bg-yellow-100 text-yellow-700' : ''}
+                        ${status === 'draft' ? 'bg-yellow-100 text-yellow-700' : ''}
                         ${data.status === 'signed' ? 'bg-green-100 text-green-700' : ''}
                         ${data.status === 'ordered' ? 'bg-blue-100 text-blue-700' : ''}
                     `}>
@@ -95,7 +108,12 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({ events, loading, onSe
 
     const filteredEvents = filter === 'all'
         ? events
-        : events.filter(e => e.type === filter);
+        : events.filter(e => {
+            if (e.type === 'timeline_event') {
+                return (e.data as UnifiedTimelineEvent).eventType === filter;
+            }
+            return e.type === filter; // Legacy
+        });
 
     if (loading) return <div className="p-8 text-center text-gray-400">Carregando histórico...</div>;
 
@@ -113,20 +131,20 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({ events, loading, onSe
 
     return (
         <div className="space-y-6">
-            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
-                {['all', 'encounter', 'prescription', 'exam_order', 'document'].map((f) => (
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit overflow-x-auto">
+                {['all', 'encounter', 'lab', 'logistic', 'financial'].map((f) => (
                     <button
                         key={f}
                         onClick={() => setFilter(f)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${filter === f
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${filter === f
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         {f === 'all' ? 'Tudo' :
-                            f === 'encounter' ? 'Consultas' :
-                                f === 'prescription' ? 'Receitas' :
-                                    f === 'exam_order' ? 'Exames' : 'Docs'}
+                            f === 'encounter' ? 'Clínico' :
+                                f === 'lab' ? 'Laboratório' :
+                                    f === 'logistic' ? 'Logística' : 'Financeiro'}
                     </button>
                 ))}
             </div>

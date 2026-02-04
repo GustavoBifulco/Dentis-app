@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -16,19 +17,29 @@ import { Services } from '../lib/services';
 import CreateLabOrder from './CreateLabOrder';
 
 // Configuração das Colunas do Kanban
+// Configuração das Colunas do Kanban 2026
 const COLUMNS = [
   {
-    id: 'requested',
-    title: 'A Enviar',
-    icon: Clock,
-    color: 'text-orange-600',
-    bg: 'bg-orange-50',
-    accent: 'bg-orange-500',
-    borderColor: 'border-orange-200'
+    id: 'created',
+    title: 'Criado',
+    icon: Plus,
+    color: 'text-gray-600',
+    bg: 'bg-gray-50',
+    accent: 'bg-gray-500',
+    borderColor: 'border-gray-200'
   },
   {
-    id: 'production',
-    title: 'No Laboratório',
+    id: 'sent',
+    title: 'Enviado',
+    icon: Bike,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    accent: 'bg-indigo-500',
+    borderColor: 'border-indigo-200'
+  },
+  {
+    id: 'in_production',
+    title: 'Produção',
     icon: TestTube,
     color: 'text-blue-600',
     bg: 'bg-blue-50',
@@ -36,17 +47,17 @@ const COLUMNS = [
     borderColor: 'border-blue-200'
   },
   {
-    id: 'ready',
-    title: 'A Caminho',
-    icon: Bike,
-    color: 'text-purple-600',
-    bg: 'bg-purple-50',
-    accent: 'bg-purple-500',
-    borderColor: 'border-purple-200'
+    id: 'proof',
+    title: 'Prova',
+    icon: Cloud,
+    color: 'text-orange-600',
+    bg: 'bg-orange-50',
+    accent: 'bg-orange-500',
+    borderColor: 'border-orange-200'
   },
   {
     id: 'delivered',
-    title: 'No Consultório',
+    title: 'Entregue',
     icon: CheckCircle2,
     color: 'text-emerald-600',
     bg: 'bg-emerald-50',
@@ -61,9 +72,18 @@ export default function Labs() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [courierRequested, setCourierRequested] = useState(false);
 
+  // Logistics Modal State
+  const [isShipmentModalOpen, setIsShipmentModalOpen] = useState(false);
+  const [selectedOrderForShipment, setSelectedOrderForShipment] = useState<LabOrder | null>(null);
+
+  // Auth context for token
+  const { getToken } = useAuth();
+
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await Services.labs.list();
+      const token = await getToken();
+      if (!token) return;
+      const res = await Services.labs.list(token);
       if (res.data) {
         setOrders(res.data);
       }
@@ -201,7 +221,7 @@ export default function Labs() {
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.9 }}
                           whileHover={{ y: -4, boxShadow: "0 12px 24px -8px rgba(0,0,0,0.1)" }}
-                          onClick={() => advanceOrder(order.id)}
+                          // onClick={() => advanceOrder(order.id)} // Removed auto-advance
                           className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 cursor-pointer group relative overflow-hidden"
                         >
                           <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${column.accent}`} />
@@ -232,6 +252,35 @@ export default function Labs() {
                                 {order.labName || 'Sem laboratório'}
                               </span>
                             </div>
+
+                            {/* Action Button for Created -> Sent */}
+                            {column.id === 'created' && !order.isDigital && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrderForShipment(order);
+                                  setIsShipmentModalOpen(true);
+                                }}
+                                className="mt-3 w-full py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                              >
+                                <Bike size={14} /> Despachar
+                              </button>
+                            )}
+
+                            {/* Action Button for Digital -> Sent (Instant?) */}
+                            {column.id === 'created' && order.isDigital && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Instant send logic
+                                  advanceOrder(order.id);
+                                }}
+                                className="mt-3 w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-500 transition-colors flex items-center justify-center gap-2"
+                              >
+                                <Cloud size={14} /> Enviar Arquivo
+                              </button>
+                            )}
+
                           </div>
                         </motion.div>
                       ))}
@@ -250,6 +299,23 @@ export default function Labs() {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {isShipmentModalOpen && selectedOrderForShipment && (
+          <CreateShipment
+            isOpen={isShipmentModalOpen}
+            onClose={() => {
+              setIsShipmentModalOpen(false);
+              fetchOrders(); // Refresh after
+            }}
+            labOrderId={selectedOrderForShipment.id}
+            labName={selectedOrderForShipment.labName}
+            onShipmentCreated={() => {
+              // Status updated inside modal
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

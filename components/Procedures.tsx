@@ -123,22 +123,37 @@ const Procedures: React.FC = () => {
                               <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase">Código</th>
                               <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase">Procedimento</th>
                               <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase">Duração</th>
-                              <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase">Valor</th>
+                              <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase">Custo Clínico</th>
+                              <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase">Preço Venda</th>
+                              <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase">Margem</th>
                               <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                            {categoryProcs.map(proc => (
-                              <tr key={proc.id} className="hover:bg-white transition group">
-                                <td className="px-6 py-4 text-sm font-mono text-slate-500">{proc.code}</td>
-                                <td className="px-6 py-4 font-bold text-slate-900">{proc.name}</td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{proc.durationMinutes || proc.duration} min</td>
-                                <td className="px-6 py-4 text-right font-black text-slate-800">R$ {Number(proc.price).toFixed(2)}</td>
-                                <td className="px-6 py-4 text-right">
-                                  <button className="text-indigo-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Editar</button>
-                                </td>
-                              </tr>
-                            ))}
+                            {categoryProcs.map(proc => {
+                              const cost = Number(proc.cost || 0);
+                              const price = Number(proc.price || 0);
+                              const margin = price - cost;
+                              const marginPercent = price > 0 ? (margin / price) * 100 : 0;
+
+                              return (
+                                <tr key={proc.id} className="hover:bg-white transition group">
+                                  <td className="px-6 py-4 text-sm font-mono text-slate-500">{proc.code || '-'}</td>
+                                  <td className="px-6 py-4 font-bold text-slate-900">{proc.name}</td>
+                                  <td className="px-6 py-4 text-sm text-slate-500">{proc.durationMinutes || proc.duration} min</td>
+                                  <td className="px-6 py-4 text-right text-sm text-slate-500">R$ {cost.toFixed(2)}</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800">R$ {price.toFixed(2)}</td>
+                                  <td className="px-6 py-4 text-right">
+                                    <div className={`inline-flex items-center gap-1 font-bold text-xs px-2 py-1 rounded-full ${margin > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                      {marginPercent.toFixed(1)}%
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <button className="text-indigo-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Editar</button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

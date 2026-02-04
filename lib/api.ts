@@ -19,6 +19,28 @@ export const api = {
         });
         if (!res.ok) throw new Error('Falha na requisição post');
         return res.json();
+    },
+    patch: async (endpoint: string, data: any, token: string) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Falha na requisição patch');
+        return res.json();
+    },
+    delete: async (endpoint: string, token: string) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!res.ok) throw new Error('Falha na requisição delete');
+        return res.json();
     }
 };
 

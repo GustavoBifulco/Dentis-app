@@ -120,6 +120,7 @@ export const procedures = pgTable('procedures', {
   cost: numeric('cost'), // Added
   code: text('code'), // Added
   duration: integer('duration'),
+  bom: jsonb('bom'), // Array of { itemId, name, quantity, unitCost }
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -990,3 +991,152 @@ export const addendums = pgTable('addendums', {
   createdAt: timestamp('created_at').defaultNow(),
   createdBy: text('created_by').notNull(), // User ID
 });
+
+// WAVE 2: Lab & Logistics
+
+export const labCases = pgTable('lab_cases', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id).notNull(),
+
+  laboratoryName: text('laboratory_name').notNull(),
+  type: text('type').notNull(), // 'prosthesis', 'guard', 'aligner'
+
+  description: text('description'),
+
+  status: text('status').default('planned'), // planned, sent, received, installed
+
+  sentDate: timestamp('sent_date'),
+  dueDate: timestamp('due_date'),
+  receivedDate: timestamp('received_date'),
+
+  price: numeric('price'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+
+
+export const labCasesRelations = relations(labCases, ({ one }) => ({
+  patient: one(patients, {
+    fields: [labCases.patientId],
+    references: [patients.id],
+  }),
+}));
+
+export const shipments = pgTable('shipments', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+
+  trackingCode: text('tracking_code'),
+  provider: text('provider'), // 'loggi', 'correios', 'driver'
+  status: text('status').default('created'), // created, picked_up, delivered
+
+  refType: text('ref_type'), // 'lab_case'
+  refId: text('ref_id'),
+
+  metadata: jsonb('metadata'), // Proof of delivery URL, driver name
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Inventory W2.3 (Batches & Movements)
+export const inventoryBatches = pgTable('inventory_batches', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+
+  itemId: integer('item_id'), // Reference to existing inventory items if they exist
+  batchNumber: text('batch_number').notNull(),
+  expiryDate: timestamp('expiry_date').notNull(),
+
+  quantity: integer('quantity').default(0),
+  location: text('location'),
+});
+
+export const inventoryMovements = pgTable('inventory_movements', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+
+  itemId: integer('item_id'),
+  batchId: integer('batch_id').references(() => inventoryBatches.id),
+
+  type: text('type').notNull(), // 'in', 'out', 'adjust', 'consume'
+  quantity: integer('quantity').notNull(),
+
+  refType: text('ref_type'), // 'encounter_procedure'
+  refId: text('ref_id'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+  createdBy: text('created_by'),
+});
+
+// WAVE 3: Finance Core (Ledger)
+
+export const financialLedger = pgTable('financial_ledger', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+
+  transactionDate: timestamp('transaction_date').notNull(),
+  amount: numeric('amount').notNull(), // Signed? Or use type? Usually signed decimal.
+  type: text('type').notNull(), // 'CREDIT' | 'DEBIT'
+
+  category: text('category').notNull(), // 'payment', 'expense', 'refund'
+  description: text('description').notNull(),
+
+  refType: text('ref_type'), // 'appointment', 'lab_case'
+  refId: text('ref_id'),
+
+  balanceAfter: numeric('balance_after'), // Running balance snapshot
+
+  createdAt: timestamp('created_at').defaultNow(),
+  createdBy: text('created_by'), // User ID
+});
+
+export const accountsReceivable = pgTable('accounts_receivable', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id).notNull(),
+
+  amount: numeric('amount').notNull(),
+  dueDate: timestamp('due_date').notNull(),
+
+  status: text('status').default('open'), // open, paid, overdue, canceled
+
+  description: text('description'),
+  ledgerId: integer('ledger_id').references(() => financialLedger.id), // Link when paid
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// WAVE 3.1: Automation Playbooks
+export const automationRules = pgTable('automation_rules', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  name: text('name').notNull(),
+  isActive: boolean('is_active').default(true),
+
+  triggerType: text('trigger_type').notNull(), // 'appointment_status', 'inventory_low', 'birthday'
+  triggerConfig: jsonb('trigger_config'), // { status: 'missed', time_offset: 60 }
+
+  actionType: text('action_type').notNull(), // 'send_whatsapp', 'send_email', 'create_task'
+  actionConfig: jsonb('action_config'), // { template: 'missed_appt_pt', task_title: 'Call Patient' }
+
+  createdAt: timestamp('created_at').defaultNow(),
+  lastRunAt: timestamp('last_run_at'),
+});
+
+export const automationLogs = pgTable('automation_logs', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  ruleId: integer('rule_id').references(() => automationRules.id, { onDelete: 'cascade' }),
+
+  status: text('status').notNull(), // 'success', 'failed'
+  details: text('details'),
+
+  refType: text('ref_type'), // 'appointment'
+  refId: text('ref_id'),
+
+  executedAt: timestamp('executed_at').defaultNow(),
+});
+

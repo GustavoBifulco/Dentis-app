@@ -25,6 +25,27 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+                return 'vendor';
+              }
+              if (id.includes('framer-motion') || id.includes('lucide-react')) {
+                return 'ui';
+              }
+              if (id.includes('recharts') || id.includes('date-fns')) {
+                return 'data';
+              }
+              return 'utils'; // Put rest in utils or let default handling? Better to leave default if not matched.
+            }
+          }
+        }
+      },
+      chunkSizeWarningLimit: 1000
     }
   };
 });

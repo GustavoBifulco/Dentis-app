@@ -5,6 +5,7 @@ import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { requireMfa } from '../middleware/auth';
 import { clerkClient } from '@clerk/clerk-sdk-node';
+import { getUserPermissions } from '../utils/rbac';
 
 const app = new Hono();
 
@@ -24,10 +25,14 @@ app.get('/me', requireMfa, async (c) => {
   // Cast profileData for safer access
   const profile = (dbUser.profileData || {}) as Record<string, any>;
 
+  // Get Granular Permissions
+  const permissions = await getUserPermissions(dbUser.id, dbUser.organizationId || 'org-1'); // Fallback if no org?
+
   return c.json({
     id: dbUser.id,
     clerkId: dbUser.clerkId,
     role: dbUser.role,
+    permissions: permissions, // <-- NEW
     organizationId: dbUser.organizationId,
     name: dbUser.name || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim(),
     email: dbUser.email || clerkUser.primaryEmailAddress?.emailAddress,

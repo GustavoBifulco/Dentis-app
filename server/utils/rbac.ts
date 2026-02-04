@@ -42,6 +42,26 @@ export const hasPermission = async (
     );
 };
 
+export const getUserPermissions = async (userId: string, organizationId: string): Promise<string[]> => {
+    const roles = await db.select({ roleId: userRoles.roleId })
+        .from(userRoles)
+        .where(and(eq(userRoles.userId, userId), eq(userRoles.organizationId, organizationId)));
+
+    if (roles.length === 0) return [];
+
+    const roleIds = roles.map(r => r.roleId);
+
+    const perms = await db.select({
+        module: permissions.module,
+        action: permissions.action
+    })
+        .from(rolePermissions)
+        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+        .where(inArray(rolePermissions.roleId, roleIds));
+
+    return perms.map(p => `${p.module}:${p.action}`);
+};
+
 export const requirePermission = (module: string, action: string) => {
     return async (c: Context, next: Next) => {
         const user = c.get('user');

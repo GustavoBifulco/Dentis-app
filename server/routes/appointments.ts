@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { appointments, appointmentSettings, appointmentRequests, patients, procedures } from '../db/schema';
+import { appointments, appointmentSettings, appointmentRequests, patients, procedures, inventoryMovements } from '../db/schema';
 import { scopedDb } from '../db/scoped';
 import { db } from '../db';
 import { authMiddleware } from '../middleware/auth';
@@ -216,12 +216,18 @@ app.post('/:id/confirm', async (c) => {
   }
 });
 
-// POST /api/appointments/:id/complete - Mark as completed
+// POST /api/appointments/:id/complete - Mark as completed & Deduct Inventory
 app.post('/:id/complete', async (c) => {
   const id = parseInt(c.req.param('id'));
+  const auth = c.get('auth');
   const scoped = scopedDb(c);
 
   try {
+    // 1. Get Appointment with Procedure
+    const [apt] = await db.select().from(appointments).where(eq(appointments.id, id));
+    if (!apt) return c.json({ error: 'Appointment not found' }, 404);
+
+    // 2. Mark as Completed
     const [completed] = await scoped
       .update(appointments)
       .set({
@@ -231,8 +237,35 @@ app.post('/:id/complete', async (c) => {
       .where(eq(appointments.id, id))
       .returning();
 
-    if (!completed) {
-      return c.json({ error: 'Appointment not found' }, 404);
+    // 3. Inventory Deduction Logic
+    if (apt.procedureId) {
+      const [proc] = await db.select().from(procedures).where(eq(procedures.id, apt.procedureId));
+
+      if (proc && proc.bom && Array.isArray(proc.bom)) {
+        const bom = proc.bom as any[];
+
+        for (const item of bom) {
+          if (item.inventoryId && item.quantity > 0) {
+            // Decrement Stock
+            await db.execute(sql`
+                        UPDATE inventory 
+                        SET quantity = quantity - ${item.quantity}, current_stock = current_stock - ${item.quantity}
+                        WHERE id = ${item.inventoryId}
+                     `);
+
+            // Log Movement
+            await scoped.insert(inventoryMovements).values({
+              organizationId: auth.organizationId,
+              itemId: item.inventoryId,
+              type: 'consume',
+              quantity: -item.quantity,
+              refType: 'appointment',
+              refId: String(id),
+              createdBy: auth.userId
+            });
+          }
+        }
+      }
     }
 
     return c.json(completed);

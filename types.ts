@@ -67,6 +67,7 @@ export interface UserSession {
         email: string;
         name: string;
         role: UserRole | string;
+        permissions?: string[]; // Granular permissions (e.g., 'clinical:view')
     };
     name?: string; // Compatibility
     primaryEmailAddress?: { emailAddress: string } | null; // Compatibility
@@ -201,9 +202,20 @@ export interface Procedure {
     name: string;
     code: string;
     price: number | string;
+    cost?: number | string; // Added for Profit Engine
     duration?: number; // Added for compatibility
     durationMinutes: number;
     category: string;
+    bom?: ProcedureBOMItem[];
+}
+
+export interface ProcedureBOMItem {
+    id: string; // UUID or Temp ID
+    inventoryId?: number; // Link to stock
+    name: string;
+    quantity: number;
+    unitCost: number;
+    type: 'material' | 'labor' | 'fixed';
 }
 
 export interface StockItem {
@@ -284,4 +296,61 @@ declare global {
             };
         }
     }
+}
+// --- ODONTO OS UNIFIED TIMELINE ---
+
+export type TimelineEventType = 'clinical' | 'financial' | 'logistic' | 'system' | 'lab';
+export type TimelineRefType = 'encounter' | 'payment' | 'shipment' | 'lab_case' | 'document' | 'alert' | 'odontogram';
+
+export interface UnifiedTimelineEvent {
+    id: number;
+    organizationId: string;
+    unitId?: string;
+    patientId?: number;
+    eventType: TimelineEventType;
+    refType: TimelineRefType;
+    refId: string;
+    title: string;
+    summary?: string;
+    metadata?: any;
+    createdAt: string;
+    createdBy: string;
+}
+
+export interface TimelineItem {
+    type: 'encounter' | 'prescription' | 'exam_order' | 'document_emitted' | 'attachment' | 'timeline_event';
+    date: string;
+    data: any | UnifiedTimelineEvent;
+}
+
+// --- LOGISTICS & LAB EXTENSIONS ---
+
+export interface Shipment {
+    id: number;
+    trackingCode: string;
+    provider: string;
+    status: string;
+    metadata?: any;
+    createdAt: string;
+}
+
+export interface AutomationRule {
+    id: number;
+    organizationId: string;
+    name: string;
+    isActive: boolean;
+    triggerType: 'appointment_status' | 'inventory_low' | 'birthday' | 'payment_overdue';
+    triggerConfig: any;
+    actionType: 'send_whatsapp' | 'send_email' | 'create_task' | 'notify_team';
+    actionConfig: any;
+    lastRunAt?: string;
+    createdAt?: string;
+}
+
+export interface InventoryBatch {
+    id: number;
+    itemId: number;
+    batchNumber: string;
+    expiryDate: string;
+    quantity: number;
 }
