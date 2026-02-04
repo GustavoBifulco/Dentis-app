@@ -1,5 +1,5 @@
 
-// import { db } from '../db';
+import { db } from '../db';
 import { procedures, inventory, patients, templateProcedures, templateInventory } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -170,50 +170,10 @@ const DEFAULT_INVENTORY = [
     { name: 'Ácido Hialurônico', category: 'HOF', quantity: 0, unit: 'Seringa', minLevel: 0 },
     { name: 'Esponja Hemostática', category: 'Cirurgia', quantity: 0, unit: 'un', minLevel: 0 },
     { name: 'Flúor Verniz', category: 'Preventivo', quantity: 0, unit: 'Frasco/Dose', minLevel: 0 },
-    { name: 'Taça de Borracha', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'Unidade', minLevel: 0 },
-    { name: 'Resina Flow A2', category: 'Restaurador', quantity: 0, unit: 'Seringa 2g', minLevel: 0 },
-    { name: 'Soro Fisiológico 0.9% (Bolsa 250ml)', category: 'Soluções', quantity: 0, unit: 'Bolsa', minLevel: 0 },
-    { name: 'Adesivo Universal', category: 'Restaurador', quantity: 0, unit: 'Frasco (5ml)', minLevel: 0 },
-    { name: 'Resina Dentina DA2', category: 'Restaurador', quantity: 0, unit: 'Tubo 4g', minLevel: 0 },
-    { name: 'Placa de Acetato', category: 'Prótese & Moldagem', quantity: 0, unit: 'unidade', minLevel: 0 },
-    { name: 'Pino de Fibra de Vidro (Nº 0.5 a 3)', category: 'Restaurador', quantity: 0, unit: 'un', minLevel: 0 },
-    { name: 'Rolete de Algodão', category: 'Descartáveis', quantity: 0, unit: 'Pacote (100un)', minLevel: 0 },
-    { name: 'Broca Endo-Z', category: 'Instrumentais Rotatórios', quantity: 0, unit: 'Unidade', minLevel: 0 },
-    { name: 'Avental Descartável Manga Longa', category: 'Biossegurança', quantity: 0, unit: 'Pacote (10un)', minLevel: 0 },
-    { name: 'Ácido Fosfórico 37%', category: 'Restaurador', quantity: 0, unit: 'Kit (3 seringas)', minLevel: 0 },
-    { name: 'Sugador Descartável (Convencional)', category: 'Descartáveis', quantity: 0, unit: 'Pacote (40un)', minLevel: 0 },
-    { name: 'Resina Acrílica (Duralay)', category: 'Prótese & Moldagem', quantity: 0, unit: 'grama', minLevel: 0 },
-    { name: 'Óculos de Proteção', category: 'Biossegurança', quantity: 0, unit: 'Unidade', minLevel: 0 },
-    { name: 'Resina Esmalte', category: 'Restaurador', quantity: 0, unit: 'grama', minLevel: 0 },
-    { name: 'Cone de Papel', category: 'Endodontia', quantity: 0, unit: 'Caixa', minLevel: 0 },
-    { name: 'Taça de Borracha', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'unidade', minLevel: 0 },
-    { name: 'Copo Descartável', category: 'Descartáveis', quantity: 0, unit: 'Pacote (100un)', minLevel: 0 },
-    { name: 'Fio/Arco NiTi', category: 'Ortodontia', quantity: 0, unit: 'Pacote', minLevel: 0 },
-    { name: 'Membrana Colágeno', category: 'Cirurgia', quantity: 0, unit: 'Unidade', minLevel: 0 },
-    { name: 'Tira de Lixa de Aço', category: 'Restaurador', quantity: 0, unit: 'unidade', minLevel: 0 },
-    { name: 'Anestésico Articaína 4%', category: 'Anestesia', quantity: 0, unit: 'Caixa (50 tubetes)', minLevel: 0 },
-    { name: 'Bioestimulador de Colágeno', category: 'HOF', quantity: 0, unit: 'un (frasco)', minLevel: 0 },
-    { name: 'Seringa Carpule', category: 'Anestesia', quantity: 0, unit: 'unidade', minLevel: 0 },
-    { name: 'Torno Expansor', category: 'Ortodontia', quantity: 0, unit: 'unidade', minLevel: 0 },
-    { name: 'Enxerto Ósseo Bovino', category: 'Cirurgia', quantity: 0, unit: 'Frasco', minLevel: 0 },
-    { name: 'Matriz Metálica / Poliéster', category: 'Restaurador', quantity: 0, unit: 'un', minLevel: 0 },
-    { name: 'Fio/Arco Aço', category: 'Ortodontia', quantity: 0, unit: 'Pacote', minLevel: 0 },
-    { name: 'Lâmina de Bisturi (11/12/15/15C)', category: 'Cirurgia', quantity: 0, unit: 'un', minLevel: 0 },
-    { name: 'Detergente Enzimático 5 Enzimas', category: 'Esterilização', quantity: 0, unit: 'Galão (5L)', minLevel: 0 },
-    { name: 'Clorexidina (0,12% / 2%)', category: 'Profilaxia & Periodontia', quantity: 0, unit: 'ml', minLevel: 0 },
-    { name: 'Limas (Manual/Rotatória/Reciproc.)', category: 'Endodontia', quantity: 0, unit: 'un', minLevel: 0 },
-    { name: 'Líquido Fixador', category: 'Radiologia', quantity: 0, unit: 'Frasco', minLevel: 0 },
-    { name: 'Verniz Fluoretado', category: 'Preventivo', quantity: 0, unit: 'ml', minLevel: 0 },
-    { name: 'Hipoclorito de Sódio 2.5%', category: 'Endodontia', quantity: 0, unit: 'Frasco (1L)', minLevel: 0 },
-    { name: 'Formocresol', category: 'Endodontia', quantity: 0, unit: 'ml', minLevel: 0 },
-    { name: 'Cimento Endodôntico (Ah Plus/Eugenol)', category: 'Endodontia', quantity: 0, unit: 'Kit', minLevel: 0 },
-    { name: 'Cimento Ionômero de Vidro (Cimentação)', category: 'Restaurador', quantity: 0, unit: 'Kit', minLevel: 0 },
-    { name: 'Sugador (Convenc./Cirúrgico)', category: 'Descartáveis', quantity: 0, unit: 'un', minLevel: 0 },
-    { name: 'Água Destilada', category: 'Soluções', quantity: 0, unit: 'ml', minLevel: 0 },
 ];
 
 export const seedDefaultData = async (organizationId: string) => {
-    const { db } = await import("../db");
+    console.log(`🌱 Seeding default data for organization ${organizationId}...`);
 
     try {
         // Check if data already exists to avoid duplication
@@ -306,6 +266,28 @@ export const seedDefaultData = async (organizationId: string) => {
             console.log(`✅ ${invToInsert.length} inventory items inserted.`);
         }
 
+        // 3. Pacientes de Exemplo
+        const defaultPatients = [
+            {
+                name: 'Maria Silva (Exemplo)',
+                phone: '11999999999',
+                cpf: '12345678900',
+                email: 'maria.exemplo@email.com',
+                organizationId,
+                createdAt: new Date(),
+            },
+            {
+                name: 'João Santos (Exemplo)',
+                phone: '11888888888',
+                cpf: '98765432100',
+                email: 'joao.exemplo@email.com',
+                organizationId,
+                createdAt: new Date(),
+            }
+        ];
+
+        await db.insert(patients).values(defaultPatients);
+        console.log('✅ Default patients created');
 
         return { success: true };
     } catch (error) {
