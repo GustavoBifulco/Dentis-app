@@ -30,11 +30,14 @@ import FinancialSplit from './components/FinancialSplit';
 import Odontogram from './components/Odontogram';
 import SmartPrescription from './components/SmartPrescription';
 import TeamConfig from './components/TeamConfig';
+import ManageClinic from './components/ManageClinic';
 import Labs from './components/Labs';
 import Marketplace from './components/Marketplace';
 import KioskMode from './components/KioskMode';
 import PatientWallet from './components/PatientWallet';
 import PatientRegister from './pages/PatientRegister';
+
+import { Terms, Help, Backup } from './components/BasePages';
 
 // Componente de Loading leve
 const LoadingFallback = () => (
@@ -126,7 +129,7 @@ const AppContent: React.FC = () => {
       case ViewType.PROFILE: return <Profile userRole={UserRole.DENTIST} onLogout={() => signOut()} />;
       case ViewType.SETTINGS: return <Settings onNavigate={setCurrentView} />;
       case ViewType.TREATMENT_JOURNEY: return <TreatmentJourney />;
-      case ViewType.ANAMNESIS: return <Anamnesis />;
+      case ViewType.ANAMNESIS: return <Anamnesis patientId={selectedPatient?.id || session?.activeContext?.id || 0} />;
       case ViewType.MANAGEMENT_HUB: return <ManagementHub onNavigate={setCurrentView} />;
       case ViewType.INVENTORY: return <Inventory />;
       case ViewType.LABS: return <Labs />;
@@ -135,9 +138,14 @@ const AppContent: React.FC = () => {
       case ViewType.PROCEDURE_ENGINEER: return <ProcedureEngineer />;
       case ViewType.FINANCIAL_SPLIT: return <FinancialSplit />;
       case ViewType.TEAM_SETTINGS: return <TeamConfig />;
-      case ViewType.CLINICAL_EXECUTION: return <Odontogram />;
+      case ViewType.MANAGE_CLINIC: return <ManageClinic />;
+      case ViewType.CLINICAL_EXECUTION: return <Odontogram patientId={selectedPatient?.id || 0} />;
+      case ViewType.DOCUMENTS: return <SmartPrescription />;
       case ViewType.DOCUMENTS: return <SmartPrescription />;
       case ViewType.PATIENT_WALLET: return <PatientWallet onBack={() => setCurrentView(ViewType.DASHBOARD)} />;
+      case ViewType.TERMS: return <Terms />;
+      case ViewType.HELP: return <Help />;
+      case ViewType.BACKUP: return <Backup />;
       default: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
     }
   };

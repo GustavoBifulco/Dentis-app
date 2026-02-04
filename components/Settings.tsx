@@ -9,6 +9,7 @@ import {
 import { SectionHeader } from './Shared';
 import { useAppContext } from '../lib/useAppContext';
 import { UserProfile, useClerk } from '@clerk/clerk-react';
+import { ColorPicker } from './ColorPicker';
 
 interface SettingsProps {
   onNavigate: (view: ViewType) => void;
@@ -163,7 +164,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
 
         {/* Cor de Destaque */}
         <div className="p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
                 <Palette size={20} strokeWidth={2.5} />
@@ -174,39 +175,11 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* Seletor Customizado Moderno */}
-            <div className="relative">
-              <label className="flex items-center gap-2 cursor-pointer bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <div
-                  className="w-5 h-5 rounded-full border border-slate-200 shadow-sm"
-                  style={{ backgroundColor: theme.accentColor }}
-                ></div>
-                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Customizar</span>
-                <input
-                  type="color"
-                  value={theme.accentColor}
-                  onChange={(e) => setTheme({ ...theme, accentColor: e.target.value })}
-                  className="absolute opacity-0 inset-0 w-full h-full cursor-pointer"
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="flex gap-3 flex-wrap">
-            {COLORS.map((c) => (
-              <button
-                key={c.hex}
-                onClick={() => {
-                  setTheme({ ...theme, accentColor: c.hex });
-                  showToast(`Cor alterada para ${c.name}`, 'success');
-                }}
-                className={`w-10 h-10 rounded-lg shadow-md transition-all hover:scale-110 flex items-center justify-center border-2 ${theme.accentColor === c.hex ? 'border-white ring-2 ring-blue-500' : 'border-transparent'}`}
-                style={{ backgroundColor: c.hex }}
-                title={c.name}
-              >
-                {theme.accentColor === c.hex && <Check size={16} strokeWidth={3} className="text-white" />}
-              </button>
-            ))}
+            {/* Novo Seletor Moderno */}
+            <ColorPicker
+              color={theme.accentColor}
+              onChange={(newColor) => setTheme({ ...theme, accentColor: newColor })}
+            />
           </div>
         </div>
       </div>
@@ -267,7 +240,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           icon={Users2}
           label="Gerenciar Equipe"
           description="Usuários, permissões e comissões"
-          onClick={() => onNavigate(ViewType.TEAM_SETTINGS)}
+          onClick={() => onNavigate(ViewType.MANAGE_CLINIC)}
         />
 
         <SettingRow
@@ -293,7 +266,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           icon={Database}
           label="Backup e Dados"
           description="Exportar e restaurar informações"
-          onClick={() => showToast('Em breve: Backup automático', 'info')}
+          onClick={() => onNavigate(ViewType.BACKUP)}
         />
 
         <SettingRow
@@ -307,7 +280,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           icon={FileText}
           label="Termos e Privacidade"
           description="Políticas e documentos legais"
-          onClick={() => showToast('Em breve: Documentos legais', 'info')}
+          onClick={() => onNavigate(ViewType.TERMS)}
         />
       </div>
 

@@ -23,7 +23,8 @@ export const LuxButton: React.FC<{
   className?: string;
   icon?: React.ReactNode;
   disabled?: boolean;
-}> = ({ children, variant = 'primary', onClick, className = '', icon, disabled }) => {
+  loading?: boolean;
+}> = ({ children, variant = 'primary', onClick, className = '', icon, disabled, loading }) => {
   const baseStyle = "flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm tracking-tight disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
@@ -42,7 +43,7 @@ export const LuxButton: React.FC<{
       transition={{ type: "spring", stiffness: 400, damping: 17 }}
       className={`${baseStyle} ${variants[variant]} ${className}`}
     >
-      {icon && <span className="opacity-90">{icon}</span>}
+      {loading ? <Loader2 className="animate-spin w-4 h-4" /> : icon && <span className="opacity-90">{icon}</span>}
       <span>{children}</span>
     </motion.button>
   );
