@@ -437,3 +437,32 @@ export const chatMessages = pgTable('chat_messages', {
   read: boolean('read').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
+export const anamnesisTemplates = pgTable('anamnesis_templates', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const anamnesisQuestions = pgTable('anamnesis_questions', {
+  id: serial('id').primaryKey(),
+  templateId: integer('template_id').references(() => anamnesisTemplates.id, { onDelete: 'cascade' }),
+  section: text('section').notNull(), // 'General Health', 'Dental History', etc.
+  text: text('text').notNull(),
+  type: text('type').notNull(), // 'text', 'long_text', 'yes_no', 'multiple_choice', 'checkbox'
+  options: jsonb('options'), // Array of strings for choices
+  required: boolean('required').default(false),
+  order: integer('order').notNull(),
+  // Link specific questions to summary fields in patients table for auto-sync
+  linkedField: text('linked_field'), // 'allergies', 'medications', 'medicalHistory'
+});
+
+export const anamnesisResponses = pgTable('anamnesis_responses', {
+  id: serial('id').primaryKey(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+  templateId: integer('template_id').references(() => anamnesisTemplates.id),
+  answers: jsonb('answers'), // { [questionId]: value }
+  updatedAt: timestamp('updated_at').defaultNow(),
+});

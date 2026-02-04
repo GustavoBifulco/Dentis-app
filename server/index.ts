@@ -35,6 +35,7 @@ import telehealth from './routes/telehealth';
 import patientImport from './routes/patient-import';
 import patientInvite from './routes/patient-invite';
 import treatment from './routes/treatment';
+import anamnesis from './routes/anamnesis';
 
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
@@ -103,6 +104,7 @@ app.route('/api/patient-import', patientImport);
 app.route('/api/patient-invite', patientInvite);
 app.route('/api/debug', debug);
 app.route('/api/treatment', treatment);
+app.route('/api/anamnesis', anamnesis);
 
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 

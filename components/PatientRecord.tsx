@@ -236,7 +236,7 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                                     <LuxButton variant="outline" icon={<Send size={16} />}>Enviar para Paciente</LuxButton>
                                     <LuxButton icon={<Plus size={16} />}>Preencher Agora</LuxButton>
                                 </div>
-                                <Anamnesis />
+                                <Anamnesis patientId={activePatient.id} />
                             </div>
                         )}
 
