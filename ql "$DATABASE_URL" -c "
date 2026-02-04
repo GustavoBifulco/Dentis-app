@@ -1,0 +1,19 @@
+                                                                      Table "public.patient_invitations"
+     Column      |            Type             | Collation | Nullable |                     Default                     | Storage  | Compression | Stats target | Description 
+-----------------+-----------------------------+-----------+----------+-------------------------------------------------+----------+-------------+--------------+-------------
+ id              | integer                     |           | not null | nextval('patient_invitations_id_seq'::regclass) | plain    |             |              | 
+ organization_id | text                        |           | not null |                                                 | extended |             |              | 
+ email           | text                        |           | not null |                                                 | extended |             |              | 
+ token           | text                        |           | not null |                                                 | extended |             |              | 
+ status          | text                        |           |          | 'pending'::text                                 | extended |             |              | 
+ expires_at      | timestamp without time zone |           | not null |                                                 | plain    |             |              | 
+ created_at      | timestamp without time zone |           |          | now()                                           | plain    |             |              | 
+ patient_id      | integer                     |           |          |                                                 | plain    |             |              | 
+Indexes:
+    "patient_invitations_pkey" PRIMARY KEY, btree (id)
+    "idx_patient_invitations_patient_id" btree (patient_id)
+    "patient_invitations_token_unique" UNIQUE CONSTRAINT, btree (token)
+Foreign-key constraints:
+    "patient_invitations_patient_id_fkey" FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+Access method: heap
+

@@ -4,7 +4,45 @@
   <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dentis - O Futuro da Odontologia.</title><style>
+    <title>Dentis - O Futuro da Odontologia.</title>
+    
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: [
+                '-apple-system', 
+                'BlinkMacSystemFont', 
+                '"SF Pro Text"', 
+                '"Segoe UI"', 
+                'Roboto', 
+                'Helvetica', 
+                'Arial', 
+                'sans-serif'
+              ],
+            },
+            colors: {
+              lux: {
+                accent: 'var(--color-accent)',
+                contrast: 'var(--color-contrast)',
+                surface: 'var(--color-surface)',
+                background: 'var(--color-background)',
+                subtle: 'var(--color-subtle)',
+                border: 'var(--color-border)',
+                text: 'var(--color-text)',
+                'text-secondary': 'var(--color-text-secondary)',
+              }
+            },
+            backgroundImage: {
+              'lux-gradient': 'var(--bg-gradient)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
       :root {
         /* Default Apple-like Light Mode */
         --color-background: #F5F5F7; /* Apple Light Gray */
