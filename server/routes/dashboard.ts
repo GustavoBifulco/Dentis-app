@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import { scopedDb } from '../db/scoped';
+import { db } from '../db';
 import { patients, appointments, labCases, inventory, accountsReceivable } from '../db/schema';
 import { eq, sql, and, lt, desc } from 'drizzle-orm';
 
@@ -10,14 +10,14 @@ dashboard.use('*', authMiddleware);
 
 dashboard.get('/stats', async (c) => {
     const auth = c.get('auth');
-    const scoped = scopedDb(c);
+    // REMOVED: const scoped = scopedDb(c); -> Causing TypeError: scoped.select(...).from is not a function
 
     try {
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
 
         // 1. Clinical Stats
-        const [todayAppts] = await scoped
+        const [todayAppts] = await db
             .select({ count: sql<number>`count(*)` })
             .from(appointments)
             .where(
@@ -28,7 +28,7 @@ dashboard.get('/stats', async (c) => {
             );
 
         // 2. Operations / Lab Stats (Overdue)
-        const [overdueLabs] = await scoped
+        const [overdueLabs] = await db
             .select({ count: sql<number>`count(*)` })
             .from(labCases)
             .where(
@@ -40,7 +40,7 @@ dashboard.get('/stats', async (c) => {
             );
 
         // 3. Low Stock Alerts
-        const [lowStock] = await scoped
+        const [lowStock] = await db
             .select({ count: sql<number>`count(*)` })
             .from(inventory)
             .where(
@@ -75,12 +75,12 @@ dashboard.get('/stats', async (c) => {
 // New Endpoint for Detailed Operations Widget
 dashboard.get('/operations', async (c) => {
     const auth = c.get('auth');
-    const scoped = scopedDb(c);
+    // const scoped = scopedDb(c);
     const today = new Date();
 
     try {
         // Get Low Stock Items
-        const lowStockItems = await scoped
+        const lowStockItems = await db
             .select()
             .from(inventory)
             .where(
@@ -92,7 +92,7 @@ dashboard.get('/operations', async (c) => {
             .limit(5);
 
         // Get Overdue Labs
-        const delayedLabs = await scoped
+        const delayedLabs = await db
             .select()
             .from(labCases)
             .where(
