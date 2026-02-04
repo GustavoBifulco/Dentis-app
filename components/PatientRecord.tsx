@@ -1,13 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Patient } from '../types';
 import { SectionHeader, LuxButton, IslandCard } from './Shared';
-import { ArrowLeft, Smile, FileText, Clock, Camera, Mail, Plus, MessageSquare, AlertTriangle, Send } from 'lucide-react';
+import { ArrowLeft, Smile, FileText, Clock, Camera, Mail, Plus, MessageSquare, AlertTriangle, Send, User } from 'lucide-react';
 import Odontogram from './Odontogram';
 import SmartPrescription from './SmartPrescription';
 import Anamnesis from './Anamnesis';
 import { useAppContext } from '../lib/useAppContext';
 import PatientInviteButton from './PatientInviteButton';
+import EditPatientModal from './EditPatientModal';
 
 interface PatientRecordProps {
     patient: Patient;
@@ -17,18 +18,24 @@ interface PatientRecordProps {
 type Tab = 'timeline' | 'odontogram' | 'docs' | 'photos' | 'anamnesis';
 
 const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
+    const [activePatient, setActivePatient] = useState<Patient>(patient);
     const [activeTab, setActiveTab] = useState<Tab>('timeline');
     const { showToast } = useAppContext();
-    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    const handleSave = () => {
-        showToast('Prontuário atualizado com sucesso!', 'success');
-        setSaveSuccess(true);
+    useEffect(() => {
+        setActivePatient(patient);
+    }, [patient]);
+
+    const handleEditSave = (updated: Patient) => {
+        setActivePatient(updated);
+        showToast('Perfil atualizado com sucesso!', 'success');
+        setIsEditModalOpen(false);
     };
 
     // Mock data - in real app, fetch from API
-    const allergies: string[] = []; // Empty by default
-    const medicalConditions: string[] = []; // Empty by default
+    const allergies: string[] = activePatient.allergies ? [activePatient.allergies] : [];
+    const medicalConditions: string[] = activePatient.medicalHistory ? [activePatient.medicalHistory] : [];
     const appointments: any[] = []; // Empty by default
 
     return (
@@ -44,9 +51,9 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                     </button>
                     <div className="absolute top-6 right-6 flex gap-2">
                         <PatientInviteButton
-                            patientId={patient.id}
-                            patientName={patient.name}
-                            hasAccount={!!patient.userId}
+                            patientId={activePatient.id}
+                            patientName={activePatient.name}
+                            hasAccount={!!activePatient.userId}
                         />
                     </div>
                 </div>
@@ -55,26 +62,24 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 <div className="px-8 pb-1 relative bg-white border-b border-slate-200 shadow-sm z-10">
                     <div className="flex flex-col md:flex-row items-end md:items-center gap-4 -mt-12 mb-4">
                         <div className="w-24 h-24 rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-white">
-                            <img src={`https://ui-avatars.com/api/?name=${patient.name}&background=6366f1&color=fff&size=256`} alt={patient.name} className="w-full h-full object-cover" />
+                            <img src={`https://ui-avatars.com/api/?name=${activePatient.name}&background=6366f1&color=fff&size=256`} alt={activePatient.name} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 mb-2">
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-black text-slate-900 tracking-tight">{patient.name}</h1>
+                                <h1 className="text-2xl font-black text-slate-900 tracking-tight">{activePatient.name}</h1>
                                 <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100">
-                                    {patient.status === 'active' ? 'Ativo' : 'Inativo'}
+                                    {activePatient.status === 'active' ? 'Ativo' : 'Inativo'}
                                 </span>
                             </div>
-                            <p className="text-sm text-slate-500 font-medium mt-1">{patient.email || 'Sem email'} <span className="mx-2 text-slate-300">•</span> {patient.phone}</p>
+                            <p className="text-sm text-slate-500 font-medium mt-1">{activePatient.email || 'Sem email'} <span className="mx-2 text-slate-300">•</span> {activePatient.phone}</p>
                         </div>
                         <div className="flex gap-3 mb-2">
-                            {saveSuccess && (
-                                <LuxButton variant="outline" onClick={onBack} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-2xl">
-                                    Voltar à Lista
-                                </LuxButton>
-                            )}
+                            <LuxButton variant="outline" onClick={onBack} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-2xl">
+                                Voltar à Lista
+                            </LuxButton>
                             <LuxButton variant="outline" icon={<MessageSquare size={18} />} className="rounded-2xl border-slate-200 text-slate-600">Chat</LuxButton>
-                            <LuxButton onClick={handleSave} icon={<Plus size={18} />} className="rounded-2xl">
-                                {saveSuccess ? 'Salvo' : 'Atualizar Prontuário'}
+                            <LuxButton onClick={() => setIsEditModalOpen(true)} icon={<User size={18} />} className="rounded-2xl">
+                                Editar Perfil
                             </LuxButton>
                         </div>
                     </div>
@@ -137,25 +142,37 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                         <IslandCard className="p-4 space-y-4 border-none shadow-lg">
                             <h3 className="font-black text-slate-900 border-b border-slate-100 pb-2 text-xs uppercase tracking-widest">Informações</h3>
                             <div className="space-y-3">
-                                {patient.lastVisit && (
+                                {activePatient.lastVisit && (
                                     <div>
                                         <p className="text-slate-400 text-[10px] uppercase font-bold mb-1 tracking-widest">Última Visita</p>
-                                        <p className="font-bold text-slate-800 text-sm">{patient.lastVisit}</p>
+                                        <p className="font-bold text-slate-800 text-sm">{activePatient.lastVisit}</p>
                                     </div>
                                 )}
                                 <div>
                                     <p className="text-slate-400 text-[10px] uppercase font-bold mb-1 tracking-widest">Status</p>
-                                    <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${patient.status === 'active'
-                                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                            : 'bg-slate-50 text-slate-600 border border-slate-100'
+                                    <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${activePatient.status === 'active'
+                                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                        : 'bg-slate-50 text-slate-600 border border-slate-100'
                                         }`}>
-                                        {patient.status === 'active' ? 'Ativo' : 'Inativo'}
+                                        {activePatient.status === 'active' ? 'Ativo' : 'Inativo'}
                                     </span>
                                 </div>
-                                {patient.cpf && (
+                                {activePatient.cpf && (
                                     <div>
                                         <p className="text-slate-400 text-[10px] uppercase font-bold mb-1 tracking-widest">CPF</p>
-                                        <p className="font-bold text-slate-800 text-sm">{patient.cpf}</p>
+                                        <p className="font-bold text-slate-800 text-sm">{activePatient.cpf}</p>
+                                    </div>
+                                )}
+                                {activePatient.birthdate && (
+                                    <div>
+                                        <p className="text-slate-400 text-[10px] uppercase font-bold mb-1 tracking-widest">Nascimento</p>
+                                        <p className="font-bold text-slate-800 text-sm">{activePatient.birthdate}</p>
+                                    </div>
+                                )}
+                                {activePatient.address && (
+                                    <div>
+                                        <p className="text-slate-400 text-[10px] uppercase font-bold mb-1 tracking-widest">Endereço</p>
+                                        <p className="font-bold text-slate-800 text-sm">{activePatient.address}</p>
                                     </div>
                                 )}
                             </div>
@@ -243,6 +260,12 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 </div>
             </div>
 
+            <EditPatientModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                patient={activePatient}
+                onSave={handleEditSave}
+            />
         </div>
     );
 };

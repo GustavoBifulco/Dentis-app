@@ -98,6 +98,11 @@ export interface Patient {
     status: 'active' | 'pending' | 'completed' | 'archived';
     lastVisit?: string;
     photoUrl?: string;
+    birthdate?: string;
+    address?: string;
+    medicalHistory?: string;
+    allergies?: string;
+    medications?: string;
 }
 
 export interface Appointment {
