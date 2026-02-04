@@ -180,20 +180,44 @@ const Sidebar: React.FC<SidebarProps> = ({
                     className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden"
                   >
                     {/* Contexts */}
-                    <div className="p-2 border-b border-slate-100">
-                      <p className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase">Alternar Organização</p>
-                      {availableContexts.map(ctx => (
-                        <button
-                          key={ctx.id}
-                          onClick={() => { onContextSwitch(ctx); setIsAccountMenuOpen(false); }}
-                          className={`w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-slate-50 ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'}`}
-                        >
-                          <div className={`w-6 h-6 rounded flex items-center justify-center ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-100' : 'bg-slate-100'}`}>
-                            {getContextIcon(ctx.type)}
-                          </div>
-                          {ctx.name}
-                        </button>
-                      ))}
+                    <div className="p-2 border-b border-slate-100 max-h-[300px] overflow-y-auto">
+                      {/* Personal Account Section */}
+                      {availableContexts.filter(c => c.isPersonal).length > 0 && (
+                        <div className="mb-2">
+                          <p className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase">Conta Pessoal</p>
+                          {availableContexts.filter(c => c.isPersonal).map(ctx => (
+                            <button
+                              key={ctx.id}
+                              onClick={() => { onContextSwitch(ctx); setIsAccountMenuOpen(false); }}
+                              className={`w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-slate-50 ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'}`}
+                            >
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-100' : 'bg-slate-100'}`}>
+                                <User size={14} />
+                              </div>
+                              {ctx.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Clinics Section */}
+                      {availableContexts.filter(c => !c.isPersonal && c.type !== 'PATIENT').length > 0 && (
+                        <div>
+                          <p className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase">Minhas Clínicas</p>
+                          {availableContexts.filter(c => !c.isPersonal && c.type !== 'PATIENT').map(ctx => (
+                            <button
+                              key={ctx.id}
+                              onClick={() => { onContextSwitch(ctx); setIsAccountMenuOpen(false); }}
+                              className={`w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-slate-50 ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'}`}
+                            >
+                              <div className={`w-6 h-6 rounded flex items-center justify-center ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-100' : 'bg-slate-100'}`}>
+                                {getContextIcon(ctx.type)}
+                              </div>
+                              {ctx.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Account Actions */}

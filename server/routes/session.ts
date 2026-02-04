@@ -31,37 +31,52 @@ session.get('/', async (c) => {
 
     const availableContexts: any[] = [];
 
-    // professional profile
+    // 1. Fetch Professional Profile (Core Identity)
     const prof = await db.query.professionalProfiles.findFirst({
         where: (p, { eq }) => eq(p.userId, userId)
     });
 
-    if (prof) {
-        availableContexts.push({
-            type: 'CLINIC',
-            id: userId,
-            name: user.name || 'Minha Clínica',
-        });
-    }
-
-    // organizations
+    // 2. Fetch Organizations (Memberships)
     const memberships = await db.select({
-        org: organizations
+        org: organizations,
+        role: organizationMembers.role
     })
         .from(organizationMembers)
         .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
         .where(eq(organizationMembers.userId, userId));
 
-    for (const m of memberships) {
+    // 3. Construct Contexts with Deduplication
+    const personalOrgId = `personal-${clerkId}`; // Standard Personal Workspace ID
+
+    // Check if we have a membership for the personal org
+    const personalMembership = memberships.find(m => m.org.id === personalOrgId || m.org.id === `personal-${userId}`);
+    const otherMemberships = memberships.filter(m => m.org.id !== personalOrgId && m.org.id !== `personal-${userId}`);
+
+    // A. Personal Context (Always first if exists)
+    if (prof || personalMembership) {
+        availableContexts.push({
+            type: 'CLINIC', // Treating Personal Workspace as a Clinic context for now (schema compatibility)
+            // Ideally we differentiate 'PERSONAL' vs 'CLINIC' in UI, but backend treats as org.
+            // UI Label will be "Conta Pessoal"
+            id: personalMembership?.org.id || personalOrgId,
+            name: 'Conta Pessoal', // Fixed name for personal context
+            organizationId: personalMembership?.org.id || personalOrgId,
+            isPersonal: true
+        });
+    }
+
+    // B. Other Clinics (Real Organizations)
+    for (const m of otherMemberships) {
         availableContexts.push({
             type: m.org.type === 'LAB' ? 'LAB' : 'CLINIC',
             id: m.org.id,
             name: m.org.name,
-            organizationId: String(m.org.id)
+            organizationId: String(m.org.id),
+            isPersonal: false
         });
     }
 
-    // patient profile
+    // C. Patient Context (Separate)
     const patient = await db.query.patientProfiles.findFirst({
         where: (p, { eq }) => eq(p.userId, userId)
     });
@@ -70,7 +85,8 @@ session.get('/', async (c) => {
         availableContexts.push({
             type: 'PATIENT',
             id: patient.id,
-            name: user.name || 'Meu Portal',
+            name: 'Meu Portal',
+            organizationId: null // Patients don't have an org context generally
         });
     }
 
