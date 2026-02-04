@@ -2,13 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { Patient } from '../types';
 import { SectionHeader, LuxButton, IslandCard } from './Shared';
-import { ArrowLeft, Smile, FileText, Clock, Camera, Mail, Plus, MessageSquare, AlertTriangle, Send, User } from 'lucide-react';
+import { ArrowLeft, Smile, FileText, Clock, Camera, Mail, Plus, MessageSquare, AlertTriangle, Send, User, Trash2 } from 'lucide-react';
 import Odontogram from './Odontogram';
 import SmartPrescription from './SmartPrescription';
 import Anamnesis from './Anamnesis';
 import { useAppContext } from '../lib/useAppContext';
 import PatientInviteButton from './PatientInviteButton';
 import EditPatientModal from './EditPatientModal';
+import PatientDeletionModal from './PatientDeletionModal';
+import { useAuth } from '@clerk/clerk-react';
 
 interface PatientRecordProps {
     patient: Patient;
@@ -21,7 +23,9 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
     const [activePatient, setActivePatient] = useState<Patient>(patient);
     const [activeTab, setActiveTab] = useState<Tab>('timeline');
     const { showToast } = useAppContext();
+    const { getToken } = useAuth();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     useEffect(() => {
         setActivePatient(patient);
@@ -31,6 +35,35 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
         setActivePatient(updated);
         showToast('Perfil atualizado com sucesso!', 'success');
         setIsEditModalOpen(false);
+    };
+
+    const handleDeleteAction = async (action: 'delete' | 'archive') => {
+        try {
+            const token = await getToken();
+            const endpoint = action === 'delete'
+                ? `/api/patients/${activePatient.id}`
+                : `/api/patients/${activePatient.id}/archive`;
+
+            const method = action === 'delete' ? 'DELETE' : 'PATCH';
+
+            const res = await fetch(endpoint, {
+                method,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                showToast(action === 'delete' ? 'Paciente excluído.' : 'Paciente arquivado.', 'success');
+                onBack(); // Return to list logic needs to refresh list too? onBack might just close this view.
+            } else {
+                const err = await res.json();
+                showToast(err.message || 'Erro ao processar', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Erro de conexão', 'error');
+        } finally {
+            setIsDeleteModalOpen(false);
+        }
     };
 
     // Mock data - in real app, fetch from API
@@ -78,9 +111,19 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                                 Voltar à Lista
                             </LuxButton>
                             <LuxButton variant="outline" icon={<MessageSquare size={18} />} className="rounded-2xl border-slate-200 text-slate-600">Chat</LuxButton>
-                            <LuxButton onClick={() => setIsEditModalOpen(true)} icon={<User size={18} />} className="rounded-2xl">
-                                Editar Perfil
-                            </LuxButton>
+                            <div className="flex gap-2">
+                                <LuxButton
+                                    variant="ghost"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => setIsDeleteModalOpen(true)}
+                                    icon={<Trash2 size={18} />}
+                                >
+                                    Excluir
+                                </LuxButton>
+                                <LuxButton onClick={() => setIsEditModalOpen(true)} icon={<User size={18} />} className="rounded-2xl">
+                                    Editar Perfil
+                                </LuxButton>
+                            </div>
                         </div>
                     </div>
 
@@ -265,6 +308,13 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 onClose={() => setIsEditModalOpen(false)}
                 patient={activePatient}
                 onSave={handleEditSave}
+            />
+
+            <PatientDeletionModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                patient={activePatient}
+                onConfirm={handleDeleteAction}
             />
         </div>
     );

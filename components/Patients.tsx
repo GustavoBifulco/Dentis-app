@@ -20,6 +20,7 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [showNewPatient, setShowNewPatient] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const loadPatients = async () => {
     if (!user?.id) return;
@@ -51,7 +52,10 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
     }
   }, [isLoaded, user?.id]);
 
-  const filtered = patients.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = patients.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) &&
+    (showArchived ? p.status === 'archived' : (p.status === 'active' || !p.status)) // Default to active or undefined (legacy)
+  );
 
   if (!isLoaded || loading) return <LoadingState message="Buscando prontuários..." />;
   if (error) return <ErrorState message={error} onRetry={loadPatients} />;
@@ -59,10 +63,17 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <SectionHeader
-        title="Pacientes"
-        subtitle="Gestão completa de prontuários e históricos."
+        title={showArchived ? "Arquivo Morto" : "Pacientes"}
+        subtitle={showArchived ? "Histórico de pacientes inativos." : "Gestão completa de prontuários e históricos."}
         action={
           <div className="flex gap-3">
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 border ${showArchived ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            >
+              <Filter size={18} />
+              {showArchived ? 'Ver Ativos' : 'Ver Arquivados'}
+            </button>
             <button
               onClick={() => setShowImport(true)}
               className="px-4 py-2 rounded-xl font-bold text-lux-text hover:bg-lux-subtle transition flex items-center gap-2"
@@ -93,10 +104,10 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
               className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
             />
           </div>
-          <LuxButton variant="outline" icon={<Filter size={18} />} className="rounded-2xl">Filtros Avançados</LuxButton>
+          {/* Removed generic filter button in favor of the specific toggle above */}
         </div>
 
-        {patients.length === 0 ? (
+        {filtered.length === 0 ? (
           <EmptyState
             title="Nenhum paciente encontrado"
             description="Sua base de dados está vazia."

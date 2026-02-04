@@ -98,4 +98,53 @@ app.put('/:id', async (c) => {
   return c.json(updatedPatient);
 });
 
+// Archive Patient (Soft Delete for compliance)
+app.patch('/:id/archive', async (c) => {
+  const auth = c.get('auth');
+  if (!['dentist', 'clinic_owner'].includes(auth.role)) return c.json({ error: 'Acesso negado' }, 403);
+
+  const id = parseInt(c.req.param('id'));
+  const scoped = scopedDb(c);
+
+  const [archivedPatient] = await scoped
+    .update(patients)
+    .set({ status: 'archived' })
+    .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
+    .returning();
+
+  return c.json(archivedPatient);
+});
+
+// Delete Patient (Hard Delete)
+app.delete('/:id', async (c) => {
+  const auth = c.get('auth');
+  if (!['dentist', 'clinic_owner'].includes(auth.role)) return c.json({ error: 'Acesso negado' }, 403);
+
+  const id = parseInt(c.req.param('id'));
+  const scoped = scopedDb(c);
+
+  // 1. Fetch Patient Details
+  const [patient] = await scoped.select().from(patients)
+    .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
+    .limit(1);
+
+  if (!patient) return c.json({ error: 'Patient not found' }, 404);
+
+  // 2. Check for "Legal Hold" conditions (CPF or Clinical Data)
+  // We check basic fields here. ideally we check linked tables too but let's start with CPF and explicit archival requirement.
+  if (patient.cpf) {
+    return c.json({
+      error: 'LEGAL_HOLD_REQUIRED',
+      message: 'Pacientes com CPF registrado devem ser arquivados por 20 anos (Lei 13.787/2018).',
+      requiresArchive: true
+    }, 400);
+  }
+
+  // 3. Perform Hard Delete if safe
+  await scoped.delete(patients)
+    .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)));
+
+  return c.json({ success: true });
+});
+
 export default app;

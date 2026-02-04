@@ -71,3 +71,24 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* Dark Mode Overrides */
+.dark {
+  --bg: #0F172A; /* Slate 900 */
+  --surface: #1E293B; /* Slate 800 */
+  --surface-hover: #334155; /* Slate 700 */
+
+  --text-main: #F8FAFC; /* Slate 50 */
+  --text-muted: #94A3B8; /* Slate 400 */
+  --text-desc: #CBD5E1; /* Slate 300 */
+
+  --border: #334155; /* Slate 700 */
+  --border-focus: #60A5FA; /* Blue 400 */
+}
+
+/* Global Transitions */
+body, div, span, button, input, textarea {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+}

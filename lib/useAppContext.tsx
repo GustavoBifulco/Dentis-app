@@ -7,6 +7,8 @@ interface AppContextState {
     switchContext: (context: AppContextType) => void;
     showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
     toast: { message: string, type: 'success' | 'error' | 'info' } | null;
+    theme: { mode: 'light' | 'dark', accentColor: string };
+    setTheme: Dispatch<SetStateAction<{ mode: 'light' | 'dark', accentColor: string }>>;
 }
 
 const AppContextContext = createContext<AppContextState | undefined>(undefined);
@@ -60,8 +62,49 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     }, [session]);
 
+    // --- THEME MANAGEMENT ---
+    const [theme, setTheme] = useState<{ mode: 'light' | 'dark', accentColor: string }>({
+        mode: 'light',
+        accentColor: '#2563EB' // Default Blue
+    });
+
+    // Initialize Theme from LocalStorage or System Preference
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('dentis-theme');
+        if (savedTheme) {
+            try {
+                setTheme(JSON.parse(savedTheme));
+            } catch (e) {
+                console.error("Failed to parse theme", e);
+            }
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setTheme(prev => ({ ...prev, mode: 'dark' }));
+        }
+    }, []);
+
+    // Apply Theme Side Effects
+    useEffect(() => {
+        const root = window.document.documentElement;
+
+        // 1. Dark Mode
+        if (theme.mode === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+
+        // 2. Accent Color
+        // Updating CSS variables dynamically
+        // Use a tiny helper to generate lighter/darker shades if needed or just use the main color
+        root.style.setProperty('--primary', theme.accentColor);
+        // Ensure persist
+        localStorage.setItem('dentis-theme', JSON.stringify(theme));
+
+    }, [theme]);
+
+
     return (
-        <AppContextContext.Provider value={{ session, setSession, switchContext, showToast, toast }}>
+        <AppContextContext.Provider value={{ session, setSession, switchContext, showToast, toast, theme, setTheme }}>
             {children}
         </AppContextContext.Provider>
     );
