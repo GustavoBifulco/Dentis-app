@@ -190,37 +190,15 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ isOpen, onClose, pa
                                         </div>
                                     </div>
 
-                                    {/* Right Column: Medical Data */}
                                     <div className="space-y-6">
-                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200">
-                                            <FileText className="text-emerald-600" size={20} />
-                                            <h3 className="font-bold text-slate-900">Dados Clínicos</h3>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <TextAreaField
-                                                label="Histórico Médico"
-                                                icon={FileText}
-                                                value={formData.medicalHistory} // Ensure schema supports this, assumed based on prompt "editable all info"
-                                                onChange={(v: string) => handleChange('medicalHistory', v)}
-                                                placeholder="Doenças pré-existentes, cirurgias, etc."
-                                            />
-
-                                            <TextAreaField
-                                                label="Alergias"
-                                                icon={AlertTriangle}
-                                                value={formData.allergies}
-                                                onChange={(v: string) => handleChange('allergies', v)}
-                                                placeholder="Liste as alergias do paciente..."
-                                            />
-
-                                            <TextAreaField
-                                                label="Medicamentos em Uso"
-                                                icon={Pill}
-                                                value={formData.medications}
-                                                onChange={(v: string) => handleChange('medications', v)}
-                                                placeholder="Quais medicamentos o paciente toma regularmente?"
-                                            />
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                                            <FileText className="text-blue-600 mt-1" size={20} />
+                                            <div>
+                                                <h3 className="font-bold text-blue-900 text-sm">Dados Clínicos (Anamnese)</h3>
+                                                <p className="text-blue-700 text-sm mt-1 leading-relaxed">
+                                                    O histórico médico, alergias e medicamentos agora são gerenciados na aba <strong>Anamnese</strong> do prontuário para manter um histórico detalhado e dinâmico.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
