@@ -67,6 +67,14 @@ export const logFeatureStatus = () => {
  * Throws error if required features are not available
  */
 export const validateCriticalFeatures = () => {
+    // DEBUG: Log environment diagnostic info
+    console.log('[DEBUG] Current Working Directory:', process.cwd());
+    console.log('[DEBUG] Environment Check:');
+    console.log(`- DATABASE_URL: ${process.env.DATABASE_URL ? 'Set (Length: ' + process.env.DATABASE_URL.length + ')' : 'MISSING'}`);
+    console.log(`- CLERK_SECRET_KEY: ${process.env.CLERK_SECRET_KEY ? 'Set (Length: ' + process.env.CLERK_SECRET_KEY.length + ')' : 'MISSING'}`);
+    console.log(`- CLERK_PUBLISHABLE_KEY: ${process.env.CLERK_PUBLISHABLE_KEY ? 'Set (Length: ' + process.env.CLERK_PUBLISHABLE_KEY.length + ')' : 'MISSING'}`);
+    console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+
     const critical = ['database', 'auth'];
     const missing = critical.filter(key => !features[key as keyof typeof features]);
 
