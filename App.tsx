@@ -3,8 +3,7 @@ import { SignedIn, SignedOut, useUser, useClerk, useAuth } from "@clerk/clerk-re
 import { ViewType, ThemeConfig, Patient, UserRole } from './types';
 import { AppContextProvider, useAppContext } from './lib/useAppContext';
 import { useNavigation } from './lib/navigation';
-import Sidebar from './components/Sidebar';
-import MobileHeader from './components/MobileHeader';
+import Topbar from './components/Topbar';
 import { Toast } from './components/Shared';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -219,10 +218,16 @@ const AppContent: React.FC = () => {
             initSession(true);
           }} />
         ) : (
-          <div className="flex h-screen overflow-hidden bg-bg text-text-main">
-            <Sidebar currentView={currentView} setView={setCurrentView} availableContexts={session?.availableContexts || []} activeContext={session?.activeContext || null} onContextSwitch={switchContext} onLogout={() => signOut()} isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
-            <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-              <MobileHeader currentView={currentView} onMenuClick={() => setIsMobileMenuOpen(true)} onBackClick={goBack} title="Dentis" />
+          <div className="flex flex-col h-screen bg-bg text-text-main">
+            <Topbar
+              currentView={currentView}
+              setView={setCurrentView}
+              availableContexts={session?.availableContexts || []}
+              activeContext={session?.activeContext || null}
+              onContextSwitch={switchContext}
+              onLogout={() => signOut()}
+            />
+            <main className="flex-1 flex flex-col pt-16 h-full overflow-hidden relative">
               <div className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar">
                 <div className="max-w-[1600px] mx-auto pb-20">
                   <AnimatePresence mode='wait'>
