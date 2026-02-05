@@ -210,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       )}
 
                       {/* Add Clinic Button for Dentists in Personal Context */}
-                      {activeContext?.isPersonal && user?.publicMetadata?.role === 'dentist' && (
+                      {activeContext?.isPersonal && (
                         <button
                           onClick={() => { handleNavigation(ViewType.ADD_CLINIC); setIsAccountMenuOpen(false); }}
                           className="w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-purple-50 text-purple-600 font-bold border-t border-slate-100"
