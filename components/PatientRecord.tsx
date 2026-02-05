@@ -22,6 +22,7 @@ import ClinicalAlerts from './ClinicalAlerts';
 import ConsentManager from './ConsentManager';
 import ImageGallery from './ImageGallery';
 import TreatmentPlans from './TreatmentPlans';
+import CreateBillingModal from './Billing/CreateBillingModal';
 
 interface PatientRecordProps {
     patient: Patient;
@@ -44,6 +45,7 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
     const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
     const [loadingTimeline, setLoadingTimeline] = useState(false);
     const [isCreatingEncounter, setIsCreatingEncounter] = useState(false);
+    const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
 
     // Phase 2: Alerts
     const [alerts, setAlerts] = useState<any[]>([]);
@@ -250,6 +252,10 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                                         <div className="p-3 bg-orange-50 text-orange-600 rounded-full group-hover:bg-orange-600 group-hover:text-white transition"><Pill size={24} /></div>
                                         <span className="text-sm font-bold text-slate-700">Odonto</span>
                                     </div>
+                                    <div onClick={() => setIsBillingModalOpen(true)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center gap-2 text-center group">
+                                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full group-hover:bg-emerald-600 group-hover:text-white transition"><DollarSign size={24} /></div>
+                                        <span className="text-sm font-bold text-slate-700">Cobrar</span>
+                                    </div>
                                 </div>
 
                                 {/* Recent Activity Preview */}
@@ -396,6 +402,16 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                     // Re-implement delete logic if needed or pass existing handler
                     showToast('Funcionalidade de exclusão mantida.', 'info');
                     setIsDeleteModalOpen(false);
+                }}
+            />
+
+            <CreateBillingModal
+                isOpen={isBillingModalOpen}
+                onClose={() => setIsBillingModalOpen(false)}
+                patientId={activePatient.id}
+                patientName={activePatient.name}
+                onSuccess={() => {
+                    fetchTimeline(); // To show the new charge in activity
                 }}
             />
         </div>

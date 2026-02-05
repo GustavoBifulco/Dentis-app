@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, User, Plus, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CreateAppointmentModal from './CreateAppointmentModal';
+import CreateBillingModal from './Billing/CreateBillingModal';
+import { LuxButton } from './Shared';
+import { DollarSign, CheckCircle, XCircle } from 'lucide-react';
 
 interface Appointment {
     id: number;
@@ -30,6 +33,15 @@ export default function AppointmentCalendar() {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [filterStatus, setFilterStatus] = useState<string>('all');
+
+    // Billing Integration
+    const [selectedAptForBilling, setSelectedAptForBilling] = useState<Appointment | null>(null);
+
+    useEffect(() => {
+        const handler = (e: any) => setSelectedAptForBilling(e.detail);
+        window.addEventListener('open-billing', handler);
+        return () => window.removeEventListener('open-billing', handler);
+    }, []);
 
     useEffect(() => {
         fetchAppointments();
@@ -249,6 +261,19 @@ export default function AppointmentCalendar() {
                     setShowCreateModal(false);
                 }}
             />
+
+            {selectedAptForBilling && (
+                <CreateBillingModal
+                    isOpen={!!selectedAptForBilling}
+                    onClose={() => setSelectedAptForBilling(null)}
+                    patientId={selectedAptForBilling.patient!.id}
+                    patientName={selectedAptForBilling.patient!.name}
+                    appointmentId={selectedAptForBilling.id}
+                    onSuccess={() => {
+                        fetchAppointments();
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -276,7 +301,11 @@ function DayView({ appointments }: { appointments: Appointment[] }) {
                             <div className="flex-1 p-2 min-h-[80px]">
                                 <div className="grid gap-2">
                                     {hourAppointments.map((apt) => (
-                                        <AppointmentCard key={apt.id} appointment={apt} />
+                                        <AppointmentCard
+                                            key={apt.id}
+                                            appointment={apt}
+                                            onAction={() => setSelectedAptForBilling(apt)}
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -317,7 +346,12 @@ function WeekView({ appointments, selectedDate }: { appointments: Appointment[];
                         </div>
                         <div className="p-2 space-y-2 max-h-[500px] overflow-y-auto">
                             {dayAppointments.map((apt) => (
-                                <AppointmentCard key={apt.id} appointment={apt} compact />
+                                <AppointmentCard
+                                    key={apt.id}
+                                    appointment={apt}
+                                    compact
+                                    onAction={() => setSelectedAptForBilling(apt)}
+                                />
                             ))}
                             {dayAppointments.length === 0 && (
                                 <p className="text-center text-sm text-slate-400 py-4">
@@ -390,7 +424,7 @@ function MonthView({ appointments, selectedDate }: { appointments: Appointment[]
 }
 
 // Appointment Card Component
-function AppointmentCard({ appointment, compact = false }: { appointment: Appointment; compact?: boolean }) {
+function AppointmentCard({ appointment, compact = false, onAction }: { appointment: Appointment; compact?: boolean; onAction?: () => void }) {
     const statusColor = {
         pending: 'bg-yellow-100 border-yellow-300 text-yellow-800',
         confirmed: 'bg-green-100 border-green-300 text-green-800',
@@ -432,10 +466,38 @@ function AppointmentCard({ appointment, compact = false }: { appointment: Appoin
                 </div>
             )}
             {appointment.chiefComplaint && (
-                <div className="text-sm text-slate-600 italic">
+                <div className="text-sm text-slate-600 italic mb-3">
                     "{appointment.chiefComplaint}"
                 </div>
             )}
+
+            <div className="flex gap-2 mt-auto">
+                {appointment.status !== 'completed' && (
+                    <LuxButton
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-[10px] bg-white/50"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            // Logic to mark as completed would go here
+                        }}
+                    >
+                        Concluir
+                    </LuxButton>
+                )}
+                <LuxButton
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-[10px] bg-white/50 text-emerald-700"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onAction?.();
+                    }}
+                    icon={<DollarSign size={12} />}
+                >
+                    Cobrar
+                </LuxButton>
+            </div>
         </motion.div>
     );
 }

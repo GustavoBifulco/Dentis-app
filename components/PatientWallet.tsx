@@ -21,8 +21,8 @@ export default function PatientWallet({ onBack }: PatientWalletProps) {
     const { financials, loading, error } = usePatientFinancials();
 
     const handlePayment = (amount: string, description: string) => {
-        // Redirect to mock checkout route or Stripe
-        window.location.href = `/api/checkout?amount=${amount}&description=${description}`;
+        // Updated for Asaas integration
+        alert("Para pagar via PIX ou Boleto, solicite o link de cobrança ao seu profissional.");
     };
 
     const downloadInvoice = (id: string) => {

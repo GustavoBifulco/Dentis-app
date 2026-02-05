@@ -8,10 +8,10 @@ export function usePatientFinancials() {
     const fetchFinancials = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/patient/financials');
+            const res = await fetch('/api/billing/charges');
             const data = await res.json();
-            if (data.financials) {
-                setFinancials(data.financials);
+            if (data) {
+                setFinancials(data);
             }
         } catch (err) {
             setError('Erro ao carregar dados financeiros');

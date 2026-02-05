@@ -1,8 +1,23 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FinancialEntry, UserRole } from '../types';
 import { LoadingState, EmptyState, SectionHeader, LuxButton, IslandCard } from './Shared';
-import { ArrowUpRight, ArrowDownLeft, Plus, X, Calendar as CalendarIcon, Tag, Wallet } from 'lucide-react';
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Plus,
+  Search,
+  Filter,
+  Download,
+  Calendar,
+  X,
+  Wallet,
+  Tag,
+  Calendar as CalendarIcon
+} from 'lucide-react';
 import { MOCK_FINANCE } from '../lib/mockData';
 
 interface FinanceProps {
@@ -12,6 +27,8 @@ interface FinanceProps {
 const Finance: React.FC<FinanceProps> = ({ userRole }) => {
   const [entries, setEntries] = useState<FinancialEntry[]>(MOCK_FINANCE);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [billingCharges, setBillingCharges] = useState<any[]>([]);
+  const [loadingBilling, setLoadingBilling] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   // Transaction Form State
@@ -20,6 +37,23 @@ const Finance: React.FC<FinanceProps> = ({ userRole }) => {
     category: 'personal',
     status: 'pending'
   });
+
+  const fetchBilling = async () => {
+    setLoadingBilling(true);
+    try {
+      const res = await fetch('/api/billing/charges');
+      const data = await res.json();
+      setBillingCharges(data || []);
+    } catch (e) {
+      console.error("Failed to load billing charges");
+    } finally {
+      setLoadingBilling(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBilling();
+  }, []);
 
   const handleAddTransaction = () => {
     // Mock saving
@@ -152,6 +186,58 @@ const Finance: React.FC<FinanceProps> = ({ userRole }) => {
             </table>
           </div>
         )}
+      </div>
+
+      {/* ASAAS BILLING LIST */}
+      <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mt-8">
+        <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-blue-50/30">
+          <div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Cobranças Recentes (Asaas)</h3>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Sincronizado automaticamente com gateway de pagamento</p>
+          </div>
+          <LuxButton variant="outline" onClick={fetchBilling}>Atualizar</LuxButton>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <tbody className="divide-y divide-slate-50">
+              {billingCharges.map((charge: any) => (
+                <tr key={charge.id} className="hover:bg-slate-50/50 transition-all group">
+                  <td className="px-10 py-6">
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-100">
+                        <DollarSign size={22} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <span className="font-black text-slate-900 block tracking-tight text-base">{charge.description || 'Cobrança Avulsa'}</span>
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Paciente: {charge.patientName || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-10 py-6 text-sm text-slate-400 font-bold uppercase tracking-widest">Vence em: {new Date(charge.dueDate).toLocaleDateString()}</td>
+                  <td className="px-10 py-6 text-lg font-black tracking-tight text-slate-900">
+                    R$ {Number(charge.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-10 py-6 text-right">
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${charge.status === 'RECEIVED' || charge.status === 'RECEIVED_IN_CASH' || charge.status === 'CONFIRMED'
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                      : charge.status === 'OVERDUE'
+                        ? 'bg-rose-50 text-rose-600 border-rose-100'
+                        : 'bg-amber-50 text-amber-600 border-amber-100'
+                      }`}>
+                      {charge.status === 'RECEIVED' || charge.status === 'RECEIVED_IN_CASH' || charge.status === 'CONFIRMED' ? 'Pago' : charge.status === 'OVERDUE' ? 'Vencido' : 'Pendente'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {billingCharges.length === 0 && !loadingBilling && (
+                <tr>
+                  <td colSpan={4} className="px-10 py-12 text-center text-slate-400 font-bold italic">Nenhuma cobrança Asaas emitida ainda.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ADD TRANSACTION MODAL */}
