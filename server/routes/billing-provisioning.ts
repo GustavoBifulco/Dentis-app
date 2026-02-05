@@ -27,7 +27,18 @@ const provisioningSchema = z.object({
 
 billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), async (c) => {
     const { desiredName, seats, mode, planType, interval } = c.req.valid('json');
-    const userId = c.get('userId');
+    let userId = c.get('userId');
+
+    // FALLBACK: If userId (internal DB ID) is missing, try to use Clerk ID or get it from Auth
+    if (!userId) {
+        const auth = c.get('auth');
+        userId = auth?.userId || auth?.sessionClaims?.sub; // Fallback to Clerk ID if DB ID is missing
+        console.warn(`⚠️ Internal userID missing in context. Using fallback: ${userId}`);
+    }
+
+    if (!userId) {
+        return c.json({ error: 'User not authenticated' }, 401);
+    }
 
     // Resolve Price ID
     let priceId = c.req.valid('json').priceId;
