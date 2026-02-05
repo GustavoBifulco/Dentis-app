@@ -7,7 +7,7 @@ interface AsaasRequestOptions {
 
 const ASAAS_API_URL = process.env.ASAAS_ENV === 'production'
     ? 'https://api.asaas.com/v3'
-    : 'https://sandbox.asaas.com/v3';
+    : 'https://sandbox.asaas.com/api/v3';
 
 const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
 

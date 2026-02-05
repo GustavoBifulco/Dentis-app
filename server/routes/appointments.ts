@@ -4,6 +4,7 @@ import { scopedDb } from '../db/scoped';
 import { db } from '../db';
 import { authMiddleware } from '../middleware/auth';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+import { verifyPatientAccess } from '../utils/tenant';
 
 const app = new Hono();
 
@@ -97,6 +98,9 @@ app.post('/', async (c) => {
   const body = await c.req.json();
 
   try {
+    // IDOR Check
+    await verifyPatientAccess(body.patient_id, auth.organizationId);
+
     const [newAppointment] = await scoped.insert(appointments).values({
       organizationId: auth.organizationId,
       patientId: body.patient_id,
@@ -141,10 +145,10 @@ app.put('/:id', async (c) => {
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.chief_complaint !== undefined) updateData.chiefComplaint = body.chief_complaint;
 
-    const [updated] = await scoped
+    const [updated] = await db
       .update(appointments)
       .set(updateData)
-      .where(eq(appointments.id, id))
+      .where(and(eq(appointments.id, id), eq(appointments.organizationId, c.get('auth').organizationId)))
       .returning();
 
     if (!updated) {
@@ -165,7 +169,7 @@ app.delete('/:id', async (c) => {
   const body = await c.req.json();
 
   try {
-    const [cancelled] = await scoped
+    const [cancelled] = await db
       .update(appointments)
       .set({
         status: 'cancelled',
@@ -173,7 +177,7 @@ app.delete('/:id', async (c) => {
         cancellationReason: body.cancellation_reason || 'Cancelado',
         updatedAt: new Date(),
       })
-      .where(eq(appointments.id, id))
+      .where(and(eq(appointments.id, id), eq(appointments.organizationId, c.get('auth').organizationId)))
       .returning();
 
     if (!cancelled) {
@@ -194,7 +198,7 @@ app.post('/:id/confirm', async (c) => {
   const body = await c.req.json();
 
   try {
-    const [confirmed] = await scoped
+    const [confirmed] = await db
       .update(appointments)
       .set({
         status: 'confirmed',
@@ -202,7 +206,7 @@ app.post('/:id/confirm', async (c) => {
         confirmedBy: body.confirmed_by || 'app',
         updatedAt: new Date(),
       })
-      .where(eq(appointments.id, id))
+      .where(and(eq(appointments.id, id), eq(appointments.organizationId, c.get('auth').organizationId)))
       .returning();
 
     if (!confirmed) {
@@ -228,13 +232,13 @@ app.post('/:id/complete', async (c) => {
     if (!apt) return c.json({ error: 'Appointment not found' }, 404);
 
     // 2. Mark as Completed
-    const [completed] = await scoped
+    const [completed] = await db
       .update(appointments)
       .set({
         status: 'completed',
         updatedAt: new Date(),
       })
-      .where(eq(appointments.id, id))
+      .where(and(eq(appointments.id, id), eq(appointments.organizationId, auth.organizationId)))
       .returning();
 
     // 3. Inventory Deduction Logic

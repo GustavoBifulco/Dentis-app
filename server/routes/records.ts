@@ -36,6 +36,57 @@ const encounterSchema = z.object({
     appointmentId: z.number().optional(),
 });
 
+const alertSchema = z.object({
+    patientId: z.number(),
+    description: z.string().min(1, 'Descrição obrigatória').trim(),
+    type: z.string().optional(),
+    severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+});
+
+const problemSchema = z.object({
+    patientId: z.number(),
+    name: z.string().min(1, 'Nome obrigatório').trim(),
+    code: z.string().optional(),
+    status: z.string().optional(),
+    diagnosedAt: z.string().optional(),
+});
+
+const medicationSchema = z.object({
+    patientId: z.number(),
+    name: z.string().min(1, 'Nome obrigatório').trim(),
+    dosage: z.string().optional(),
+    frequency: z.string().optional(),
+    startDate: z.string().optional(),
+});
+
+const consentSchema = z.object({
+    patientId: z.number(),
+    title: z.string().min(1, 'Título obrigatório').trim(),
+    content: z.string().min(1, 'Conteúdo obrigatório'),
+});
+
+const odontogramSchema = z.object({
+    patientId: z.number(),
+    tooth: z.number(),
+    surface: z.string().optional(),
+    condition: z.string().min(1),
+    material: z.string().optional(),
+    notes: z.string().optional(),
+});
+
+const planSchema = z.object({
+    patientId: z.number(),
+    title: z.string().min(1, 'Título obrigatório').trim(),
+    totalCost: z.number().optional(),
+    items: z.array(z.object({
+        name: z.string(),
+        price: z.number(),
+        procedureId: z.number().optional(),
+        tooth: z.number().optional(),
+        surface: z.string().optional(),
+    })).optional(),
+});
+
 // GET /api/records/timeline/:patientId
 app.get('/timeline/:patientId', async (c) => {
     const patientId = Number(c.req.param('patientId'));
@@ -111,13 +162,10 @@ app.get('/alerts/:patientId', async (c) => {
     return c.json(alerts);
 });
 
-app.post('/alerts', async (c) => {
-    const body = await c.req.json();
+app.post('/alerts', zValidator('json', alertSchema), async (c) => {
+    const body = c.req.valid('json');
     const organizationId = c.get('organizationId');
     const user = c.get('user');
-
-    // Basic validation
-    if (!body.patientId || !body.description) return c.json({ error: 'Missing fields' }, 400);
 
     // Anti-IDOR
     await verifyPatientAccess(body.patientId, organizationId);
@@ -156,9 +204,12 @@ app.get('/problems/:patientId', async (c) => {
     return c.json(problems);
 });
 
-app.post('/problems', async (c) => {
-    const body = await c.req.json();
+app.post('/problems', zValidator('json', problemSchema), async (c) => {
+    const body = c.req.valid('json');
     const organizationId = c.get('organizationId');
+
+    // Anti-IDOR
+    await verifyPatientAccess(body.patientId, organizationId);
 
     const [problem] = await db.insert(patientProblems).values({
         organizationId,
@@ -183,9 +234,12 @@ app.get('/medications/:patientId', async (c) => {
     return c.json(meds);
 });
 
-app.post('/medications', async (c) => {
-    const body = await c.req.json();
+app.post('/medications', zValidator('json', medicationSchema), async (c) => {
+    const body = c.req.valid('json');
     const organizationId = c.get('organizationId');
+
+    // Anti-IDOR
+    await verifyPatientAccess(body.patientId, organizationId);
 
     const [med] = await db.insert(patientMedications).values({
         organizationId,
@@ -211,10 +265,13 @@ app.get('/consents/:patientId', async (c) => {
     return c.json(consents);
 });
 
-app.post('/consents', async (c) => {
-    const body = await c.req.json();
+app.post('/consents', zValidator('json', consentSchema), async (c) => {
+    const body = c.req.valid('json');
     const organizationId = c.get('organizationId');
     const user = c.get('user');
+
+    // Anti-IDOR
+    await verifyPatientAccess(body.patientId, organizationId);
 
     const [consent] = await db.insert(patientConsents).values({
         organizationId,
@@ -250,9 +307,12 @@ app.get('/odontogram/:patientId', async (c) => {
     return c.json(teeth);
 });
 
-app.post('/odontogram', async (c) => {
-    const body = await c.req.json();
+app.post('/odontogram', zValidator('json', odontogramSchema), async (c) => {
+    const body = c.req.valid('json');
     const organizationId = c.get('organizationId');
+
+    // Anti-IDOR
+    await verifyPatientAccess(body.patientId, organizationId);
 
     // We expect a single tooth update or an array?
     // Let's handle generic "Upsert" logic
@@ -346,10 +406,13 @@ app.get('/plans/:patientId', async (c) => {
     return c.json(plans);
 });
 
-app.post('/plans', async (c) => {
-    const body = await c.req.json();
+app.post('/plans', zValidator('json', planSchema), async (c) => {
+    const body = c.req.valid('json');
     const organizationId = c.get('organizationId');
     const user = c.get('user');
+
+    // Anti-IDOR
+    await verifyPatientAccess(body.patientId, organizationId);
 
     // Transactional insert for Plan + Items
     const result = await db.transaction(async (tx) => {
