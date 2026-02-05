@@ -137,6 +137,11 @@ app.route('/api/settings', settings);
 app.route('/api/communication', communication);
 app.route('/api/whatsapp', whatsapp);
 app.route('/api/preferences', preferences);
+import billingProvisioning from './routes/billing-provisioning';
+import clinicInvites from './routes/clinic-invites';
+
+app.route('/api/billing-provisioning', billingProvisioning);
+app.route('/api/clinic-invites', clinicInvites);
 
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 
