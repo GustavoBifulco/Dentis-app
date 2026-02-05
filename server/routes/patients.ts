@@ -38,13 +38,13 @@ const insuranceSchema = z.object({
 
 const patientSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  cpf: z.string().optional().or(z.literal('')),
-  rg: z.string().optional(),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional(),
-  birthdate: z.string().optional(), // YYYY-MM-DD
-  gender: z.string().optional(),
-  occupation: z.string().optional(),
+  cpf: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
+  rg: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
+  email: z.string().email("Email inválido").optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
+  phone: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
+  birthdate: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
+  gender: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
+  occupation: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
 
   // Relations
   addressDetails: addressSchema.optional(),

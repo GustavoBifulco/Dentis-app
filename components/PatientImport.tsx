@@ -3,6 +3,9 @@ import { useAuth } from '@clerk/clerk-react';
 import { Upload, X, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+
 interface PatientImportProps {
     isOpen: boolean;
     onClose: () => void;
@@ -12,6 +15,8 @@ interface PatientImportProps {
 const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSuccess }) => {
     const { getToken } = useAuth();
     const [file, setFile] = useState<File | null>(null);
+    const [previewData, setPreviewData] = useState<any[]>([]);
+    const [loadingPreview, setLoadingPreview] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [result, setResult] = useState<any>(null);
@@ -55,6 +60,48 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
         setFile(file);
         setError(null);
         setResult(null);
+        setPreviewData([]);
+
+        // Generate Preview
+        setLoadingPreview(true);
+        try {
+            if (fileExtension === '.csv') {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    preview: 5, // Only get first 5 rows
+                    complete: (results) => {
+                        setPreviewData(results.data);
+                        setLoadingPreview(false);
+                    },
+                    error: (err) => {
+                        setError(`Erro ao ler CSV: ${err.message}`);
+                        setLoadingPreview(false);
+                    }
+                });
+            } else {
+                // For now, only preview CSV easily on client without heavier libs or just show file info
+                // Excel preview requires 'xlsx' parsing which we can do if installed
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = e.target?.result;
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(sheet);
+                        setPreviewData(json.slice(0, 5));
+                    } catch (err) {
+                        console.warn("Excel preview failed", err);
+                    } finally {
+                        setLoadingPreview(false);
+                    }
+                };
+                reader.readAsBinaryString(file);
+            }
+        } catch (e) {
+            setLoadingPreview(false);
+        }
     };
 
     const handleUpload = async () => {
@@ -69,15 +116,41 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                 throw new Error('Não autenticado');
             }
 
-            const formData = new FormData();
-            formData.append('file', file);
+            // Parse full file content to send as JSON
+            let payloadData: any[] = [];
+
+            if (file.name.toLowerCase().endsWith('.csv')) {
+                await new Promise<void>((resolve, reject) => {
+                    Papa.parse(file, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            payloadData = results.data;
+                            resolve();
+                        },
+                        error: reject
+                    });
+                });
+            } else {
+                // Excel processing
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data);
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                payloadData = XLSX.utils.sheet_to_json(sheet);
+            }
+
+            if (payloadData.length === 0) {
+                throw new Error("O arquivo está vazio ou inválido.");
+            }
 
             const response = await fetch('/api/patient-import/upload', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 },
-                body: formData,
+                body: JSON.stringify({ patients: payloadData }),
             });
 
             const data = await response.json();
@@ -87,10 +160,14 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
             }
 
             setResult(data);
-            setTimeout(() => {
-                onSuccess();
-                handleClose();
-            }, 2000);
+
+            // Auto close success after longer delay
+            if (data.success) {
+                setTimeout(() => {
+                    onSuccess();
+                    handleClose();
+                }, 3000);
+            }
 
         } catch (err: any) {
             setError(err.message || 'Erro ao processar arquivo');
@@ -121,7 +198,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                     {/* Header */}
                     <div className="p-8 border-b border-lux-border flex items-center justify-between">
                         <div>
-                            <h2 className="text-3xl font-black text-lux-text">Importar Pacientes</h2>
+                            <h2 className="text-3xl font-black text-lux-text">Importar Pacientes <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">v2.7</span></h2>
                             <p className="text-sm text-lux-text-secondary mt-1">
                                 Suporta CSV, Excel e SQL de qualquer sistema
                             </p>
@@ -193,6 +270,36 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                         </button>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* Preview Section */}
+                        {file && !result && previewData.length > 0 && (
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                                <div className="px-4 py-3 border-b border-slate-200 bg-slate-100/50 flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-700 text-sm">Pré-visualização (5 linhas)</h3>
+                                    <span className="text-xs text-slate-500">Verifique se os dados estão corretos</span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-slate-50 font-bold text-slate-500 uppercase">
+                                            <tr>
+                                                {Object.keys(previewData[0]).slice(0, 5).map(key => (
+                                                    <th key={key} className="px-4 py-2 border-b border-slate-200 whitespace-nowrap">{key}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {previewData.map((row, idx) => (
+                                                <tr key={idx}>
+                                                    {Object.values(row).slice(0, 5).map((val: any, i) => (
+                                                        <td key={i} className="px-4 py-2 text-slate-600 whitespace-nowrap overflow-hidden max-w-[150px] text-ellipsis">{String(val)}</td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 

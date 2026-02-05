@@ -197,7 +197,12 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <LuxButton variant="ghost" onClick={() => setIsEditModalOpen(true)} icon={<User size={16} />}>Editar</LuxButton>
+                        <PatientInviteButton
+                            patientId={activePatient.id}
+                            patientName={activePatient.name}
+                            hasAccount={!!activePatient.userId}
+                        />
+                        <LuxButton variant="ghost" onClick={() => setIsEditModalOpen(true)} icon={<User size={16} />}>Editar Perfil</LuxButton>
                         <LuxButton variant="ghost" className="text-red-500" onClick={() => setIsDeleteModalOpen(true)} icon={<Trash2 size={16} />}>Excluir</LuxButton>
                     </div>
                 </div>

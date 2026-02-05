@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ViewType, ContextType, AppContext } from '../types';
-import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package, ChevronDown, Building2, FlaskConical, User, Shield, HelpCircle, Database, FileCheck, MessageSquare } from 'lucide-react';
+import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package, ChevronDown, Building2, FlaskConical, User, Shield, HelpCircle, Database, FileCheck, MessageSquare, Sparkles } from 'lucide-react';
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
@@ -58,15 +58,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={`
           w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-colors duration-200 group relative
           ${isActive
-            ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-200'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            ? 'bg-primary text-primary-foreground font-semibold shadow-md shadow-primary/20'
+            : 'text-text-muted hover:text-text hover:bg-surface-hover'
           }
         `}
       >
         {isActive && (
           <motion.div
             layoutId="sidebar-active"
-            className="absolute inset-0 bg-blue-600 rounded-xl z-0"
+            className="absolute inset-0 bg-primary rounded-xl z-0"
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           />
         )}
@@ -101,6 +101,12 @@ const Sidebar: React.FC<SidebarProps> = ({
               { type: ViewType.MANAGEMENT_HUB, label: 'Central Operacional', icon: Layers },
               // New Communication Section
               { type: ViewType.COMMUNICATION, label: 'Comunicação', icon: MessageSquare },
+            ]
+          },
+          {
+            title: 'Inteligência',
+            items: [
+              { type: ViewType.AI_ASSISTANT, label: 'Dentis AI', icon: Sparkles },
             ]
           },
           {
@@ -142,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         fixed lg:static inset-y-0 left-0 z-50 w-72 h-screen flex flex-col
         transition-transform duration-300 md:transition-none
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        bg-white border-r border-slate-200
+        bg-surface border-r border-border
       `}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -154,10 +160,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="relative">
             <button
               onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-              className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl p-3 flex items-center justify-between transition-all group"
+              className="w-full bg-bg hover:bg-surface-hover border border-border rounded-xl p-3 flex items-center justify-between transition-all group"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 shadow-sm overflow-hidden flex-shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-surface border border-border shadow-sm overflow-hidden flex-shrink-0">
                   <img src={user?.imageUrl} alt="" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col items-start min-w-0">

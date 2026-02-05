@@ -93,20 +93,20 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
   const SettingRow = ({ icon: Icon, label, description, children, onClick }: any) => (
     <div
       onClick={onClick}
-      className={`flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all ${onClick ? 'cursor-pointer group' : ''}`}
+      className={`flex items-center justify-between p-5 border-b border-border last:border-0 hover:bg-surface-hover transition-all ${onClick ? 'cursor-pointer group' : ''}`}
     >
       <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-slate-700 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all">
+        <div className="w-10 h-10 rounded-xl bg-surface-hover flex items-center justify-center text-text-muted group-hover:bg-primary/10 group-hover:text-primary transition-all">
           <Icon size={20} strokeWidth={2.5} />
         </div>
         <div>
-          <span className="block font-bold text-slate-900 dark:text-white text-sm">{label}</span>
-          {description && <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">{description}</span>}
+          <span className="block font-bold text-text-main text-sm">{label}</span>
+          {description && <span className="text-xs text-text-muted mt-0.5 block">{description}</span>}
         </div>
       </div>
       <div className="flex items-center gap-3">
         {children}
-        {onClick && <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all" strokeWidth={2.5} />}
+        {onClick && <ChevronRight size={18} className="text-text-muted/50 group-hover:text-primary group-hover:translate-x-1 transition-all" strokeWidth={2.5} />}
       </div>
     </div>
   );
@@ -115,9 +115,9 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
     <button
       onClick={onChange}
       disabled={loading}
-      className={`w-11 h-6 rounded-full transition-all duration-300 relative ${enabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'} ${loading ? 'opacity-50 cursor-wait' : ''}`}
+      className={`w-11 h-6 rounded-full transition-all duration-300 relative ${enabled ? 'bg-primary' : 'bg-text-muted/30'} ${loading ? 'opacity-50 cursor-wait' : ''}`}
     >
-      <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-sm ${enabled ? 'left-6' : 'left-1'}`}></div>
+      <div className={`w-4 h-4 bg-surface rounded-full absolute top-1 transition-all duration-300 shadow-sm ${enabled ? 'left-6' : 'left-1'}`}></div>
     </button>
   );
 
@@ -132,9 +132,9 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
       />
 
       {/* Aparência */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2">
+      <div className="bg-surface rounded-2xl shadow-lg border border-border overflow-hidden">
+        <div className="p-5 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-border">
+          <h3 className="font-black text-text-main flex items-center gap-2">
             <Palette size={20} />
             Aparência
           </h3>
@@ -146,16 +146,16 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           label="Modo de Cor"
           description="Escolha entre tema claro ou escuro"
         >
-          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
+          <div className="flex bg-surface-hover p-1 rounded-lg">
             <button
               onClick={() => setTheme({ ...theme, mode: 'light' })}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-text-muted'}`}
             >
               Claro
             </button>
             <button
               onClick={() => setTheme({ ...theme, mode: 'dark' })}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'dark' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'dark' ? 'bg-surface text-text-main shadow-sm' : 'text-text-muted'}`}
             >
               Escuro
             </button>
@@ -166,12 +166,12 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         <div className="p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
+              <div className="w-10 h-10 rounded-xl bg-surface-hover flex items-center justify-center text-text-muted">
                 <Palette size={20} strokeWidth={2.5} />
               </div>
               <div>
-                <span className="block font-bold text-slate-900 dark:text-white text-sm">Cor Principal</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">Identidade visual da clínica</span>
+                <span className="block font-bold text-text-main text-sm">Cor Principal</span>
+                <span className="text-xs text-text-muted">Identidade visual da clínica</span>
               </div>
             </div>
 
@@ -185,9 +185,9 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
       </div>
 
       {/* Notificações */}
-      <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-        <div className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-slate-200">
-          <h3 className="font-black text-slate-900 flex items-center gap-2">
+      <div className="bg-surface rounded-2xl shadow-lg border border-border overflow-hidden">
+        <div className="p-5 bg-gradient-to-r from-warning/10 to-warning/5 border-b border-border">
+          <h3 className="font-black text-text-main flex items-center gap-2">
             <Bell size={20} />
             Notificações
           </h3>
@@ -228,9 +228,9 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
       </div>
 
       {/* Equipe e Acesso */}
-      <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-        <div className="p-5 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-slate-200">
-          <h3 className="font-black text-slate-900 flex items-center gap-2">
+      <div className="bg-surface rounded-2xl shadow-lg border border-border overflow-hidden">
+        <div className="p-5 bg-gradient-to-r from-primary/5 to-secondary/10 border-b border-border">
+          <h3 className="font-black text-text-main flex items-center gap-2">
             <Users2 size={20} />
             Equipe e Acesso
           </h3>
@@ -249,14 +249,14 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           description="Senha, Autenticação de Dois Fatores (2FA) e Sessões"
           onClick={() => openUserProfile()}
         >
-          <button onClick={() => openUserProfile()} className="text-xs font-bold text-blue-600 hover:underline px-2">Gerenciar</button>
+          <button onClick={() => openUserProfile()} className="text-xs font-bold text-primary hover:underline px-2">Gerenciar</button>
         </SettingRow>
       </div>
 
       {/* Sistema */}
-      <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-        <div className="p-5 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200">
-          <h3 className="font-black text-slate-900 flex items-center gap-2">
+      <div className="bg-surface rounded-2xl shadow-lg border border-border overflow-hidden">
+        <div className="p-5 bg-gradient-to-r from-surface-hover to-bg border-b border-border">
+          <h3 className="font-black text-text-main flex items-center gap-2">
             <SettingsIcon size={20} />
             Sistema
           </h3>

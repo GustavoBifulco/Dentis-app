@@ -12,18 +12,36 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: {
-                    DEFAULT: 'var(--primary)',
-                    hover: 'var(--primary-hover)',
-                    text: 'var(--primary-text)',
-                },
+                // Backgrounds
+                bg: 'var(--bg)',
                 surface: {
                     DEFAULT: 'var(--surface)',
                     hover: 'var(--surface-hover)',
                 },
-                // Mapping standard Tailwind colors to our CSS vars if we want to override them entirely, 
-                // but extending is usually safer to keep utilities working.
+
+                // Text
+                text: {
+                    DEFAULT: 'var(--text-main)', // standard text-text
+                    muted: 'var(--text-muted)',
+                    desc: 'var(--text-desc)',
+                },
+
+                // Borders
+                border: 'var(--border)',
+
+                // Primary / Accent (Dynamic)
+                primary: {
+                    DEFAULT: 'var(--primary)',
+                    hover: 'var(--primary-hover)',
+                    foreground: 'var(--primary-foreground)',
+                },
             },
+            borderRadius: {
+                sm: 'var(--radius-sm)',
+                md: 'var(--radius-md)',
+                lg: 'var(--radius-lg)',
+                xl: 'var(--radius-xl)',
+            }
         },
     },
     plugins: [],

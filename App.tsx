@@ -39,6 +39,8 @@ import PatientRegister from './pages/PatientRegister';
 import CommunicationDashboard from './components/dashboards/CommunicationDashboard';
 
 import { Terms, Help, Backup } from './components/BasePages';
+import { AIAssistant } from './components/AIAssistant';
+import AssistantPage from './components/AssistantPage';
 
 // Componente de Loading leve
 const LoadingFallback = () => (
@@ -148,6 +150,7 @@ const AppContent: React.FC = () => {
       case ViewType.HELP: return <Help />;
       case ViewType.BACKUP: return <Backup />;
       case ViewType.COMMUNICATION: return <CommunicationDashboard />;
+      case ViewType.AI_ASSISTANT: return <AssistantPage />;
       default: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
     }
   };
@@ -195,7 +198,7 @@ const AppContent: React.FC = () => {
             initSession(true);
           }} />
         ) : (
-          <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
+          <div className="flex h-screen overflow-hidden bg-bg text-text-main">
             <Sidebar currentView={currentView} setView={setCurrentView} availableContexts={session?.availableContexts || []} activeContext={session?.activeContext || null} onContextSwitch={switchContext} onLogout={() => signOut()} isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
             <main className="flex-1 flex flex-col h-full overflow-hidden relative">
               <MobileHeader currentView={currentView} onMenuClick={() => setIsMobileMenuOpen(true)} onBackClick={goBack} title="Dentis" />
@@ -222,6 +225,7 @@ const AppContent: React.FC = () => {
               </div>
             </main>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => { }} />}
+            <AIAssistant onNavigate={setCurrentView} />
           </div>
         )}
       </SignedIn>

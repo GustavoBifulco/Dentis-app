@@ -50,6 +50,9 @@ export const patients = pgTable('patients', {
   id: serial('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
 
+  // Link to User Account (quando o paciente criar conta via convite)
+  userId: text('user_id'), // References Clerk userId
+
   // Dados Pessoais
   name: text('name').notNull(),
   socialName: text('social_name'),
@@ -90,6 +93,7 @@ export const patients = pgTable('patients', {
 
   status: text('status').default('active'), // active, archived
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 // Emergency Contacts (1:N)
@@ -659,10 +663,13 @@ export const messageLogs = pgTable('message_logs', {
 export const patientInvitations = pgTable('patient_invitations', {
   id: serial('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
-  email: text('email').notNull(),
+  patientId: integer('patient_id').notNull().references(() => patients.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
+  prefilledData: jsonb('prefilled_data'), // { name, email, phone, cpf }
   status: text('status').default('pending'), // 'pending', 'accepted', 'expired'
   expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdBy: text('created_by').notNull(), // userId who created the invite
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -1198,4 +1205,35 @@ export const dentistClinicContracts = pgTable('dentist_clinic_contracts', {
 
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// === AI ASSISTANT ===
+
+export const aiConversations = pgTable('ai_conversations', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  userId: text('user_id').notNull(),
+  title: text('title').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const aiMessages = pgTable('ai_messages', {
+  id: serial('id').primaryKey(),
+  conversationId: integer('conversation_id').references(() => aiConversations.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(), // 'user' | 'assistant' | 'system'
+  content: text('content').notNull(),
+  metadata: jsonb('metadata'), // Context info, tool calls, etc.
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const aiConversationsRelations = relations(aiConversations, ({ many }) => ({
+  messages: many(aiMessages),
+}));
+
+export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
+  conversation: one(aiConversations, {
+    fields: [aiMessages.conversationId],
+    references: [aiConversations.id],
+  }),
+}));
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, Dispatch, SetStateAction } from 'react';
 import { AppContext as AppContextType, UserSession } from '../types';
+import { useAuth } from "@clerk/clerk-react";
 
 interface AppContextState {
     session: UserSession | null;
@@ -63,12 +64,43 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }, [session]);
 
     // --- THEME MANAGEMENT ---
+    const { getToken } = useAuth();
     const [theme, setTheme] = useState<{ mode: 'light' | 'dark', accentColor: string }>({
         mode: 'light',
         accentColor: '#2563EB' // Default Blue
     });
 
-    // Initialize Theme from LocalStorage or System Preference
+    // Helper: HEX to HSL for better color manipulation
+    const getAdjustedColor = (hex: string, lightnessDelta: number) => {
+        // Remove hash
+        hex = hex.replace('#', '');
+        // Parse RGB
+        const r = parseInt(hex.substring(0, 2), 16) / 255;
+        const g = parseInt(hex.substring(2, 4), 16) / 255;
+        const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+
+        // Adjust lightness (and darken a bit more for dark mode if needed, but standard logic: hover is darker)
+        let newL = Math.max(0, Math.min(1, l + lightnessDelta));
+
+        // Convert back to RGB/Hex would be complex, simpler to return HSL string for CSS
+        return `hsl(${Math.round(h * 360)}, ${Math.round(s * 100)}%, ${Math.round(newL * 100)}%)`;
+    };
+
+    // Initialize Theme
     useEffect(() => {
         const savedTheme = localStorage.getItem('dentis-theme');
         if (savedTheme) {
@@ -82,16 +114,6 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     }, []);
 
-    // Helper to adjust brightness (simple hex manipulation)
-    const adjustBrightness = (hex: string, percent: number) => {
-        const num = parseInt(hex.replace('#', ''), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = (num >> 16) + amt;
-        const G = (num >> 8 & 0x00FF) + amt;
-        const B = (num & 0x0000FF) + amt;
-        return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
-    };
-
     // Apply Theme Side Effects
     useEffect(() => {
         const root = window.document.documentElement;
@@ -99,38 +121,48 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // 1. Dark Mode
         if (theme.mode === 'dark') {
             root.classList.add('dark');
+            root.style.colorScheme = 'dark';
         } else {
             root.classList.remove('dark');
+            root.style.colorScheme = 'light';
         }
 
-        // 2. Accent Color
+        // 2. Accent Color (CSS Variables)
         root.style.setProperty('--primary', theme.accentColor);
-        // Generate a 15% darker shade for hover
-        root.style.setProperty('--primary-hover', adjustBrightness(theme.accentColor, -20));
+        // Hover: 10% darker
+        root.style.setProperty('--primary-hover', getAdjustedColor(theme.accentColor, -0.1));
 
-        // Ensure persist
+        // Ensure persist locally
         localStorage.setItem('dentis-theme', JSON.stringify(theme));
 
-        // Save to Backend (Fire and Forget)
-        if (session) {
-            fetch('/api/preferences', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('clerk-db-jwt')}` // Ideally use useAuth() here but context is tricky.
-                    // Actually, we can't easily get the fresh token here without triggering re-renders loop if we add useAuth dep.
-                    // Use a simple check or fetch session token if possible, OR assume the token is available.
-                    // Better approach: Let's use the session token if we have it, or ignore.
-                    // For now, rely on LocalStorage for immediate UX, backend sync is best-effort.
-                },
-                body: JSON.stringify({
-                    theme: theme.mode,
-                    primaryColor: theme.accentColor
-                })
-            }).catch(err => console.error("Failed to save prefs", err));
-        }
+        // Save to Backend (Debounced or immediate)
+        const saveToBackend = async () => {
+            if (session?.user?.id) {
+                try {
+                    const token = await getToken();
+                    if (!token) return; // public route or offline
 
-    }, [theme, session]);
+                    await fetch('/api/preferences', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            theme: theme.mode,
+                            primaryColor: theme.accentColor
+                        })
+                    });
+                } catch (err) {
+                    console.warn("Failed to save prefs backend", err);
+                }
+            }
+        };
+        // Simple debounce: only save if user is logged in. 
+        // ideally use a ref timeout but for now direct call is fine as frequency is low (color picker on release)
+        saveToBackend();
+
+    }, [theme, session, getToken]);
 
 
     return (

@@ -6,88 +6,89 @@
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 
   /* --- Dentis Prime: Core Tokens --- */
-  --bg: #F8FAFC;
-  --surface: #FFFFFF;
-  --surface-hover: #F1F5F9;
+  /* Backgrounds */
+  --bg: #F8FAFC;         /* slate-50 */
+  --surface: #FFFFFF;    /* white */
+  --surface-hover: #F1F5F9; /* slate-100 */
 
-  --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --primary-text: #FFFFFF;
+  /* Text */
+  --text-main: #0F172A;  /* slate-900 */
+  --text-muted: #64748B; /* slate-500 */
+  --text-desc: #94A3B8;  /* slate-400 */
 
-  --secondary: #64748B;
-  --secondary-hover: #475569;
+  /* Borders */
+  --border: #E2E8F0;     /* slate-200 */
+  --border-focus: #3B82F6; /* blue-500 */
 
-  --text-main: #0F172A;
-  --text-muted: #64748B;
-  --text-desc: #475569;
+  /* Brand / Accent (Default Blue) */
+  --primary: #2563EB;    /* blue-600 */
+  --primary-hover: #1D4ED8; /* blue-700 */
+  --primary-foreground: #FFFFFF;
 
-  --border: #E2E8F0;
-  --border-focus: #3B82F6;
-
+  /* Status */
   --success: #10B981;
   --error: #EF4444;
   --warning: #F59E0B;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  /* Radius */
+  --radius-sm: 0.5rem;   /* 8px */
+  --radius-md: 0.75rem;  /* 12px */
+  --radius-lg: 1rem;     /* 16px */
+  --radius-xl: 1.5rem;   /* 24px */
 
+  /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-}
-
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 antialiased;
-    background-image:
-      radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.03) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(37, 99, 235, 0.02) 0px, transparent 50%);
-  }
-}
-
-/* Custom Utilities for Lexical/Editorial feel */
-.font-editorial {
-  font-family: 'Inter', serif;
-  /* Falling back to Inter if no serif is loaded, but styled for elegance */
-  letter-spacing: -0.02em;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
 }
 
 /* Dark Mode Overrides */
 .dark {
-  --bg: #0F172A; /* Slate 900 */
-  --surface: #1E293B; /* Slate 800 */
-  --surface-hover: #334155; /* Slate 700 */
+  /* Backgrounds */
+  --bg: #0F172A;         /* slate-900 */
+  --surface: #1E293B;    /* slate-800 */
+  --surface-hover: #334155; /* slate-700 */
 
-  --text-main: #F8FAFC; /* Slate 50 */
-  --text-muted: #94A3B8; /* Slate 400 */
-  --text-desc: #CBD5E1; /* Slate 300 */
+  /* Text */
+  --text-main: #F8FAFC;  /* slate-50 */
+  --text-muted: #94A3B8; /* slate-400 */
+  --text-desc: #64748B;  /* slate-500 */
 
-  --border: #334155; /* Slate 700 */
-  --border-focus: #60A5FA; /* Blue 400 */
+  /* Borders */
+  --border: #334155;     /* slate-700 */
+  --border-focus: #60A5FA; /* blue-400 */
+
+  /* Brand / Accent remains dynamic via JS, but defaults here if needed */
+  /* --primary is usually set via JS style property */
+}
+
+@layer base {
+  body {
+    /* Use tokens instead of hardcoded tailwind colors */
+    background-color: var(--bg);
+    color: var(--text-main);
+    @apply antialiased transition-colors duration-200;
+  }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* Global Transitions */
-body, div, span, button, input, textarea {
+body, div, span, button, input, textarea, aside, nav {
     transition-property: background-color, border-color, color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 200ms;
