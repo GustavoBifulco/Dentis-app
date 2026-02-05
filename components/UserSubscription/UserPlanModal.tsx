@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Loader2, Star, Shield, Zap, Sparkles } from 'lucide-react';
 import { LuxButton } from '../Shared';
@@ -14,8 +15,14 @@ const UserPlanModal: React.FC<UserPlanModalProps> = ({ onCancel }) => {
     const [step, setStep] = useState<Step>('OFFER');
     const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
     const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const { getToken } = useAuth();
     const { user } = useUser();
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     const isPro = user?.publicMetadata?.planType === 'dentis_pro';
 
@@ -42,17 +49,12 @@ const UserPlanModal: React.FC<UserPlanModalProps> = ({ onCancel }) => {
                 const data = await res.json();
                 console.log("Client Secret:", data.clientSecret);
                 setStep('CHECKOUT_REDIRECT');
-                // In a real app with embedded checkout, we'd mount the provider here.
-                // Since user specifically requested this flow, we assume the backend handles the checkout session creation correctly.
-                // If using 'embedded' mode, we need the client secret. 
-                // For now, prompt user that we are redirecting (or show success if we were just testing).
-                // Actually, backend uses 'embedded'.
-                // If we don't have the EmbeddedCheckout component ready, we can't show it.
-                // But the 'AddClinicWizard' also didn't seem to have the full Stripe Elements setup visible in the snippet I read?
-                // Wait, I might have missed the actual Embedded Provider in AddClinicWizard. 
-                // The snippet showed valid logic up to `setStep('CHECKOUT_REDIRECT')`.
-                // I will add a redirect Simulation or if the user wants hosted, they should change backend.
-                // Providing a UI for "Redirecting..." is safe.
+                // Redirect user logic here if needed, or Stripe Embedded checks
+                if (data.clientSecret) {
+                    // If we were using Stripe.js for embedded, we would initialize it here.
+                    // For now, we assume the user will be redirected or handled by a parent component if implementing full embedded flow.
+                    // However, for this modal, let's at least show the success state/loading.
+                }
             } else {
                 alert('Erro ao iniciar checkout.');
             }
@@ -65,8 +67,8 @@ const UserPlanModal: React.FC<UserPlanModalProps> = ({ onCancel }) => {
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+    const modalContent = (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -175,6 +177,10 @@ const UserPlanModal: React.FC<UserPlanModalProps> = ({ onCancel }) => {
             </motion.div>
         </div>
     );
+
+    if (!mounted) return null;
+
+    return createPortal(modalContent, document.body);
 };
 
 export default UserPlanModal;
