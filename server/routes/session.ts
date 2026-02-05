@@ -5,7 +5,10 @@ import { users, organizationMembers, organizations } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { createClerkClient } from '@clerk/backend';
 
-const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+const clerkClient = createClerkClient({
+    secretKey: process.env.CLERK_SECRET_KEY!,
+    publishableKey: process.env.CLERK_PUBLISHABLE_KEY!
+});
 import { UserRole } from '../../types';
 
 const session = new Hono<{ Variables: { user: any } }>();

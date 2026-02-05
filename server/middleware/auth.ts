@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm';
 // Initialize Clerk client with environment variables
 const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,
+  publishableKey: process.env.CLERK_PUBLISHABLE_KEY!,
 });
 
 // Estenda o contexto do Hono para incluir o usuário
@@ -58,6 +59,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
       // Hono's c.req.raw provides the underlying Request object
       authState = await clerkClient.authenticateRequest(c.req.raw, {
         secretKey: process.env.CLERK_SECRET_KEY!,
+        publishableKey: process.env.CLERK_PUBLISHABLE_KEY!,
       });
 
       if (!authState.isSignedIn) {
