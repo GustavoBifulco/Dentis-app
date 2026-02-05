@@ -4,6 +4,8 @@ import { patients } from '../db/schema';
 import { db } from '../db';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -97,25 +99,17 @@ function transformPatientData(rawData: any[], columnMapping: Record<string, stri
     }).filter(p => p.name); // Only keep patients with names
 }
 
-app.post('/upload', async (c) => {
+const importSchema = z.object({
+    patients: z.array(z.record(z.string(), z.any())).min(1, 'Nenhum paciente enviado')
+});
+
+app.post('/upload', zValidator('json', importSchema), async (c) => {
     try {
         const auth = c.get('auth');
-        let rawData: any[] = [];
+        const body = c.req.valid('json');
 
-        // Try to parse JSON body first (Client-side parsed)
-        try {
-            const body = await c.req.json();
-            if (body.patients && Array.isArray(body.patients)) {
-                rawData = body.patients;
-            }
-        } catch (e) {
-            // Fallback for direct File Upload (Server-side parse) - Optional/Legacy support if needed
-            // For now, we focus on the JSON path as per requirements
-        }
-
-        if (rawData.length === 0) {
-            return c.json({ error: 'Nenhum dado válido recebido. Verifique o arquivo.' }, 400);
-        }
+        // We know rawData is body.patients because of schema
+        const rawData = body.patients;
 
         // Map columns
         const headers = Object.keys(rawData[0]);

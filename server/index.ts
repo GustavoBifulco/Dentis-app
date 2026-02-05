@@ -99,7 +99,6 @@ app.route('/api/chat', chat);
 app.route('/api/telehealth', telehealth);
 app.route('/api/patient-import', patientImport);
 app.route('/api/patient-invite', patientInvite);
-app.route('/api/patient-invite', patientInvite);
 // app.route('/api/debug', debug); // REMOVED FOR SECURITY
 app.route('/api/treatment', treatment);
 app.route('/api/anamnesis', anamnesis);

@@ -421,7 +421,7 @@ app.post('/plans', zValidator('json', planSchema), async (c) => {
             patientId: body.patientId,
             title: body.title,
             status: 'draft',
-            totalCost: body.totalCost,
+            totalCost: body.totalCost ? String(body.totalCost) : null,
             dentistId: user.id
         }).returning();
 
@@ -430,7 +430,7 @@ app.post('/plans', zValidator('json', planSchema), async (c) => {
                 body.items.map((item: any) => ({
                     planId: plan.id,
                     name: item.name,
-                    price: item.price,
+                    price: String(item.price), // Cast to string for numeric
                     procedureId: item.procedureId || null,
                     tooth: item.tooth,
                     surface: item.surface
