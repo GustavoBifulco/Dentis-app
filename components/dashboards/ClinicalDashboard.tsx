@@ -56,7 +56,7 @@ const ClinicalDashboard: React.FC = () => {
                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
                   <h2 className="text-5xl md:text-6xl font-editorial font-medium text-lux-text leading-[1.1]">
                      Bom dia, <br />
-                     <span className="italic text-lux-accent">{stats.userName ? `Dr. ${stats.userName}` : 'Doutor'}.</span>
+                     <span className="italic text-lux-accent">{user?.firstName ? `Dr. ${user.firstName}` : user?.fullName || 'Doutor'}.</span>
                   </h2>
                </motion.div>
 

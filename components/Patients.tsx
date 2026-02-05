@@ -53,11 +53,12 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
   }, [isLoaded, user?.id]);
 
   const filtered = patients.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) &&
-    (showArchived ? p.status === 'archived' : (p.status === 'active' || !p.status)) // Default to active or undefined (legacy)
+    p?.name?.toLowerCase().includes(search.toLowerCase()) &&
+    (showArchived ? p?.status === 'archived' : (p?.status === 'active' || !p?.status))
   );
 
-  if (!isLoaded || loading) return <LoadingState message="Buscando prontuários..." />;
+  if (!isLoaded) return <LoadingState message="Carregando perfil..." />;
+  if (loading) return <LoadingState message="Buscando prontuários..." />;
   if (error) return <ErrorState message={error} onRetry={loadPatients} />;
 
   return (
@@ -135,11 +136,11 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100 shadow-sm group-hover:scale-105 transition-transform">
-                          {patient.name.charAt(0)}
+                          {patient?.name?.charAt(0) || '?'}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{patient.name}</p>
-                          <p className="text-xs text-slate-500 font-medium">{patient.phone}</p>
+                          <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{patient?.name || 'Sem nome'}</p>
+                          <p className="text-xs text-slate-500 font-medium">{patient?.phone || ''}</p>
                         </div>
                       </div>
                     </td>

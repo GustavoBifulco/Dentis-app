@@ -109,7 +109,8 @@ session.get('/', async (c) => {
         activeContext,
         onboardingComplete: !!user.onboardingComplete,
         activeOrganization: activeContext?.organizationId ? { id: activeContext.organizationId } : null,
-        orgRole: 'admin'
+        orgRole: 'admin',
+        preferences: (user.preferences as any) || {}
     };
 
     return c.json({ session: userSession });

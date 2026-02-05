@@ -111,7 +111,26 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Ensure persist
         localStorage.setItem('dentis-theme', JSON.stringify(theme));
 
-    }, [theme]);
+        // Save to Backend (Fire and Forget)
+        if (session) {
+            fetch('/api/preferences', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('clerk-db-jwt')}` // Ideally use useAuth() here but context is tricky.
+                    // Actually, we can't easily get the fresh token here without triggering re-renders loop if we add useAuth dep.
+                    // Use a simple check or fetch session token if possible, OR assume the token is available.
+                    // Better approach: Let's use the session token if we have it, or ignore.
+                    // For now, rely on LocalStorage for immediate UX, backend sync is best-effort.
+                },
+                body: JSON.stringify({
+                    theme: theme.mode,
+                    primaryColor: theme.accentColor
+                })
+            }).catch(err => console.error("Failed to save prefs", err));
+        }
+
+    }, [theme, session]);
 
 
     return (

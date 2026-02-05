@@ -12,12 +12,15 @@ export const users = pgTable('users', {
   phone: text('phone'),
   birthdate: text('birthdate'),
   address: text('address'),
+  preferences: jsonb('preferences'), // { theme: 'dark'|'light', primaryColor: string }
+  onboardingComplete: boolean('onboarding_complete').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const organizations = pgTable('organizations', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  type: text('type').default('CLINIC'), // CLINIC, LAB
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -1138,5 +1141,61 @@ export const automationLogs = pgTable('automation_logs', {
   refId: text('ref_id'),
 
   executedAt: timestamp('executed_at').defaultNow(),
+});
+
+export const whatsappAutomationRules = pgTable('whatsapp_automation_rules', {
+  id: serial('id').primaryKey(),
+  ownerType: text('owner_type').notNull(), // 'clinic' | 'dentist'
+  ownerId: text('owner_id').notNull(),
+  type: text('type').notNull(), // 'confirmation', 'reminder', 'birthday', etc.
+  enabled: boolean('enabled').default(false),
+  scheduleOffsetMinutes: integer('schedule_offset_minutes').default(0), // e.g. -1440 for 24h before
+  template: text('template'),
+  channel: text('channel').default('whatsapp'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const whatsappMessageTemplates = pgTable('whatsapp_message_templates', {
+  id: serial('id').primaryKey(),
+  ownerType: text('owner_type').notNull(),
+  ownerId: text('owner_id').notNull(),
+  name: text('name').notNull(),
+  template: text('template').notNull(),
+  variables: jsonb('variables'), // e.g. ['name', 'date']
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const whatsappCampaigns = pgTable('whatsapp_campaigns', {
+  id: serial('id').primaryKey(),
+  ownerType: text('owner_type').notNull(),
+  ownerId: text('owner_id').notNull(),
+  name: text('name').notNull(),
+  objective: text('objective'),
+  status: text('status').default('draft'), // draft, scheduled, sent
+  audienceQuery: jsonb('audience_query'),
+  messages: jsonb('messages'),
+  scheduledAt: timestamp('scheduled_at'),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const dentistClinicContracts = pgTable('dentist_clinic_contracts', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(), // The Clinic
+  dentistId: text('dentist_id').notNull(), // The Dentist (User ID)
+  role: text('role').default('dentist'), // partner, associate, etc.
+
+  commissionRate: numeric('commission_rate'), // e.g. 0.40 for 40%
+  fixedSalary: numeric('fixed_salary'),
+
+  startDate: date('start_date').defaultNow(),
+  endDate: date('end_date'),
+
+  status: text('status').default('active'), // active, terminated
+  contractUrl: text('contract_url'), // PDF link
+
+  createdAt: timestamp('created_at').defaultNow(),
 });
 

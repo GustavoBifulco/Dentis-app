@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ViewType, ContextType, AppContext } from '../types';
-import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package, ChevronDown, Building2, FlaskConical, User, Shield, HelpCircle, Database, FileCheck } from 'lucide-react';
+import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package, ChevronDown, Building2, FlaskConical, User, Shield, HelpCircle, Database, FileCheck, MessageSquare } from 'lucide-react';
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
@@ -91,20 +91,23 @@ const Sidebar: React.FC<SidebarProps> = ({
               { type: ViewType.SCHEDULE, label: 'Agenda', icon: Calendar },
               { type: ViewType.PATIENTS, label: 'Pacientes', icon: Users },
               { type: ViewType.FINANCE, label: 'Financeiro', icon: DollarSign },
-              { type: ViewType.MANAGE_CLINIC, label: 'Gerenciar Clínica', icon: SettingsIcon },
+              // RBAC: Only show Manage Clinic if NOT personal context
+              ...(activeContext.isPersonal ? [] : [{ type: ViewType.MANAGE_CLINIC, label: 'Gerenciar Clínica', icon: SettingsIcon }]),
             ]
           },
           {
             title: 'Operacional',
             items: [
               { type: ViewType.MANAGEMENT_HUB, label: 'Central Operacional', icon: Layers },
-              { type: ViewType.MARKETPLACE, label: 'Marketplace', icon: ShoppingBag },
+              // New Communication Section
+              { type: ViewType.COMMUNICATION, label: 'Comunicação', icon: MessageSquare },
             ]
           },
           {
             title: 'Conexões',
             items: [
               { type: ViewType.LABS, label: 'Laboratório', icon: TestTube },
+              { type: ViewType.MARKETPLACE, label: 'Marketplace', icon: ShoppingBag },
             ]
           }
         ];

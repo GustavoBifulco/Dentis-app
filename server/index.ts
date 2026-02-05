@@ -99,8 +99,13 @@ import automations from './routes/automations';
 // ... (existing imports)
 
 // ... (existing routes)
+import communication from './routes/communication';
+import preferences from './routes/preferences';
+
+// ... (existing routes)
 app.route('/api/settings', settings);
-app.route('/api/automations', automations);
+app.route('/api/communication', communication);
+app.route('/api/preferences', preferences);
 
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 

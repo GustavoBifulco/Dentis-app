@@ -36,6 +36,7 @@ import Marketplace from './components/Marketplace';
 import KioskMode from './components/KioskMode';
 import PatientWallet from './components/PatientWallet';
 import PatientRegister from './pages/PatientRegister';
+import CommunicationDashboard from './components/dashboards/CommunicationDashboard';
 
 import { Terms, Help, Backup } from './components/BasePages';
 
@@ -146,6 +147,7 @@ const AppContent: React.FC = () => {
       case ViewType.TERMS: return <Terms />;
       case ViewType.HELP: return <Help />;
       case ViewType.BACKUP: return <Backup />;
+      case ViewType.COMMUNICATION: return <CommunicationDashboard />;
       default: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
     }
   };

@@ -27,7 +27,8 @@ export enum ViewType {
     KIOSK = 'KIOSK',
     TERMS = 'TERMS',
     HELP = 'HELP',
-    BACKUP = 'BACKUP'
+    BACKUP = 'BACKUP',
+    COMMUNICATION = 'COMMUNICATION'
 }
 
 // --- IDENTITY & CAPABILITIES ---
@@ -52,6 +53,7 @@ export interface AppContext {
     id: number;
     name: string;
     organizationId?: string;
+    isPersonal?: boolean;
 }
 
 export enum UserRole {
