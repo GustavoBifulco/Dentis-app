@@ -19,13 +19,20 @@ export const IslandCard: React.FC<{ children: React.ReactNode; className?: strin
 export const LuxButton: React.FC<{
   children: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   className?: string;
   icon?: React.ReactNode;
   disabled?: boolean;
   loading?: boolean;
-}> = ({ children, variant = 'primary', onClick, className = '', icon, disabled, loading }) => {
-  const baseStyle = "flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm tracking-tight disabled:opacity-50 disabled:cursor-not-allowed";
+  size?: 'sm' | 'md' | 'lg' | 'icon';
+}> = ({ children, variant = 'primary', onClick, className = '', icon, disabled, loading, size = 'md' }) => {
+  const baseStyles = {
+    sm: "px-3 py-1.5 text-xs rounded-lg",
+    md: "px-5 py-2.5 text-sm rounded-xl",
+    lg: "px-8 py-4 text-base rounded-2xl",
+    icon: "p-2 rounded-xl"
+  };
+  const baseStyle = `flex items-center justify-center gap-2 font-medium tracking-tight disabled:opacity-50 disabled:cursor-not-allowed ${baseStyles[size]}`;
 
   const variants = {
     primary: "bg-blue-600 text-white shadow-sm shadow-blue-200",

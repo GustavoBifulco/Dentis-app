@@ -5,8 +5,11 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod'; // Assuming zod is available or use validtor
 import { zValidator } from '@hono/zod-validator';
 import { sendEmail } from '../lib/email';
+import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono();
+const app = new Hono<{ Variables: { user: any; auth: any; userId: number; clerkId: string; organizationId: string } }>();
+
+app.use('*', authMiddleware);
 
 // Schema de validação
 const updatePreferencesSchema = z.object({
@@ -20,11 +23,11 @@ const updatePreferencesSchema = z.object({
 
 // GET /notifications - Buscar preferências
 app.get('/notifications', async (c) => {
-    const userId = c.req.header('X-User-Id'); // Middleware de auth deve injetar isso ou pegar do token
-    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    const clerkId = c.get('clerkId');
+    if (!clerkId) return c.json({ error: 'Unauthorized' }, 401);
 
     try {
-        const prefs = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId)).limit(1);
+        const prefs = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, clerkId)).limit(1);
 
         if (prefs.length === 0) {
             // Retornar defaults se não existir
@@ -47,8 +50,8 @@ app.get('/notifications', async (c) => {
 
 // PUT /notifications - Atualizar preferências
 app.put('/notifications', zValidator('json', updatePreferencesSchema), async (c) => {
-    const userId = c.req.header('X-User-Id');
-    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    const clerkId = c.get('clerkId');
+    if (!clerkId) return c.json({ error: 'Unauthorized' }, 401);
 
     const data = c.req.valid('json');
 
@@ -57,15 +60,15 @@ app.put('/notifications', zValidator('json', updatePreferencesSchema), async (c)
         // Drizzle ORM upsert syntax might vary based on driver, going with check-then-act for broad compatibility or simple insert on conflict if key exists
 
         // Check existing
-        const existing = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+        const existing = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, clerkId));
 
         if (existing.length > 0) {
             await db.update(notificationPreferences)
                 .set({ ...data, updatedAt: new Date() })
-                .where(eq(notificationPreferences.userId, userId));
+                .where(eq(notificationPreferences.userId, clerkId));
         } else {
             await db.insert(notificationPreferences).values({
-                userId,
+                userId: clerkId,
                 ...data
             });
         }
@@ -79,7 +82,7 @@ app.put('/notifications', zValidator('json', updatePreferencesSchema), async (c)
 
 // POST /test-email - Endpoint para testar configuração SMTP
 app.post('/test-email', async (c) => {
-    const userId = c.req.header('X-User-Id');
+    const userId = c.get('userId');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     // Busca email do usuário (mock ou do banco se tivesse tabela de usuários sincronizada)

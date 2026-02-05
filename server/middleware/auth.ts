@@ -18,6 +18,9 @@ declare module 'hono' {
   interface ContextVariableMap {
     user: any;
     auth: any;
+    organizationId: string;
+    userId: number;
+    clerkId: string;
   }
 }
 
@@ -36,6 +39,9 @@ export const authMiddleware = async (c: Context, next: Next) => {
     c.set('auth', {
       sessionClaims: { aud: 'dev' }
     });
+    c.set('organizationId', 'dev_org_id');
+    c.set('userId', 1);
+    c.set('clerkId', 'dev_clerk_id');
     await next();
     return;
   }
@@ -157,6 +163,10 @@ export const authMiddleware = async (c: Context, next: Next) => {
       organizationId: contextOrgId,
       role: contextRole
     });
+
+    c.set('organizationId', contextOrgId);
+    if (dbUser?.id) c.set('userId', dbUser.id);
+    c.set('clerkId', clerkId);
 
     await next();
   } catch (error) {

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Upload, X, FileText, CheckCircle, AlertCircle, Loader, Trash2, Edit2 } from 'lucide-react';
+import {
+    Upload, X, FileText, Check, AlertCircle, Loader,
+    ArrowLeft, ChevronRight, Mail, Phone, Info,
+    Calendar, MapPin, Briefcase, User, Trash2
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { LuxButton, IslandCard } from './Shared';
 
-// --- MAPPING LOGIC (Ported to Client) ---
+// --- CONSTANTS & HELPERS ---
 
-// Column mapping - recognizes common variations
 const COLUMN_MAPPINGS: Record<string, string[]> = {
     name: ['name', 'nome', 'patient_name', 'paciente', 'full_name', 'nome_completo', 'patient', 'nome completo'],
     firstName: ['first_name', 'firstname', 'primeiro_nome', 'nome_proprio', 'first', 'given_name'],
@@ -21,85 +24,25 @@ const COLUMN_MAPPINGS: Record<string, string[]> = {
     notes: ['notes', 'observacoes', 'observações', 'obs', 'comments', 'comentarios'],
 };
 
+const MAPPABLE_FIELDS = [
+    { key: 'name', label: 'Nome Completo', icon: User, required: true },
+    { key: 'firstName', label: 'Primeiro Nome', icon: User },
+    { key: 'lastName', label: 'Sobrenome', icon: User },
+    { key: 'phone', label: 'Telefone/WhatsApp', icon: Phone },
+    { key: 'email', label: 'E-mail', icon: Mail },
+    { key: 'cpf', label: 'CPF', icon: FileText },
+    { key: 'birthDate', label: 'Nascimento', icon: Calendar },
+    { key: 'address', label: 'Endereço', icon: MapPin },
+    { key: 'occupation', label: 'Profissão', icon: Briefcase },
+];
+
 function normalizeColumnName(col: string): string {
     return String(col).toLowerCase().trim().replace(/[_\s-]+/g, '_');
 }
 
-function mapColumns(headers: string[]): Record<string, string> {
-    const mapping: Record<string, string> = {};
-
-    headers.forEach(header => {
-        const normalized = normalizeColumnName(header);
-
-        for (const [targetField, variations] of Object.entries(COLUMN_MAPPINGS)) {
-            if (variations.some(v => normalized.includes(v) || v.includes(normalized))) {
-                mapping[header] = targetField;
-                break;
-            }
-        }
-    });
-
-    return mapping;
-}
-
-function transformPatientData(rawData: any[], columnMapping: Record<string, string>): any[] {
-    return rawData.map((row, index) => {
-        const patient: any = {
-            id: index, // Temporary ID for UI handling
-            status: 'active',
-            firstName: '',
-            lastName: '',
-            email: '',
-            phone: '',
-            cpf: '',
-            birthDate: ''
-        };
-
-        let fullNameFromRow = '';
-
-        Object.entries(row).forEach(([key, value]) => {
-            const targetField = columnMapping[key];
-            if (targetField && value) {
-                const trimmedValue = String(value).trim();
-
-                if (targetField === 'firstName') {
-                    patient.firstName = trimmedValue;
-                } else if (targetField === 'lastName') {
-                    patient.lastName = trimmedValue;
-                } else if (targetField === 'name') {
-                    fullNameFromRow = trimmedValue;
-                } else {
-                    patient[targetField] = trimmedValue;
-                }
-            }
-        });
-
-        // Split logic: If we have a full name but no separate parts, split it
-        if (fullNameFromRow && !patient.firstName && !patient.lastName) {
-            const parts = fullNameFromRow.split(' ');
-            patient.firstName = parts[0];
-            patient.lastName = parts.slice(1).join(' ');
-        } else if (fullNameFromRow && (!patient.firstName || !patient.lastName)) {
-            // Partial info: trust full name if provided? No, let's prefer separate if they exist
-            if (!patient.firstName) patient.firstName = fullNameFromRow.split(' ')[0];
-            if (!patient.lastName) patient.lastName = fullNameFromRow.split(' ').slice(1).join(' ');
-        }
-
-        // Fallback: If still no name parts found, try to use the first column that looks like a name
-        if (!patient.firstName) {
-            const possibleName = Object.values(row).find(v => v && String(v).length > 2 && isNaN(Number(v)));
-            if (possibleName) {
-                const parts = String(possibleName).trim().split(' ');
-                patient.firstName = parts[0];
-                patient.lastName = parts.slice(1).join(' ');
-            }
-        }
-
-        return patient;
-    }).filter(p => p.firstName && p.firstName.length > 0); // Only keep patients with at least a first name
-}
-
 // --- COMPONENT ---
+
+type Step = 'upload' | 'mapping' | 'preview' | 'summary';
 
 interface PatientImportProps {
     isOpen: boolean;
@@ -109,56 +52,40 @@ interface PatientImportProps {
 
 const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSuccess }) => {
     const { getToken } = useAuth();
+    const [step, setStep] = useState<Step>('upload');
     const [file, setFile] = useState<File | null>(null);
-
-    // The list of patients ready to be imported (edited state)
+    const [rawData, setRawData] = useState<any[]>([]);
+    const [headers, setHeaders] = useState<string[]>([]);
+    const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
     const [patients, setPatients] = useState<any[]>([]);
-
-    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [result, setResult] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
+    const [importResult, setImportResult] = useState<{
+        success: boolean;
+        imported: number;
+        total: number;
+        skipped: number;
+        errors: any[];
+    } | null>(null);
 
     // Reset state when closing
     useEffect(() => {
         if (!isOpen) {
             setFile(null);
+            setRawData([]);
+            setHeaders([]);
+            setColumnMapping({});
             setPatients([]);
-            setResult(null);
+            setLoading(false);
             setError(null);
+            setImportResult(null);
+            setStep('upload');
         }
     }, [isOpen]);
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-
-        const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile) {
-            validateAndSetFile(droppedFile);
-        }
-    };
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        if (selectedFile) {
-            validateAndSetFile(selectedFile);
-        }
-    };
-
     const validateAndSetFile = (file: File) => {
         const validExtensions = ['.csv', '.xlsx', '.xls'];
-        // Simple extension check
         const fileExtension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
 
         if (!fileExtension || !validExtensions.includes(fileExtension)) {
@@ -168,71 +95,130 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
 
         setFile(file);
         setError(null);
-        setResult(null);
-        setPatients([]);
+        processFile(file);
+    };
 
-        // Generate Preview / Parse Data
-        setLoadingPreview(true);
+    const processFile = (file: File) => {
+        setLoading(true);
+        setError(null);
 
-        try {
-            const processData = (rawData: any[]) => {
-                if (!rawData || rawData.length === 0) {
-                    setError("O arquivo parece estar vazio.");
-                    setLoadingPreview(false);
-                    return;
+        const extension = file.name.split('.').pop()?.toLowerCase();
+
+        if (extension === 'csv') {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    if (results.data && results.data.length > 0) {
+                        const detectedHeaders = Object.keys(results.data[0]);
+                        setHeaders(detectedHeaders);
+                        setRawData(results.data);
+                        autoMapColumns(detectedHeaders);
+                        setStep('mapping');
+                    } else {
+                        setError('O arquivo CSV parece estar vazio.');
+                    }
+                    setLoading(false);
+                },
+                error: (err) => {
+                    setError('Erro ao ler CSV: ' + err.message);
+                    setLoading(false);
                 }
+            });
+        } else if (['xlsx', 'xls'].includes(extension || '')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = e.target?.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
 
-                // Map columns
-                const headers = Object.keys(rawData[0]);
-                const columnMapping = mapColumns(headers);
-
-                // Transform locally
-                const transformed = transformPatientData(rawData, columnMapping);
-
-                if (transformed.length === 0) {
-                    setError("Não foi possível identificar colunas de Nome. Verifique o cabeçalho do arquivo.");
-                    setLoadingPreview(false);
-                    return;
+                    if (json && json.length > 0) {
+                        const detectedHeaders = Object.keys(json[0] as any);
+                        setHeaders(detectedHeaders);
+                        setRawData(json);
+                        autoMapColumns(detectedHeaders);
+                        setStep('mapping');
+                    } else {
+                        setError('O arquivo Excel parece estar vazio.');
+                    }
+                } catch (err) {
+                    setError('Erro ao processar Excel.');
                 }
-
-                setPatients(transformed);
-                setLoadingPreview(false);
+                setLoading(false);
             };
-
-            if (fileExtension === '.csv') {
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        processData(results.data);
-                    },
-                    error: (err) => {
-                        setError(`Erro ao ler CSV: ${err.message}`);
-                        setLoadingPreview(false);
-                    }
-                });
-            } else {
-                // Excel
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = e.target?.result;
-                        const workbook = XLSX.read(data, { type: 'binary' });
-                        const sheetName = workbook.SheetNames[0];
-                        const sheet = workbook.Sheets[sheetName];
-                        const json = XLSX.utils.sheet_to_json(sheet);
-                        processData(json);
-                    } catch (err) {
-                        setError("Falha ao ler arquivo Excel. Verifique se não está corrompido.");
-                        setLoadingPreview(false);
-                    }
-                };
-                reader.readAsBinaryString(file);
-            }
-        } catch (e) {
-            setError("Erro inesperado ao abrir arquivo.");
-            setLoadingPreview(false);
+            reader.readAsBinaryString(file);
+        } else {
+            setError('Formato não suportado.');
+            setLoading(false);
         }
+    };
+
+    const autoMapColumns = (detectedHeaders: string[]) => {
+        const mapping: Record<string, string> = {};
+        detectedHeaders.forEach(header => {
+            const normalized = normalizeColumnName(header);
+            for (const [targetField, variations] of Object.entries(COLUMN_MAPPINGS)) {
+                if (variations.some(v => normalized.includes(v) || v.includes(normalized))) {
+                    mapping[header] = targetField;
+                    break;
+                }
+            }
+        });
+        setColumnMapping(mapping);
+    };
+
+    const handleMappingChange = (header: string, field: string) => {
+        setColumnMapping(prev => ({ ...prev, [header]: field }));
+    };
+
+    const transformData = (data: any[], mapping: Record<string, string>) => {
+        return data.map((row, index) => {
+            const patient: any = {
+                id: index,
+                status: 'active',
+                firstName: '',
+                lastName: '',
+                email: '',
+                phone: '',
+                cpf: '',
+                birthDate: '',
+                address: '',
+                occupation: ''
+            };
+            let fullName = '';
+
+            Object.entries(row).forEach(([header, value]) => {
+                const targetField = mapping[header];
+                if (targetField && value) {
+                    const strValue = String(value).trim();
+                    if (targetField === 'firstName') patient.firstName = strValue;
+                    else if (targetField === 'lastName') patient.lastName = strValue;
+                    else if (targetField === 'name') fullName = strValue;
+                    else patient[targetField] = strValue;
+                }
+            });
+
+            if (fullName && !patient.firstName && !patient.lastName) {
+                const parts = fullName.split(' ');
+                patient.firstName = parts[0] || '';
+                patient.lastName = parts.slice(1).join(' ') || '';
+            }
+
+            return patient;
+        }).filter(p => p.firstName && p.firstName.length > 0);
+    };
+
+    const handleContinueToPreview = () => {
+        const transformed = transformData(rawData, columnMapping);
+        if (transformed.length === 0) {
+            setError("Identifique a coluna de NOME para prosseguir.");
+            return;
+        }
+        setPatients(transformed);
+        setStep('preview');
     };
 
     const handleCellChange = (index: number, field: string, value: string) => {
@@ -241,31 +227,27 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
         setPatients(updated);
     };
 
-    const handleDeleteRow = (index: number) => {
+    const handleRemoveRow = (index: number) => {
         const updated = patients.filter((_, i) => i !== index);
         setPatients(updated);
-        // If all rows deleted, reset file to allow re-upload
         if (updated.length === 0) {
             setFile(null);
+            setStep('upload');
         }
     };
 
     const handleUpload = async () => {
         if (patients.length === 0) return;
-
-        setUploading(true);
+        setLoading(true);
         setError(null);
 
         try {
             const token = await getToken();
-            if (!token) {
-                throw new Error('Não autenticado');
-            }
+            if (!token) throw new Error('Não autenticado');
 
-            // Clean data before sending (combine names)
-            const payload = patients.map(({ id, firstName, lastName, ...rest }) => ({
+            const payloadPath = patients.map(({ id, ...rest }) => ({
                 ...rest,
-                name: `${firstName} ${lastName}`.trim()
+                name: `${rest.firstName} ${rest.lastName}`.trim()
             }));
 
             const response = await fetch('/api/patient-import/upload', {
@@ -274,195 +256,300 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ patients: payload }),
+                body: JSON.stringify({ patients: payloadPath }),
             });
 
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Erro ao importar');
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Erro ao importar');
-            }
-
-            setResult(data);
-
-            // Auto close success
-            if (data.success) {
-                setTimeout(() => {
-                    onSuccess();
-                    handleClose();
-                }, 2500);
-            }
-
+            setImportResult(data);
+            setStep('summary');
+            if (data.success) onSuccess();
         } catch (err: any) {
-            setError(err.message || 'Erro ao processar arquivo');
+            setError(err.message || 'Erro ao processar');
         } finally {
-            setUploading(false);
+            setLoading(false);
         }
-    };
-
-    const handleClose = () => {
-        onClose();
-        // State reset handled by useEffect
     };
 
     if (!isOpen) return null;
 
-    return (
-        <AnimatePresence>
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
-                >
-                    {/* Header */}
-                    <div className="p-8 border-b border-lux-border flex items-center justify-between flex-shrink-0">
-                        <div>
-                            <h2 className="text-3xl font-black text-lux-text">Importar Pacientes</h2>
-                            <p className="text-sm text-lux-text-secondary mt-1">
-                                {patients.length > 0
-                                    ? `Revisar ${patients.length} pacientes encontrados`
-                                    : 'Arraste ou selecione sua planilha de pacientes'}
-                            </p>
+    const renderStepper = () => (
+        <div className="flex items-center justify-center mb-12 px-12">
+            {[
+                { id: 'upload', label: 'Upload' },
+                { id: 'mapping', label: 'Mapeamento' },
+                { id: 'preview', label: 'Revisão' },
+                { id: 'summary', label: 'Concluído' }
+            ].map((s, idx, arr) => (
+                <React.Fragment key={s.id}>
+                    <div className="flex flex-col items-center relative">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm transition-all duration-300 ${step === s.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110' :
+                            arr.findIndex(x => x.id === step) > idx ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
+                            }`}>
+                            {arr.findIndex(x => x.id === step) > idx ? <Check size={20} strokeWidth={3} /> : idx + 1}
                         </div>
-                        <button
-                            onClick={handleClose}
-                            className="w-10 h-10 rounded-full bg-lux-subtle hover:bg-lux-border transition flex items-center justify-center"
-                        >
-                            <X size={20} />
-                        </button>
+                        <span className={`absolute -bottom-7 text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap ${step === s.id ? 'text-blue-600' : 'text-slate-400'
+                            }`}>{s.label}</span>
                     </div>
+                    {idx < arr.length - 1 && (
+                        <div className={`flex-1 h-[2px] mx-6 transition-colors duration-500 ${arr.findIndex(x => x.id === step) > idx ? 'bg-emerald-500' : 'bg-slate-100'
+                            }`} />
+                    )}
+                </React.Fragment>
+            ))}
+        </div>
+    );
 
-                    {/* Content Scrollable Area */}
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+    return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="bg-white rounded-[2.5rem] shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-white/20"
+            >
+                {/* Header */}
+                <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white z-10">
+                    <div>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Importação de Pacientes</h2>
+                        <p className="text-sm text-slate-400 font-medium uppercase tracking-widest mt-1">Dentis OS Data Transfer</p>
+                    </div>
+                    <button onClick={onClose} className="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-2xl transition-all text-slate-400 hover:text-slate-900">
+                        <X size={24} />
+                    </button>
+                </div>
 
-                        {/* 1. Upload Area (Only if no valid data parsed yet) */}
-                        {patients.length === 0 && !result && (
-                            <div className="space-y-6">
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-10 bg-slate-50/40">
+                    {renderStepper()}
+
+                    <div className="mt-16 max-w-4xl mx-auto">
+                        {step === 'upload' && (
+                            <div className="space-y-8">
                                 <div
-                                    onDragOver={handleDragOver}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={handleDrop}
-                                    className={`
-                                        border-2 border-dashed rounded-2xl p-20 text-center transition-all cursor-pointer
-                                        ${isDragging ? 'border-lux-accent bg-lux-accent/5' : 'border-lux-border hover:border-lux-accent/50'}
-                                    `}
-                                    onClick={() => document.getElementById('file-upload')?.click()}
+                                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                    onDragLeave={() => setIsDragging(false)}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        setIsDragging(false);
+                                        const droppedFile = e.dataTransfer.files[0];
+                                        if (droppedFile) validateAndSetFile(droppedFile);
+                                    }}
+                                    className={`border-[3px] border-dashed rounded-[3rem] p-24 flex flex-col items-center justify-center transition-all duration-300 ${isDragging ? 'border-blue-500 bg-blue-50/50 scale-[0.99]' : 'border-slate-200 hover:border-blue-300 bg-white'
+                                        }`}
                                 >
-                                    {loadingPreview ? (
-                                        <div className="flex flex-col items-center">
-                                            <Loader size={48} className="text-lux-accent animate-spin mb-4" />
-                                            <p className="font-bold text-lux-text">Lendo arquivo...</p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <Upload size={48} className="mx-auto text-lux-text-secondary mb-4" />
-                                            <p className="text-xl font-bold text-lux-text mb-2">
-                                                Clique para selecionar ou arraste aqui
-                                            </p>
-                                            <p className="text-sm text-lux-text-secondary">
-                                                Suporta CSV e Excel (.xlsx, .xls)
-                                            </p>
-                                        </>
-                                    )}
+                                    <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner shadow-blue-100/50">
+                                        <Upload size={48} strokeWidth={2.5} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Selecione seu arquivo</h3>
+                                    <p className="text-slate-500 mb-10 text-center max-w-sm font-medium leading-relaxed">
+                                        Arraste e solte seu arquivo .csv ou .xlsx aqui. <br />
+                                        O Dentis detectará as colunas automaticamente.
+                                    </p>
                                     <input
                                         type="file"
-                                        accept=".csv,.xlsx,.xls"
-                                        onChange={handleFileSelect}
+                                        id="fileInput"
                                         className="hidden"
-                                        id="file-upload"
+                                        accept=".csv, .xlsx, .xls"
+                                        onChange={(e) => {
+                                            const selectedFile = e.target.files?.[0];
+                                            if (selectedFile) validateAndSetFile(selectedFile);
+                                        }}
                                     />
+                                    <LuxButton
+                                        onClick={() => document.getElementById('fileInput')?.click()}
+                                        variant="primary"
+                                        size="lg"
+                                        loading={loading}
+                                        className="px-12 py-4 text-base"
+                                    >
+                                        Procurar Arquivo
+                                    </LuxButton>
                                 </div>
 
-                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-                                    <div className="mt-1">
-                                        <div className="w-5 h-5 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 text-xs font-bold">i</div>
+                                <IslandCard className="p-8 bg-blue-50/50 border-blue-100 flex gap-5 items-start rounded-[2rem]">
+                                    <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
+                                        <Info size={24} />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-blue-900 text-sm">Colunas Reconhecidas Automaticamente</p>
-                                        <p className="text-xs text-blue-700 mt-1">
-                                            O sistema tenta identificar colunas como: <b>Nome, Telefone, Email, CPF, Data Nascimento</b>.
-                                            Não se preocupe com a ordem, apenas certifique-se que o arquivo tenha cabeçalho.
+                                        <h4 className="font-black text-blue-900 text-sm uppercase tracking-widest">Dica Premium</h4>
+                                        <p className="text-blue-700 text-sm leading-relaxed mt-2 font-medium">
+                                            Arquivos com cabeçalho na primeira linha são processados instantaneamente.
+                                            Suportamos nomes separados ou completos, e formatos flexíveis de CPF e Telefone.
                                         </p>
                                     </div>
+                                </IslandCard>
+                            </div>
+                        )}
+
+                        {step === 'mapping' && (
+                            <div className="space-y-8">
+                                <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-200/50">
+                                    <div className="bg-slate-50/80 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
+                                        <h3 className="font-black text-slate-900 tracking-tight">Mapeamento Inteligente</h3>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-white px-3 py-1 rounded-full border border-slate-100">{file?.name}</span>
+                                    </div>
+                                    <div className="p-0">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-slate-50/30">
+                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Destino (Dentis)</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Status</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Origem (Seu Arquivo)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {MAPPABLE_FIELDS.map(field => {
+                                                    const mappedHeader = Object.keys(columnMapping).find(h => columnMapping[h] === field.key);
+                                                    return (
+                                                        <tr key={field.key} className="hover:bg-slate-50/50 transition-colors group">
+                                                            <td className="px-8 py-6">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={`p-3 rounded-2xl transition-colors ${mappedHeader ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                                        <field.icon size={20} strokeWidth={2.5} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-sm font-black text-slate-900">{field.label} {field.required && <span className="text-red-500">*</span>}</div>
+                                                                        <div className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-0.5">Módulo Paciente</div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-8 py-6 text-center">
+                                                                {mappedHeader ? (
+                                                                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                                                                        <Check size={12} strokeWidth={4} /> Mapeado
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100">
+                                                                        Pendente
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <select
+                                                                    value={mappedHeader || ''}
+                                                                    onChange={(e) => handleMappingChange(e.target.value, field.key)}
+                                                                    className={`w-full bg-slate-50 border rounded-2xl px-5 py-3 text-sm font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all ${mappedHeader ? 'border-blue-100 text-blue-900' : 'border-slate-100 text-slate-400'
+                                                                        }`}
+                                                                >
+                                                                    <option value="">-- Ignorar Coluna --</option>
+                                                                    {headers.map(h => (
+                                                                        <option key={h} value={h}>{h}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+                                    <LuxButton variant="ghost" onClick={() => setStep('upload')} icon={<ArrowLeft size={18} />}>Trocar Arquivo</LuxButton>
+                                    <LuxButton
+                                        disabled={!Object.values(columnMapping).includes('name') && !Object.values(columnMapping).includes('firstName')}
+                                        onClick={handleContinueToPreview}
+                                        icon={<ChevronRight size={18} />}
+                                        className="px-10"
+                                    >
+                                        Revisar Pacientes
+                                    </LuxButton>
                                 </div>
                             </div>
                         )}
 
-                        {/* 2. Editor Table (If we have patients) */}
-                        {patients.length > 0 && !result && (
-                            <div className="space-y-4">
-                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                    <div className="overflow-x-auto max-h-[500px]">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-slate-50 font-bold text-slate-600 uppercase text-xs sticky top-0 z-10 shadow-sm">
+                        {step === 'preview' && (
+                            <div className="space-y-8">
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Revisão e Ajustes</h3>
+                                        <p className="text-sm text-slate-400 font-medium mt-1">Limpamos os dados para você. Clique em qualquer campo para editar.</p>
+                                    </div>
+                                    <LuxButton
+                                        onClick={handleUpload}
+                                        loading={loading}
+                                        icon={<Check size={20} strokeWidth={3} />}
+                                        className="px-12 py-4"
+                                    >
+                                        Importar {patients.length} Pacientes
+                                    </LuxButton>
+                                </div>
+
+                                <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-200/50">
+                                    <div className="max-h-[450px] overflow-y-auto">
+                                        <table className="w-full text-left text-sm border-collapse">
+                                            <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-md z-10 border-b border-slate-100">
                                                 <tr>
-                                                    <th className="px-4 py-3 border-b border-slate-200 w-10">#</th>
-                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[150px]">Nome *</th>
-                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Sobrenome</th>
-                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[150px]">Telefone</th>
-                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Email</th>
-                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[140px]">CPF</th>
-                                                    <th className="px-4 py-3 border-b border-slate-200 w-16">Ação</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Identificação</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contato Profissional</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ações</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {patients.map((patient, idx) => (
-                                                    <tr key={patient.id || idx} className="hover:bg-slate-50 transition group">
-                                                        <td className="px-4 py-2 text-slate-400 text-xs bg-white group-hover:bg-slate-50">{idx + 1}</td>
-                                                        <td className="p-1">
-                                                            <input
-                                                                type="text"
-                                                                value={patient.firstName}
-                                                                onChange={(e) => handleCellChange(idx, 'firstName', e.target.value)}
-                                                                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent ${!patient.firstName ? 'border-red-300 bg-red-50' : 'border-transparent hover:border-slate-300 focus:bg-white'}`}
-                                                                placeholder="Nome"
-                                                            />
+                                            <tbody className="divide-y divide-slate-50">
+                                                {patients.map((p, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                                                        <td className="px-8 py-6">
+                                                            <div className="flex items-center gap-5">
+                                                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-black text-lg shadow-lg shadow-blue-100">
+                                                                    {p.firstName?.[0] || 'P'}
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={`${p.firstName} ${p.lastName}`.trim()}
+                                                                        onChange={(e) => {
+                                                                            const parts = e.target.value.split(' ');
+                                                                            handleCellChange(idx, 'firstName', parts[0] || '');
+                                                                            handleCellChange(idx, 'lastName', parts.slice(1).join(' ') || '');
+                                                                        }}
+                                                                        className="bg-transparent border-none focus:ring-2 focus:ring-blue-100 px-2 py-1 rounded-xl font-bold text-slate-900 text-base -ml-2 w-full transition-all"
+                                                                    />
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                                            <FileText size={10} className="text-slate-300" />
+                                                                            <input
+                                                                                type="text"
+                                                                                value={p.cpf || ''}
+                                                                                onChange={(e) => handleCellChange(idx, 'cpf', e.target.value)}
+                                                                                placeholder="CPF não informado"
+                                                                                className="bg-transparent border-none focus:ring-2 focus:ring-blue-100 px-2 rounded-lg py-0.5 w-full uppercase"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </td>
-                                                        <td className="p-1">
-                                                            <input
-                                                                type="text"
-                                                                value={patient.lastName}
-                                                                onChange={(e) => handleCellChange(idx, 'lastName', e.target.value)}
-                                                                className="w-full px-3 py-2 rounded-lg border border-transparent hover:border-slate-300 focus:bg-white focus:border-lux-accent focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent"
-                                                                placeholder="Sobrenome"
-                                                            />
+                                                        <td className="px-8 py-6">
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center gap-3">
+                                                                    <Mail size={14} className="text-slate-300" />
+                                                                    <input
+                                                                        type="text"
+                                                                        value={p.email || ''}
+                                                                        onChange={(e) => handleCellChange(idx, 'email', e.target.value)}
+                                                                        placeholder="Sem e-mail"
+                                                                        className="bg-transparent border-none focus:ring-2 focus:ring-blue-100 px-2 py-1 rounded-xl text-sm font-medium text-slate-600 w-full transition-all"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <Phone size={14} className="text-slate-300" />
+                                                                    <input
+                                                                        type="text"
+                                                                        value={p.phone || ''}
+                                                                        onChange={(e) => handleCellChange(idx, 'phone', e.target.value)}
+                                                                        placeholder="Sem telefone"
+                                                                        className="bg-transparent border-none focus:ring-2 focus:ring-blue-100 px-2 py-1 rounded-xl text-sm font-medium text-slate-600 w-full transition-all"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </td>
-                                                        <td className="p-1">
-                                                            <input
-                                                                type="text"
-                                                                value={patient.phone || ''}
-                                                                onChange={(e) => handleCellChange(idx, 'phone', e.target.value)}
-                                                                className="w-full px-3 py-2 rounded-lg border border-transparent hover:border-slate-300 focus:bg-white focus:border-lux-accent focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent"
-                                                                placeholder="Telefone"
-                                                            />
-                                                        </td>
-                                                        <td className="p-1">
-                                                            <input
-                                                                type="text"
-                                                                value={patient.email || ''}
-                                                                onChange={(e) => handleCellChange(idx, 'email', e.target.value)}
-                                                                className="w-full px-3 py-2 rounded-lg border border-transparent hover:border-slate-300 focus:bg-white focus:border-lux-accent focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent"
-                                                                placeholder="Email"
-                                                            />
-                                                        </td>
-                                                        <td className="p-1">
-                                                            <input
-                                                                type="text"
-                                                                value={patient.cpf || ''}
-                                                                onChange={(e) => handleCellChange(idx, 'cpf', e.target.value)}
-                                                                className="w-full px-3 py-2 rounded-lg border border-transparent hover:border-slate-300 focus:bg-white focus:border-lux-accent focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent"
-                                                                placeholder="CPF"
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-2 text-center">
+                                                        <td className="px-8 py-6 text-center">
                                                             <button
-                                                                onClick={() => handleDeleteRow(idx)}
-                                                                className="text-slate-400 hover:text-red-500 transition p-1 rounded-md hover:bg-red-50"
-                                                                title="Remover linha"
+                                                                onClick={() => handleRemoveRow(idx)}
+                                                                className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
                                                             >
-                                                                <Trash2 size={16} />
+                                                                <Trash2 size={20} />
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -470,95 +557,88 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 text-xs text-slate-500 flex justify-between">
-                                        <span>Total: {patients.length} pacientes</span>
-                                        <span>* Campos editáveis. O nome é obrigatório.</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <LuxButton variant="outline" onClick={() => setStep('mapping')} icon={<ArrowLeft size={18} />}>Ajustar Mapeamento</LuxButton>
+                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        <Info size={14} /> Dica: os dados acima são salvos apenas após confirmar
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* 3. Error State */}
-                        {error && (
-                            <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 animate-shake">
-                                <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="font-bold text-red-900">Algo deu errado</p>
-                                    <p className="text-sm text-red-700">{error}</p>
+                        {step === 'summary' && importResult && (
+                            <div className="text-center space-y-12 animate-in zoom-in-95 duration-500">
+                                <div className="relative inline-flex">
+                                    <div className="absolute inset-0 bg-emerald-100 rounded-full animate-ping opacity-25" />
+                                    <div className="relative inline-flex items-center justify-center w-32 h-32 bg-emerald-500 text-white rounded-[2.5rem] shadow-2xl shadow-emerald-200 border-8 border-emerald-50">
+                                        <Check size={64} strokeWidth={4} />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
 
-                        {/* 4. Success State */}
-                        {result && (
-                            <div className="flex flex-col items-center justify-center p-8 text-center h-full">
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6"
-                                >
-                                    <CheckCircle size={40} className="text-emerald-600" />
-                                </motion.div>
-                                <h3 className="text-2xl font-black text-lux-text mb-2">Sucesso!</h3>
-                                <p className="text-lux-text-secondary mb-8 text-lg">
-                                    {result.imported} pacientes foram adicionados à sua base.
-                                </p>
+                                <div className="space-y-3">
+                                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Importação de Sucesso!</h2>
+                                    <p className="text-lg text-slate-500 font-medium">Seus novos pacientes já estão prontos no prontuário.</p>
+                                </div>
 
-                                <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                        <span className="block text-2xl font-black text-slate-800">{result.total}</span>
-                                        <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Processados</span>
+                                <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
+                                    <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm transition-transform hover:scale-105">
+                                        <div className="text-5xl font-black text-emerald-500">{importResult.imported}</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">Importados</div>
                                     </div>
-                                    <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                                        <span className="block text-2xl font-black text-emerald-700">{result.imported}</span>
-                                        <span className="text-xs uppercase font-bold text-emerald-600/70 tracking-wider">Importados</span>
+                                    <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm transition-transform hover:scale-105">
+                                        <div className="text-5xl font-black text-red-500">{importResult.total - importResult.imported}</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">Falhas/Ignorados</div>
                                     </div>
+                                </div>
+
+                                {importResult.errors.length > 0 && (
+                                    <div className="bg-red-50/50 border border-red-100 rounded-[2rem] p-8 text-left max-w-2xl mx-auto overflow-hidden">
+                                        <h4 className="font-black text-red-900 text-sm uppercase tracking-widest flex items-center gap-3 mb-5">
+                                            <AlertCircle size={20} /> Detalhes das inconsistências
+                                        </h4>
+                                        <div className="space-y-3 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {importResult.errors.map((err, idx) => (
+                                                <div key={idx} className="text-xs font-bold text-red-700 bg-white/70 p-4 rounded-2xl border border-red-50 flex justify-between items-center group hover:bg-white transition-colors">
+                                                    <span>Paciente na linha <span className="text-red-900 font-black px-1.5 py-0.5 bg-red-100 rounded-md mx-1">{err.row}</span></span>
+                                                    <span className="text-red-500/70 font-black">{err.message}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="pt-8">
+                                    <LuxButton onClick={onClose} size="lg" className="px-16 py-5 rounded-2xl text-lg font-black shadow-2xl">Voltar ao Dentis OS</LuxButton>
                                 </div>
                             </div>
                         )}
                     </div>
+                </div>
 
-                    {/* Footer Actions */}
-                    {!result && (
-                        <div className="p-8 border-t border-lux-border flex justify-between items-center bg-white flex-shrink-0 z-20">
-                            <button
-                                onClick={handleClose}
-                                className="px-6 py-3 rounded-xl font-bold text-lux-text hover:bg-lux-subtle transition"
-                            >
-                                Cancelar
+                {/* Status Bar / Error Banner */}
+                <AnimatePresence>
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 100 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 100 }}
+                            className="absolute bottom-10 left-10 right-10 bg-slate-900 text-white px-8 py-5 rounded-[2rem] flex items-center justify-between shadow-2xl z-50 border border-white/10"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="bg-red-500 p-2 rounded-xl">
+                                    <AlertCircle size={20} />
+                                </div>
+                                <div className="font-bold tracking-tight">{error}</div>
+                            </div>
+                            <button onClick={() => setError(null)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                                <X size={20} />
                             </button>
-
-                            {patients.length > 0 ? (
-                                <button
-                                    onClick={handleUpload}
-                                    disabled={uploading}
-                                    className="px-8 py-3 rounded-xl font-bold bg-lux-accent text-white shadow-lg shadow-lux-accent/20 hover:shadow-xl hover:-translate-y-0.5 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
-                                >
-                                    {uploading ? (
-                                        <>
-                                            <Loader size={18} className="animate-spin" />
-                                            Processando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle size={18} />
-                                            Confirmar Importação de {patients.length} Pacientes
-                                        </>
-                                    )}
-                                </button>
-                            ) : (
-                                <button
-                                    disabled
-                                    className="px-6 py-3 rounded-xl font-bold bg-slate-100 text-slate-400 cursor-not-allowed"
-                                >
-                                    Aguardando Arquivo...
-                                </button>
-                            )}
-                        </div>
+                        </motion.div>
                     )}
-                </motion.div>
-            </div>
-        </AnimatePresence>
+                </AnimatePresence>
+            </motion.div>
+        </div>
     );
 };
 

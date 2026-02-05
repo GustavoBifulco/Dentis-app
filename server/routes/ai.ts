@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { requireRole, requireMfa } from '../middleware/auth';
+import { authMiddleware, requireRole, requireMfa } from '../middleware/auth';
 import OpenAI from 'openai';
 import { detectJailbreak, sanitizeInput } from '../utils/ai_safety';
 import { SAFE_PROMPT_TEMPLATE } from '../ai/prompts';
@@ -15,6 +15,8 @@ import { aiRateLimit } from '../middleware/rateLimit';
 import { checkAIQuota, logAIUsage } from '../lib/usageTracking';
 
 const app = new Hono<{ Variables: { user: any; auth: any; organizationId: string } }>();
+
+app.use('*', authMiddleware);
 
 // --- Endpoints ---
 

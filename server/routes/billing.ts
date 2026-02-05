@@ -1,12 +1,14 @@
-
 import { Hono } from 'hono';
 import { asaas } from '../integrations/asaas/client';
 import { db } from '../db';
 import { billingCustomers, billingCharges, patients, appointments } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { authMiddleware } from '../middleware/auth';
 
 
-const app = new Hono<{ Variables: { user: any; organizationId: string } }>();
+const app = new Hono<{ Variables: { user: any; auth: any; organizationId: string } }>();
+
+app.use('*', authMiddleware);
 
 // GET /api/billing/health
 app.get('/health', async (c) => {

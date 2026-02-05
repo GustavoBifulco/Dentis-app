@@ -6,6 +6,7 @@ import { LoadingState, EmptyState, SectionHeader, ErrorState, IslandCard, LuxBut
 import { Search, Plus, Filter, ArrowRight, Upload } from 'lucide-react';
 import PatientImport from './PatientImport';
 import NewPatientModal from './NewPatientModal';
+import PatientInviteButton from './PatientInviteButton';
 
 interface PatientsProps {
   onSelectPatient?: (patient: Patient) => void;
@@ -157,9 +158,23 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
                     </td>
                     <td className="px-8 py-5 text-right">
                       <div className="flex justify-end items-center gap-2">
-                        <span className="text-blue-600 font-black text-[10px] uppercase tracking-[0.15em] opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-2">
-                          Prontuário Completo <ArrowRight size={14} strokeWidth={3} />
-                        </span>
+                        <PatientInviteButton
+                          patientId={patient.id}
+                          patientName={patient.name}
+                          hasAccount={!!patient.userId}
+                        />
+                        <LuxButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectPatient && onSelectPatient(patient);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-600 font-black text-[10px] uppercase tracking-widest gap-2 py-2"
+                          icon={<ArrowRight size={14} strokeWidth={3} />}
+                        >
+                          Abrir Prontuário
+                        </LuxButton>
                       </div>
                     </td>
                   </tr>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { X, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PatientForm from './PatientForm';
 
 interface NewPatientModalProps {
     isOpen: boolean;
@@ -13,12 +14,9 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
     const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [name, setName] = useState('');
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!name.trim()) {
+    const handleSubmitData = async (data: any) => {
+        if (!data.name?.trim()) {
             setError('Nome é obrigatório');
             return;
         }
@@ -33,7 +31,7 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ name: name.trim() })
+                body: JSON.stringify(data)
             });
 
             const result = await response.json();
@@ -44,7 +42,6 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
             }
 
             // Success - reset and close
-            setName('');
             onSuccess();
             onClose();
         } catch (e: any) {
@@ -56,7 +53,6 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
     };
 
     const handleClose = () => {
-        setName('');
         setError(null);
         onClose();
     };
@@ -70,7 +66,7 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+                    className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full h-[90vh] overflow-hidden flex flex-col"
                 >
                     {/* Header */}
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
@@ -83,63 +79,22 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
                         </button>
                     </div>
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* Footer - Using same wrapper as PatientForm or just matching style if needed, 
+                        but PatientForm already has its own footer for Save button. 
+                        Let's use PatientForm directly in a scrollable container. */}
+                    <div className="flex-1 overflow-hidden">
                         {error && (
-                            <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl text-sm font-bold">
+                            <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl text-sm font-bold animate-shake">
                                 {error}
                             </div>
                         )}
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">
-                                <User size={16} className="inline mr-2" />
-                                Nome Completo *
-                            </label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="Digite o nome completo do paciente"
-                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                autoFocus
-                                disabled={loading}
-                            />
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                            <p className="text-xs text-blue-700">
-                                <strong>💡 Dica:</strong> Após criar o paciente, você poderá editar o prontuário
-                                para adicionar telefone, email, documentos e outras informações.
-                            </p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-3 justify-end pt-4">
-                            <button
-                                type="button"
-                                onClick={handleClose}
-                                className="px-6 py-3 rounded-xl font-bold text-gray-700 hover:bg-gray-100 transition"
-                                disabled={loading}
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading || !name.trim()}
-                                className="px-6 py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        Salvando...
-                                    </>
-                                ) : (
-                                    'Criar Paciente'
-                                )}
-                            </button>
-                        </div>
-                    </form>
+                        <PatientForm
+                            mode="create"
+                            onSubmit={handleSubmitData}
+                            loading={loading}
+                        />
+                    </div>
                 </motion.div>
             </div>
         </AnimatePresence>

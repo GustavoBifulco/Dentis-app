@@ -5,8 +5,11 @@ import { db } from '../db';
 import { labCases } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { logTimelineEvent } from '../services/timeline';
+import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { user: any; organizationId: string } }>();
+const app = new Hono<{ Variables: { user: any; auth: any; organizationId: string } }>();
+
+app.use('*', authMiddleware);
 
 const labCaseSchema = z.object({
     patientId: z.number(),

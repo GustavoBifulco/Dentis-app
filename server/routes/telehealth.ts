@@ -1,14 +1,15 @@
 
 import { Hono } from 'hono';
-import { requireRole, requireMfa } from '../middleware/auth';
+import { authMiddleware, requireRole, requireMfa } from '../middleware/auth';
 import { db } from '../db';
 import { clinicalRecords } from '../db/schema';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { checkTenantAccess } from '../utils/tenant';
 
-const app = new Hono<{ Variables: { user: any; organizationId: string } }>();
+const app = new Hono<{ Variables: { user: any; auth: any; organizationId: string } }>();
 
+app.use('*', authMiddleware);
 app.use('*', requireMfa);
 
 const consentSchema = z.object({
@@ -38,11 +39,12 @@ app.post('/consent', zValidator('json', consentSchema), async (c) => {
     await db.insert(clinicalRecords).values({
         organizationId,
         patientId,
-        dentistId: String(user.id || 'system'), // Ensure text type
-        treatment: 'TELEHEALTH_CONSENT', // Field is treatment in schema
-        notes: JSON.stringify(consentData), // Field is notes in schema
+        dentistId: String(user.id || 'system'),
+        type: 'TELEHEALTH_CONSENT',
+        description: JSON.stringify(consentData),
+        date: new Date().toISOString().split('T')[0], // Column is 'date' type
         createdAt: new Date(),
-    });
+    } as any);
 
     return c.json({ success: true, message: 'Consent logged successfully.' });
 });

@@ -3,8 +3,11 @@ import { db } from '../db';
 import { financialLedger, accountsReceivable } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { logTimelineEvent } from '../services/timeline';
+import { authMiddleware } from '../middleware/auth';
 
-const app = new Hono<{ Variables: { user: any; organizationId: string } }>();
+const app = new Hono<{ Variables: { user: any; auth: any; organizationId: string } }>();
+
+app.use('*', authMiddleware);
 
 // GET /api/finance/ledger
 app.get('/ledger', async (c) => {
@@ -33,8 +36,8 @@ app.post('/transaction', async (c) => {
     category: body.category,
     description: body.description,
     refType: body.refType,
-    refId: body.refId,
-    createdBy: user.id
+    refId: body.refId ? String(body.refId) : null,
+    createdBy: String(user.id)
   }).returning();
 
   logTimelineEvent({
@@ -45,7 +48,7 @@ app.post('/transaction', async (c) => {
     refId: String(entry.id),
     title: `Financeiro: ${body.type === 'CREDIT' ? 'Entrada' : 'Saída'}`,
     summary: `${body.description} - R$ ${body.amount}`,
-    createdBy: user.id
+    createdBy: String(user.id)
   });
 
   return c.json(entry);
