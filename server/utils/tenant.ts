@@ -1,5 +1,8 @@
 
 import { HTTPException } from 'hono/http-exception';
+import { db } from '../db';
+import { patients } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * Enforces strict tenant (organization) isolation.
@@ -27,4 +30,25 @@ export const checkTenantAccess = (user: any, resourceTenantId: number | string, 
         console.error(`SECURITY VIOLATION: User ${user.id} (Org: ${userOrgId}) attempted to ${action} resource in Org ${resourceOrgId}`);
         throw new HTTPException(403, { message: 'Access denied: Resource belongs to another organization' });
     }
+};
+
+/**
+ * Validates if the patient belongs to the current user's organization.
+ * Used to prevent IDOR in creation routes.
+ */
+export const verifyPatientAccess = async (patientId: number, organizationId: string) => {
+    const patient = await db.query.patients.findFirst({
+        where: eq(patients.id, patientId),
+        columns: { organizationId: true }
+    });
+
+    if (!patient) {
+        throw new HTTPException(404, { message: 'Patient not found' });
+    }
+
+    if (patient.organizationId !== organizationId) {
+        throw new HTTPException(403, { message: 'Access denied: Patient belongs to another organization' });
+    }
+
+    return true;
 };

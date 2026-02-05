@@ -16,7 +16,7 @@ import {
 } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { authMiddleware, requireMfa } from '../middleware/auth';
-import { checkTenantAccess } from '../utils/tenant';
+import { checkTenantAccess, verifyPatientAccess } from '../utils/tenant';
 import { logAudit, logAccess } from '../services/audit';
 import { getLockReason } from '../utils/status';
 import { logTimelineEvent } from '../services/timeline';
@@ -118,6 +118,9 @@ app.post('/alerts', async (c) => {
 
     // Basic validation
     if (!body.patientId || !body.description) return c.json({ error: 'Missing fields' }, 400);
+
+    // Anti-IDOR
+    await verifyPatientAccess(body.patientId, organizationId);
 
     const [alert] = await db.insert(patientAlerts).values({
         organizationId,
@@ -387,6 +390,8 @@ app.post('/encounters', zValidator('json', encounterSchema), async (c) => {
     const body = c.req.valid('json');
 
     checkTenantAccess(user, organizationId, 'create_clinical_record');
+    // Anti-IDOR
+    await verifyPatientAccess(body.patientId, organizationId);
 
     const [newEncounter] = await db.insert(encounters).values({
         organizationId,
