@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { FinancialEntry, UserRole } from '../types';
 import { LoadingState, EmptyState, SectionHeader, LuxButton, IslandCard } from './Shared';
 import {
@@ -25,6 +26,7 @@ interface FinanceProps {
 }
 
 const Finance: React.FC<FinanceProps> = ({ userRole }) => {
+  const { getToken } = useAuth();
   const [entries, setEntries] = useState<FinancialEntry[]>(MOCK_FINANCE);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [billingCharges, setBillingCharges] = useState<any[]>([]);
@@ -41,11 +43,18 @@ const Finance: React.FC<FinanceProps> = ({ userRole }) => {
   const fetchBilling = async () => {
     setLoadingBilling(true);
     try {
-      const res = await fetch('/api/billing/charges');
+      const token = await getToken();
+      const res = await fetch('/api/billing/charges', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.status === 401) throw new Error('Unauthorized');
+
       const data = await res.json();
       setBillingCharges(data || []);
     } catch (e) {
-      console.error("Failed to load billing charges");
+      console.error("Failed to load billing charges", e);
     } finally {
       setLoadingBilling(false);
     }
