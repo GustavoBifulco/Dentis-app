@@ -21,13 +21,11 @@ export const logAudit = async (event: AuditEvent) => {
         await db.insert(auditLogs).values({
             userId: String(event.userId || 'system'),
             action: event.action,
-            resourceType: event.resourceType,
-            resourceId: String(event.resourceId || ''),
             organizationId: event.tenantId, // Map tenantId to organizationId column
-            ip: event.ip || '0.0.0.0',
-            reason: event.reason,
-            details: event.details ? JSON.stringify(event.details) : null,
-            createdAt: new Date() // Schema uses createdAt, not timestamp
+            resource: event.resourceId ? `${event.resourceType}/${event.resourceId}` : event.resourceType,
+            ipAddress: event.ip || '0.0.0.0', // Corrected column name from ip to ipAddress
+            details: JSON.stringify({ ...(event.details || {}), reason: event.reason }),
+            createdAt: new Date()
         });
     } catch (error) {
         console.error('CRITICAL: Failed to write audit log', error);
