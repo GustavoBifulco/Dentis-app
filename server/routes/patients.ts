@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { z } from 'zod'; // Ensure z is imported
 import { zValidator } from '@hono/zod-validator'; // Assuming this package is available, or use manual parse
 import { patients, users, addresses, patientEmergencyContacts, patientInsurances } from '../db/schema';
-import { scopedDb } from '../db/scoped';
+import { db } from '../db';
 import { authMiddleware, requireMfa } from '../middleware/auth';
 import { eq, and, desc } from 'drizzle-orm';
 
@@ -57,7 +57,7 @@ const patientSchema = z.object({
 // GET / - List Patients
 app.get('/', async (c) => {
   const auth = c.get('auth');
-  const scoped = scopedDb(c);
+
   // Robust requestId
   const requestId = crypto.randomUUID();
 
@@ -74,7 +74,7 @@ app.get('/', async (c) => {
     // We'll write this defensively assuming Drizzle might be configured differently in 'scoped'
 
     // Simplest reliable method: raw Drizzle select
-    const list = await scoped.select().from(patients)
+    const list = await db.select().from(patients)
       .where(and(
         eq(patients.organizationId, auth.organizationId),
         // Optional: filter out archived unless requested?
@@ -93,7 +93,6 @@ app.get('/', async (c) => {
 // POST / - Create Patient
 app.post('/', async (c) => {
   const auth = c.get('auth');
-  const scoped = scopedDb(c);
   const requestId = crypto.randomUUID();
 
   try {
@@ -106,13 +105,10 @@ app.post('/', async (c) => {
     }
     const data = result.data;
 
-    // Transaction logic (manual or via db.transaction if available on scoped)
-    // We'll proceed sequentially for safety if transaction not easily exposed on 'scoped' wrapper
-
     // 1. Create Address
     let newAddressId = null;
     if (data.addressDetails && (data.addressDetails.street || data.addressDetails.postalCode)) {
-      const [addr] = await scoped.insert(addresses).values({
+      const [addr] = await db.insert(addresses).values({
         organizationId: auth.organizationId,
         ...data.addressDetails
       }).returning();
@@ -120,11 +116,11 @@ app.post('/', async (c) => {
     }
 
     // 2. Create Patient
-    const [newPatient] = await scoped.insert(patients).values({
+    const [newPatient] = await db.insert(patients).values({
       organizationId: auth.organizationId,
       addressId: newAddressId,
       name: data.name,
-      email: data.email || null, // Ensure empty string becomes null for unique constraints if any
+      email: data.email || null,
       cpf: data.cpf || null,
       phone: data.phone,
       birthdate: data.birthdate,
@@ -136,20 +132,24 @@ app.post('/', async (c) => {
 
     // 3. Emergency Contacts
     if (data.emergencyContacts?.length) {
-      await scoped.insert(patientEmergencyContacts).values(
+      await db.insert(patientEmergencyContacts).values(
         data.emergencyContacts.map(c => ({
           patientId: newPatient.id,
-          ...c
+          name: c.name!,
+          phone: c.phone!,
+          relationship: c.relationship
         }))
       );
     }
 
     // 4. Insurances
     if (data.insurances?.length) {
-      await scoped.insert(patientInsurances).values(
+      await db.insert(patientInsurances).values(
         data.insurances.map(i => ({
           patientId: newPatient.id,
-          ...i
+          providerName: i.providerName!,
+          cardNumber: i.cardNumber,
+          validUntil: i.validUntil
         }))
       );
     }
@@ -166,12 +166,11 @@ app.post('/', async (c) => {
 app.put('/:id', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
-  const scoped = scopedDb(c);
   const requestId = crypto.randomUUID();
 
   try {
     const rawBody = await c.req.json();
-    // Validate (Partial allow?) - Schema assumes creation mostly, but works for update roughly
+    // Validate
     const result = patientSchema.partial().safeParse(rawBody);
 
     if (!result.success) {
@@ -180,19 +179,19 @@ app.put('/:id', async (c) => {
     const data = result.data;
 
     // Check existence
-    const [existing] = await scoped.select().from(patients)
+    const [existing] = await db.select().from(patients)
       .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
       .limit(1);
 
     if (!existing) return c.json({ error: 'Paciente não encontrado' }, 404);
 
-    // 1. Update Address (Complex logic simplified)
+    // 1. Update Address
     let addressId = existing.addressId;
     if (data.addressDetails) {
       if (addressId) {
-        await scoped.update(addresses).set(data.addressDetails).where(eq(addresses.id, addressId));
+        await db.update(addresses).set(data.addressDetails).where(eq(addresses.id, addressId));
       } else {
-        const [addr] = await scoped.insert(addresses).values({
+        const [addr] = await db.insert(addresses).values({
           organizationId: auth.organizationId,
           ...data.addressDetails
         }).returning();
@@ -201,29 +200,39 @@ app.put('/:id', async (c) => {
     }
 
     // 2. Update Patient
-    const [updated] = await scoped.update(patients).set({
-      ...data as any, // Cast because Drizzle types might be strict vs Zod partial
-      addressId: addressId, // Explicitly set if changed
-      updatedAt: new Date() // If field exists
+    const [updated] = await db.update(patients).set({
+      ...data as any,
+      addressId: addressId,
+      updatedAt: new Date()
     })
-      .where(eq(patients.id, id))
+      .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
       .returning();
 
     // 3. Relations (Replace Strategy)
     if (data.emergencyContacts) {
-      await scoped.delete(patientEmergencyContacts).where(eq(patientEmergencyContacts.patientId, id));
+      await db.delete(patientEmergencyContacts).where(eq(patientEmergencyContacts.patientId, id));
       if (data.emergencyContacts.length > 0) {
-        await scoped.insert(patientEmergencyContacts).values(
-          data.emergencyContacts.map(c => ({ patientId: id, ...c }))
+        await db.insert(patientEmergencyContacts).values(
+          data.emergencyContacts.map(c => ({
+            patientId: id,
+            name: c.name!, // Non-null assertion if Zod guarantees it, or safe check
+            phone: c.phone!,
+            relationship: c.relationship
+          }))
         );
       }
     }
 
     if (data.insurances) {
-      await scoped.delete(patientInsurances).where(eq(patientInsurances.patientId, id));
+      await db.delete(patientInsurances).where(eq(patientInsurances.patientId, id));
       if (data.insurances.length > 0) {
-        await scoped.insert(patientInsurances).values(
-          data.insurances.map(i => ({ patientId: id, ...i }))
+        await db.insert(patientInsurances).values(
+          data.insurances.map(i => ({
+            patientId: id,
+            providerName: i.providerName!,
+            cardNumber: i.cardNumber,
+            validUntil: i.validUntil
+          }))
         );
       }
     }
@@ -240,10 +249,9 @@ app.put('/:id', async (c) => {
 app.delete('/:id', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
-  const scoped = scopedDb(c);
 
   // Check constraints
-  const [patient] = await scoped.select().from(patients)
+  const [patient] = await db.select().from(patients)
     .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
     .limit(1);
 
@@ -260,23 +268,23 @@ app.delete('/:id', async (c) => {
 
   if (patient.cpf && !forceHard) {
     // Soft delete (Archive)
-    const [archived] = await scoped.update(patients)
+    const [archived] = await db.update(patients)
       .set({ status: 'archived' })
-      .where(eq(patients.id, id))
+      .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
       .returning();
     return c.json({ message: 'Paciente arquivado com sucesso (Legal Hold).', patient: archived });
   }
 
   if (forceHard) {
     // Attempt Hard Delete
-    await scoped.delete(patients).where(eq(patients.id, id));
+    await db.delete(patients).where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)));
     return c.json({ success: true, mode: 'hard_delete' });
   }
 
   // Default behavior: Archive
-  const [archived] = await scoped.update(patients)
+  const [archived] = await db.update(patients)
     .set({ status: 'archived' })
-    .where(eq(patients.id, id))
+    .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
     .returning();
 
   return c.json({ message: 'Paciente arquivado.', patient: archived });
@@ -286,9 +294,8 @@ app.delete('/:id', async (c) => {
 app.patch('/:id/archive', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
-  const scoped = scopedDb(c);
 
-  const [archived] = await scoped.update(patients)
+  const [archived] = await db.update(patients)
     .set({ status: 'archived' })
     .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
     .returning();
@@ -300,9 +307,8 @@ app.patch('/:id/archive', async (c) => {
 app.post('/:id/unarchive', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
-  const scoped = scopedDb(c);
 
-  const [restored] = await scoped.update(patients)
+  const [restored] = await db.update(patients)
     .set({ status: 'active' })
     .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
     .returning();
