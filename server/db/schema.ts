@@ -1371,3 +1371,101 @@ export const whatsappUsage = pgTable('whatsapp_usage', {
   orgDateIdx: index('whatsapp_usage_org_date_idx').on(table.organizationId, table.date),
   userDateIdx: index('whatsapp_usage_user_date_idx').on(table.userId, table.date),
 }));
+
+// === PHASE 4: BILLING (ASAAS INTEGRATION) ===
+
+export const billingCustomers = pgTable('billing_customers', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+  asaasCustomerId: text('asaas_customer_id').notNull().unique(),
+
+  // Cache of synced data
+  name: text('name'),
+  cpfCnpj: text('cpf_cnpj'),
+  email: text('email'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const billingCharges = pgTable('billing_charges', {
+  id: text('id').primaryKey(), // UUID generated internally
+  organizationId: text('organization_id').notNull(),
+
+  ownerType: text('owner_type').notNull().default('clinic'), // 'clinic' or 'dentist' (autonomo)
+  ownerId: text('owner_id').notNull(), // organizationId or dentistId
+
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'set null' }),
+  billingCustomerId: integer('billing_customer_id').references(() => billingCustomers.id),
+
+  // Context
+  appointmentId: integer('appointment_id').references(() => appointments.id, { onDelete: 'set null' }),
+  // procedures linkage via separate table if many-to-many, or just simple ref here
+
+  // Financials
+  amount: numeric('amount').notNull(),
+  netAmount: numeric('net_amount'), // After fees
+
+  discount: numeric('discount'),
+  interest: numeric('interest'),
+  fine: numeric('fine'),
+
+  // Asaas Info
+  asaasPaymentId: text('asaas_payment_id').unique(), // The ID returned by Asaas
+  asaasInstallmentId: text('asaas_installment_id'),
+
+  method: text('method').notNull(), // PIX, BOLETO, CREDIT_CARD, CREDIT_CARD_ID
+  status: text('status').notNull(), // PENDING, FLAGGED, RECEIVED, OVERDUE, REFUNDED
+
+  dueDate: date('due_date').notNull(),
+  originalDueDate: date('original_due_date'),
+
+  // Payment URLs
+  invoiceUrl: text('invoice_url'),
+  bankSlipUrl: text('bank_slip_url'),
+  pixQrCodePayload: text('pix_qr_code_payload'),
+  pixQrCodeImage: text('pix_qr_code_image'), // Base64
+
+  description: text('description'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  paidAt: timestamp('paid_at'),
+});
+
+export const billingWebhookEvents = pgTable('billing_webhook_events', {
+  id: serial('id').primaryKey(),
+  provider: text('provider').default('asaas'),
+  eventId: text('event_id').unique(), // Asaas event ID
+  eventType: text('event_type').notNull(), // PAYMENT_RECEIVED, etc.
+  payload: jsonb('payload').notNull(),
+  processedAt: timestamp('processed_at'),
+  status: text('status').default('pending'), // pending, processed, failed
+  error: text('error'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Relations
+export const billingCustomersRelations = relations(billingCustomers, ({ one, many }) => ({
+  patient: one(patients, {
+    fields: [billingCustomers.patientId],
+    references: [patients.id]
+  }),
+  charges: many(billingCharges)
+}));
+
+export const billingChargesRelations = relations(billingCharges, ({ one }) => ({
+  patient: one(patients, {
+    fields: [billingCharges.patientId],
+    references: [patients.id]
+  }),
+  customer: one(billingCustomers, {
+    fields: [billingCharges.billingCustomerId],
+    references: [billingCustomers.id]
+  }),
+  appointment: one(appointments, {
+    fields: [billingCharges.appointmentId],
+    references: [appointments.id]
+  })
+}));

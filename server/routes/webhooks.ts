@@ -4,8 +4,9 @@ import { createClerkClient } from '@clerk/backend';
 const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 import Stripe from 'stripe';
 import { db } from '../db';
-import { users, clinicProvisioningRequests, clinics, clinicMemberships, subscriptions } from '../db/schema';
+import { users, clinicProvisioningRequests, clinics, clinicMemberships, subscriptions, billingWebhookEvents, billingCharges } from '../db/schema';
 import { eq } from 'drizzle-orm';
+
 
 const webhooks = new Hono();
 
@@ -196,7 +197,7 @@ webhooks.post('/stripe', async (c) => {
             }
         }
 
-        case 'customer.subscription.updated':
+
         case 'customer.subscription.deleted': {
             // TODO: Atualizar status da subscription no DB
             console.log(`📝 Subscription event: ${event.type}`);
@@ -208,5 +209,66 @@ webhooks.post('/stripe', async (c) => {
             return c.json({ received: true });
     }
 });
+
+/**
+ * Webhook do Asaas
+ */
+webhooks.post('/asaas', async (c) => {
+    try {
+        const token = c.req.header('asaas-access-token');
+        const secret = process.env.ASAAS_WEBHOOK_SECRET; // Optional if using token check or not set
+
+        // Asaas sends a specific token if configured, checking it matches if strictly required
+        // Implementation detail: Asaas webhook config allows setting an access token that is sent in headers.
+        if (secret && token !== secret) {
+            console.error('❌ Asaas Webhook Token Mismatch');
+            return c.json({ error: 'Unauthorized' }, 401);
+        }
+
+        const body = await c.req.json();
+        const { event, payment } = body;
+
+        console.log(`🔔 [ASAAS WEBHOOK] Event: ${event} Payment: ${payment?.id}`);
+
+        // Log event
+        try {
+            await db.insert(billingWebhookEvents).values({
+                provider: 'asaas',
+                eventId: body.id, // Asaas event ID
+                eventType: event,
+                payload: body,
+                status: 'processed'
+            });
+        } catch (e) {
+            console.error('Failed to log billing webhook', e);
+        }
+
+        if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+            // Update Charge Status
+            if (payment?.id) {
+                await db.update(billingCharges)
+                    .set({
+                        status: 'RECEIVED',
+                        paidAt: new Date(payment.paymentDate || Date.now())
+                    })
+                    .where(eq(billingCharges.asaasPaymentId, payment.id));
+                console.log(`✅ Charge ${payment.id} updated to RECEIVED`);
+            }
+        } else if (event === 'PAYMENT_OVERDUE') {
+            if (payment?.id) {
+                await db.update(billingCharges)
+                    .set({ status: 'OVERDUE' })
+                    .where(eq(billingCharges.asaasPaymentId, payment.id));
+            }
+        }
+
+        return c.json({ received: true });
+
+    } catch (e: any) {
+        console.error('❌ Asaas Webhook Error:', e);
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 
 export default webhooks;

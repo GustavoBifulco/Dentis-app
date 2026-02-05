@@ -4,6 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Loader2, Star, Shield, Zap, Sparkles } from 'lucide-react';
 import { LuxButton } from '../Shared';
 import { useAuth, useUser } from '@clerk/clerk-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe((import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+
 
 interface UserPlanModalProps {
     onCancel: () => void;
@@ -15,7 +21,9 @@ const UserPlanModal: React.FC<UserPlanModalProps> = ({ onCancel }) => {
     const [step, setStep] = useState<Step>('OFFER');
     const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
     const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+
     const { getToken } = useAuth();
     const { user } = useUser();
 
@@ -47,14 +55,9 @@ const UserPlanModal: React.FC<UserPlanModalProps> = ({ onCancel }) => {
 
             if (res.ok) {
                 const data = await res.json();
-                console.log("Client Secret:", data.clientSecret);
+                setClientSecret(data.clientSecret);
                 setStep('CHECKOUT_REDIRECT');
-                // Redirect user logic here if needed, or Stripe Embedded checks
-                if (data.clientSecret) {
-                    // If we were using Stripe.js for embedded, we would initialize it here.
-                    // For now, we assume the user will be redirected or handled by a parent component if implementing full embedded flow.
-                    // However, for this modal, let's at least show the success state/loading.
-                }
+
             } else {
                 alert('Erro ao iniciar checkout.');
             }
@@ -165,13 +168,25 @@ const UserPlanModal: React.FC<UserPlanModalProps> = ({ onCancel }) => {
                             </motion.div>
                         )}
 
-                        {step === 'CHECKOUT_REDIRECT' && (
+                        {step === 'CHECKOUT_REDIRECT' && clientSecret && (
+                            <div className="py-4">
+                                <EmbeddedCheckoutProvider
+                                    stripe={stripePromise}
+                                    options={{ clientSecret }}
+                                >
+                                    <EmbeddedCheckout />
+                                </EmbeddedCheckoutProvider>
+                            </div>
+                        )}
+
+                        {step === 'CHECKOUT_REDIRECT' && !clientSecret && (
                             <div className="text-center py-10 space-y-4">
                                 <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto" />
                                 <h3 className="text-xl font-bold text-slate-800">Processando...</h3>
                                 <p className="text-slate-500">Por favor, aguarde o carregamento do pagamento.</p>
                             </div>
                         )}
+
                     </AnimatePresence>
                 </div>
             </motion.div>

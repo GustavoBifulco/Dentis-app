@@ -3,6 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, User, Users, Check, ChevronRight, Loader2, ArrowLeft, Mail, Stethoscope } from 'lucide-react';
 import { LuxButton, SectionHeader } from '../Shared';
 import { useAuth } from '@clerk/clerk-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe((import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+
 
 interface AddClinicWizardProps {
     onCancel: () => void;
@@ -20,6 +26,8 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
     const [mode, setMode] = useState<'solo' | 'team' | 'multi'>('solo');
     const [seats, setSeats] = useState(1);
     const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
+
 
     const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
 
@@ -115,8 +123,10 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
 
                 // For now, I'll just alert success and log the secret as I can't easily add dependencies.
                 // Actually, the prompt said "repo clonado no meu PC". I can check package.json.
-                console.log("Client Secret:", data.clientSecret);
-                setStep('CHECKOUT_REDIRECT'); // Placeholder step
+                console.log("Client Secret Received");
+                setClientSecret(data.clientSecret);
+                setStep('CHECKOUT_REDIRECT');
+
             } else {
                 alert('Erro ao iniciar checkout.');
             }
@@ -320,14 +330,25 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
                             </motion.div>
                         )}
 
-                        {step === 'CHECKOUT_REDIRECT' && (
+                        {step === 'CHECKOUT_REDIRECT' && clientSecret && (
+                            <div className="py-4">
+                                <EmbeddedCheckoutProvider
+                                    stripe={stripePromise}
+                                    options={{ clientSecret }}
+                                >
+                                    <EmbeddedCheckout />
+                                </EmbeddedCheckoutProvider>
+                            </div>
+                        )}
+
+                        {step === 'CHECKOUT_REDIRECT' && !clientSecret && (
                             <div className="text-center py-10 space-y-4">
                                 <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto" />
                                 <h3 className="text-xl font-bold text-slate-800">Redirecionando...</h3>
                                 <p className="text-slate-500">Estamos preparando seu ambiente seguro de pagamento.</p>
-                                {/* Here we would mount the EmbeddedCheckoutProvider if using embedded */}
                             </div>
                         )}
+
                     </AnimatePresence>
                 </div>
             </motion.div>

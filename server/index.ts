@@ -143,6 +143,9 @@ import clinicInvites from './routes/clinic-invites';
 app.route('/api/billing-provisioning', billingProvisioning);
 app.route('/api/clinic-invites', clinicInvites);
 
+import billing from './routes/billing';
+app.route('/api/billing', billing);
+
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 
 

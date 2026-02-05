@@ -50,34 +50,43 @@ function transformPatientData(rawData: any[], columnMapping: Record<string, stri
 
         let firstName = '';
         let lastName = '';
+        let fullNameFromRow = '';
 
         Object.entries(row).forEach(([key, value]) => {
             const targetField = columnMapping[key];
             if (targetField && value) {
                 const trimmedValue = String(value).trim();
 
-                // Handle separate first and last name columns
                 if (targetField === 'firstName') {
                     firstName = trimmedValue;
                 } else if (targetField === 'lastName') {
                     lastName = trimmedValue;
                 } else if (targetField === 'name') {
-                    // If we have a full name column, use it directly
-                    patient.name = trimmedValue;
+                    fullNameFromRow = trimmedValue;
                 } else {
                     patient[targetField] = trimmedValue;
                 }
             }
         });
 
-        // Combine firstName + lastName if we don't have a full name
-        if (!patient.name && (firstName || lastName)) {
+        // Use full name if separate parts aren't fully provided
+        if (fullNameFromRow && (!firstName || !lastName)) {
+            // If they are missing parts, we can try to split, but usually JSON from client is already fixed
+            // However, if this route is called with raw file data (direct upload), we split
+            if (!firstName && !lastName) {
+                patient.name = fullNameFromRow;
+            } else {
+                // If it's a mix, let's prefer the combined name logic
+                patient.name = fullNameFromRow;
+            }
+        } else if (firstName || lastName) {
             patient.name = `${firstName} ${lastName}`.trim();
+        } else {
+            patient.name = fullNameFromRow;
         }
 
         // Ensure at least name exists
         if (!patient.name) {
-            // Try to find any field that might be a name (fallback)
             const possibleName = Object.values(row).find(v => v && String(v).length > 2);
             if (possibleName) {
                 patient.name = String(possibleName).trim();

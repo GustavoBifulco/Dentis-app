@@ -47,49 +47,56 @@ function transformPatientData(rawData: any[], columnMapping: Record<string, stri
         const patient: any = {
             id: index, // Temporary ID for UI handling
             status: 'active',
-            name: '',
+            firstName: '',
+            lastName: '',
             email: '',
             phone: '',
             cpf: '',
             birthDate: ''
         };
 
-        let firstName = '';
-        let lastName = '';
+        let fullNameFromRow = '';
 
         Object.entries(row).forEach(([key, value]) => {
             const targetField = columnMapping[key];
             if (targetField && value) {
                 const trimmedValue = String(value).trim();
 
-                // Handle separate first and last name columns
                 if (targetField === 'firstName') {
-                    firstName = trimmedValue;
+                    patient.firstName = trimmedValue;
                 } else if (targetField === 'lastName') {
-                    lastName = trimmedValue;
+                    patient.lastName = trimmedValue;
                 } else if (targetField === 'name') {
-                    patient.name = trimmedValue;
+                    fullNameFromRow = trimmedValue;
                 } else {
                     patient[targetField] = trimmedValue;
                 }
             }
         });
 
-        // Combine firstName + lastName if we don't have a full name
-        if (!patient.name && (firstName || lastName)) {
-            patient.name = `${firstName} ${lastName}`.trim();
+        // Split logic: If we have a full name but no separate parts, split it
+        if (fullNameFromRow && !patient.firstName && !patient.lastName) {
+            const parts = fullNameFromRow.split(' ');
+            patient.firstName = parts[0];
+            patient.lastName = parts.slice(1).join(' ');
+        } else if (fullNameFromRow && (!patient.firstName || !patient.lastName)) {
+            // Partial info: trust full name if provided? No, let's prefer separate if they exist
+            if (!patient.firstName) patient.firstName = fullNameFromRow.split(' ')[0];
+            if (!patient.lastName) patient.lastName = fullNameFromRow.split(' ').slice(1).join(' ');
         }
 
-        // Fallback: If no name found, try to use the first column that looks like a name
-        if (!patient.name) {
+        // Fallback: If still no name parts found, try to use the first column that looks like a name
+        if (!patient.firstName) {
             const possibleName = Object.values(row).find(v => v && String(v).length > 2 && isNaN(Number(v)));
             if (possibleName) {
-                patient.name = String(possibleName).trim();
+                const parts = String(possibleName).trim().split(' ');
+                patient.firstName = parts[0];
+                patient.lastName = parts.slice(1).join(' ');
             }
         }
 
         return patient;
-    }).filter(p => p.name && p.name.length > 0); // Only keep patients with at least a name
+    }).filter(p => p.firstName && p.firstName.length > 0); // Only keep patients with at least a first name
 }
 
 // --- COMPONENT ---
@@ -255,8 +262,11 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                 throw new Error('Não autenticado');
             }
 
-            // Clean data before sending (remove temp ID)
-            const payload = patients.map(({ id, ...rest }) => rest);
+            // Clean data before sending (combine names)
+            const payload = patients.map(({ id, firstName, lastName, ...rest }) => ({
+                ...rest,
+                name: `${firstName} ${lastName}`.trim()
+            }));
 
             const response = await fetch('/api/patient-import/upload', {
                 method: 'POST',
@@ -389,7 +399,8 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                             <thead className="bg-slate-50 font-bold text-slate-600 uppercase text-xs sticky top-0 z-10 shadow-sm">
                                                 <tr>
                                                     <th className="px-4 py-3 border-b border-slate-200 w-10">#</th>
-                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Nome Completo *</th>
+                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[150px]">Nome *</th>
+                                                    <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Sobrenome</th>
                                                     <th className="px-4 py-3 border-b border-slate-200 min-w-[150px]">Telefone</th>
                                                     <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Email</th>
                                                     <th className="px-4 py-3 border-b border-slate-200 min-w-[140px]">CPF</th>
@@ -403,10 +414,19 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                                         <td className="p-1">
                                                             <input
                                                                 type="text"
-                                                                value={patient.name}
-                                                                onChange={(e) => handleCellChange(idx, 'name', e.target.value)}
-                                                                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent ${!patient.name ? 'border-red-300 bg-red-50' : 'border-transparent hover:border-slate-300 focus:bg-white'}`}
-                                                                placeholder="Nome Obrigatório"
+                                                                value={patient.firstName}
+                                                                onChange={(e) => handleCellChange(idx, 'firstName', e.target.value)}
+                                                                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent ${!patient.firstName ? 'border-red-300 bg-red-50' : 'border-transparent hover:border-slate-300 focus:bg-white'}`}
+                                                                placeholder="Nome"
+                                                            />
+                                                        </td>
+                                                        <td className="p-1">
+                                                            <input
+                                                                type="text"
+                                                                value={patient.lastName}
+                                                                onChange={(e) => handleCellChange(idx, 'lastName', e.target.value)}
+                                                                className="w-full px-3 py-2 rounded-lg border border-transparent hover:border-slate-300 focus:bg-white focus:border-lux-accent focus:ring-2 focus:ring-lux-accent/50 outline-none transition bg-transparent"
+                                                                placeholder="Sobrenome"
                                                             />
                                                         </td>
                                                         <td className="p-1">
