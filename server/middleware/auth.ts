@@ -1,11 +1,16 @@
 
 import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
 import { db } from '../db';
 import { users, organizationMembers, organizations } from '../db/schema';
 import { seedDefaultData } from '../services/seedData';
 import { eq } from 'drizzle-orm';
+
+// Initialize Clerk client with environment variables
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY!,
+});
 
 // Estenda o contexto do Hono para incluir o usuário
 declare module 'hono' {
@@ -46,17 +51,24 @@ export const authMiddleware = async (c: Context, next: Next) => {
       throw new HTTPException(401, { message: 'Invalid token format' });
     }
 
-    // Integração Real com Clerk
-    let decodedState;
+    // Integração Real com Clerk usando novo SDK
+    let authState;
     try {
-      // verifyToken throws if invalid
-      decodedState = await clerkClient.verifyToken(token);
+      // authenticateRequest requires a Request object
+      // Hono's c.req.raw provides the underlying Request object
+      authState = await clerkClient.authenticateRequest(c.req.raw, {
+        secretKey: process.env.CLERK_SECRET_KEY!,
+      });
+
+      if (!authState.isSignedIn) {
+        throw new Error('Not authenticated');
+      }
     } catch (err) {
       console.error("Clerk Token Verification Failed:", err);
       throw new HTTPException(401, { message: 'Invalid or expired token' });
     }
 
-    const clerkId = decodedState.sub;
+    const clerkId = authState.toAuth().userId;
 
     // Buscar usuário no banco para ter o ID interno e ClinicID
     // TODO: Cachear isso (Redis ou memória) para performance
@@ -137,7 +149,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     }
 
     c.set('auth', {
-      sessionClaims: decodedState,
+      sessionClaims: authState.toAuth(),
       token: token,
       userId: dbUser?.id,
       organizationId: contextOrgId,

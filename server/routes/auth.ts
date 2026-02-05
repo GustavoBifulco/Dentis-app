@@ -1,6 +1,8 @@
 
 import { Hono } from 'hono';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 import { authMiddleware } from '../middleware/auth';
 import { authRateLimit } from '../middleware/rateLimit';
 

@@ -4,7 +4,9 @@ import { db } from '../db';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { requireMfa } from '../middleware/auth';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 import { getUserPermissions } from '../utils/rbac';
 
 const app = new Hono();

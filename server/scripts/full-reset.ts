@@ -7,7 +7,9 @@ if (typeof globalThis.crypto === 'undefined') {
 
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 
 async function fullReset() {
     console.log('⚠️  INICIANDO O FULL RESET (DB + CLERK) ⚠️');

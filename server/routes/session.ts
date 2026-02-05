@@ -3,7 +3,9 @@ import { authMiddleware } from '../middleware/auth';
 import { db } from '../db';
 import { users, organizationMembers, organizations } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 import { UserRole } from '../../types';
 
 const session = new Hono<{ Variables: { user: any } }>();

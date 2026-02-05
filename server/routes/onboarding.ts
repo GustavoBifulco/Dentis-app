@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import * as fs from 'node:fs';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 import { setupNewUserEnvironment } from '../services/userSetup';
 import { db } from '../db';
 import { users } from '../db/schema';

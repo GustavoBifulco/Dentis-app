@@ -38,6 +38,7 @@ import treatment from './routes/treatment';
 import anamnesis from './routes/anamnesis';
 import settings from './routes/settings';
 import records from './routes/records';
+import whatsapp from './routes/whatsapp';
 
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
@@ -132,6 +133,7 @@ import preferences from './routes/preferences';
 // ... (existing routes)
 app.route('/api/settings', settings);
 app.route('/api/communication', communication);
+app.route('/api/whatsapp', whatsapp);
 app.route('/api/preferences', preferences);
 
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));

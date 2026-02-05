@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 import Stripe from 'stripe';
 import { db } from '../db';
 import { users } from '../db/schema';
