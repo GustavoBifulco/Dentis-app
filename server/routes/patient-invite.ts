@@ -2,8 +2,9 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { patients, patientInvitations } from '../db/schema';
 import { db } from '../db';
-import { eq, and, gt, sql } from 'drizzle-orm';
+import { eq, and, gt } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
+import { authRateLimit } from '../middleware/rateLimit';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -63,6 +64,7 @@ app.post('/create', async (c) => {
         // Create invitation
         try {
             const [invitation] = await db.insert(patientInvitations).values({
+                organizationId: auth.organizationId,
                 patientId: patient.id,
                 token,
                 prefilledData,
@@ -85,51 +87,6 @@ app.post('/create', async (c) => {
                 },
             });
         } catch (dbError: any) {
-            // If table doesn't exist, create it
-            if (dbError.message?.includes('relation') || dbError.message?.includes('does not exist')) {
-                try {
-                    await db.execute(sql`
-                        CREATE TABLE IF NOT EXISTS patient_invitations (
-                            id SERIAL PRIMARY KEY,
-                            patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
-                            token TEXT UNIQUE NOT NULL,
-                            prefilled_data JSONB NOT NULL,
-                            expires_at TIMESTAMP NOT NULL,
-                            used_at TIMESTAMP,
-                            created_by TEXT NOT NULL,
-                            created_at TIMESTAMP DEFAULT NOW()
-                        );
-                        CREATE INDEX IF NOT EXISTS idx_patient_invitations_token ON patient_invitations(token);
-                        CREATE INDEX IF NOT EXISTS idx_patient_invitations_patient_id ON patient_invitations(patient_id);
-                    `);
-
-                    // Retry insertion
-                    const [invitation] = await db.insert(patientInvitations).values({
-                        patientId: patient.id,
-                        token,
-                        prefilledData,
-                        expiresAt,
-                        createdBy: auth.userId,
-                    }).returning();
-
-                    const baseUrl = process.env.VITE_APP_URL || 'http://localhost:3000';
-                    const invitationLink = `${baseUrl}/register/${token}`;
-
-                    return c.json({
-                        success: true,
-                        token,
-                        invitationLink,
-                        expiresAt,
-                        patient: {
-                            id: patient.id,
-                            name: patient.name,
-                        },
-                    });
-                } catch (createError: any) {
-                    console.error('Error creating table:', createError);
-                    throw createError;
-                }
-            }
             throw dbError;
         }
 
@@ -143,8 +100,9 @@ app.post('/create', async (c) => {
 });
 
 // GET /api/patient-invite/:token
+// GET /api/patient-invite/:token
 // Validates and returns pre-filled data for registration
-app.get('/:token', async (c) => {
+app.get('/:token', authRateLimit, async (c) => {
     try {
         const token = c.req.param('token');
 
@@ -197,8 +155,9 @@ app.get('/:token', async (c) => {
 });
 
 // POST /api/patient-invite/:token/accept
+// POST /api/patient-invite/:token/accept
 // Marks invitation as used and links patient to user
-app.post('/:token/accept', async (c) => {
+app.post('/:token/accept', authRateLimit, async (c) => {
     try {
         const token = c.req.param('token');
         const { clerkUserId } = await c.req.json();

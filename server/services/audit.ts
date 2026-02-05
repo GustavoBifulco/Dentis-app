@@ -19,15 +19,15 @@ type AuditEvent = {
 export const logAudit = async (event: AuditEvent) => {
     try {
         await db.insert(auditLogs).values({
-            userId: event.userId,
+            userId: String(event.userId || 'system'),
             action: event.action,
             resourceType: event.resourceType,
             resourceId: String(event.resourceId || ''),
-            tenantId: event.tenantId,
+            organizationId: event.tenantId, // Map tenantId to organizationId column
             ip: event.ip || '0.0.0.0',
             reason: event.reason,
             details: event.details ? JSON.stringify(event.details) : null,
-            timestamp: new Date()
+            createdAt: new Date() // Schema uses createdAt, not timestamp
         });
     } catch (error) {
         console.error('CRITICAL: Failed to write audit log', error);

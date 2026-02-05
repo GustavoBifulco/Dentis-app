@@ -51,18 +51,31 @@ export class AsaasClient {
         };
 
         // Log outgoing request (sanitized)
-        console.log(`📡 [ASAAS] ${config.method} ${url.pathname}`);
+        console.log(`📡 [ASAAS] ${config.method} ${url.toString()}`); // Log FULL URL
 
         try {
             const response = await fetch(url.toString(), config);
 
+            const contentType = response.headers.get('content-type');
+
             if (!response.ok) {
                 const errorBody = await response.text();
+                // Check if HTML to give better hint
+                if (errorBody.trim().startsWith('<')) {
+                    console.error(`❌ [ASAAS] HTML Response returned! This usually means the URL is wrong or hitting a proxy. URL: ${url.toString()}`);
+                }
                 console.error(`❌ [ASAAS] Error ${response.status}:`, errorBody);
                 throw new Error(`Asaas API Error: ${response.statusText} - ${errorBody}`);
             }
 
-            return await response.json() as T;
+            const text = await response.text();
+            try {
+                return JSON.parse(text) as T;
+            } catch (e) {
+                console.error(`❌ [ASAAS] JSON Parse Error on ${url.toString()}. Valid JSON expected.`);
+                console.error(`❌ [ASAAS] Received Body Preview: ${text.substring(0, 500)}...`);
+                throw new Error('Invalid JSON response from Asaas');
+            }
         } catch (error) {
             console.error(`❌ [ASAAS] Request failed:`, error);
             throw error;

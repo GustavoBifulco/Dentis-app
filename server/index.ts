@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { logger } from 'hono/logger';
+import { securityHeaders, bodyLimit, secureCors } from './middleware/security';
 
 // Importação segura das rotas
 import onboarding from './routes/onboarding';
@@ -12,7 +12,7 @@ import webhooks from './routes/webhooks';
 import inventory from './routes/inventory';
 import procedures from './routes/procedures';
 import patients from './routes/patients';
-import debug from './routes/debug';
+// import debug from './routes/debug'; // REMOVED FOR SECURITY
 import checkout from './routes/checkout';
 import ai from './routes/ai';
 import appointments from './routes/appointments';
@@ -40,7 +40,7 @@ import settings from './routes/settings';
 import records from './routes/records';
 import whatsapp from './routes/whatsapp';
 
-import { secureHeaders } from 'hono/secure-headers';
+// import { secureHeaders } from 'hono/secure-headers'; // Removed in favor of middleware/security
 import { HTTPException } from 'hono/http-exception';
 import { ZodError } from 'zod';
 
@@ -62,32 +62,12 @@ const app = new Hono();
 // 1. Middlewares Globais de Segurança e Logs
 import { requestLogger } from './middleware/logger';
 app.use('*', requestLogger);
+app.use('*', securityHeaders);
+app.use('*', secureCors);
+app.use('*', bodyLimit(10 * 1024 * 1024)); // 10MB Global Limit (Uploads routes might need specific handling if larger, but 10MB is generally enough)
+app.use('*', generalRateLimit);
+
 // app.use('*', logger()); // Disable default logger to avoid PII leak
-// Enhanced Security Headers with CSP
-app.use('*', secureHeaders({
-  contentSecurityPolicy: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://js.stripe.com", "https://challenges.cloudflare.com"],
-    connectSrc: ["'self'", "https://api.clerk.io", "https://api.clerk.com", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://api.stripe.com", "https://challenges.cloudflare.com"],
-    imgSrc: ["'self'", "data:", "https:", "https://img.clerk.com"],
-    frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://challenges.cloudflare.com"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    workerSrc: ["'self'", "blob:"],
-  }
-}));
-
-// CORS with domain whitelist in production
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://dentis.com.br', 'https://www.dentis.com.br']
-  : '*';
-
-app.use('*', cors({
-  origin: allowedOrigins,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
-  credentials: true,
-  maxAge: 86400,
-}));
 
 
 // Rotas da API
@@ -119,7 +99,8 @@ app.route('/api/chat', chat);
 app.route('/api/telehealth', telehealth);
 app.route('/api/patient-import', patientImport);
 app.route('/api/patient-invite', patientInvite);
-app.route('/api/debug', debug);
+app.route('/api/patient-invite', patientInvite);
+// app.route('/api/debug', debug); // REMOVED FOR SECURITY
 app.route('/api/treatment', treatment);
 app.route('/api/anamnesis', anamnesis);
 app.route('/api/settings', settings);
