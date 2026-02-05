@@ -26,6 +26,7 @@ export enum ViewType {
     PATIENT_WALLET = 'PATIENT_WALLET',
     KIOSK = 'KIOSK',
     TERMS = 'TERMS',
+    PRIVACY = 'PRIVACY',
     HELP = 'HELP',
     BACKUP = 'BACKUP',
     COMMUNICATION = 'COMMUNICATION'

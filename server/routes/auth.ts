@@ -2,6 +2,7 @@
 import { Hono } from 'hono';
 import { clerkClient } from '@clerk/clerk-sdk-node';
 import { authMiddleware } from '../middleware/auth';
+import { authRateLimit } from '../middleware/rateLimit';
 
 const auth = new Hono();
 
@@ -13,7 +14,7 @@ auth.use('*', authMiddleware);
  * O Frontend chama antes de permitir acesso a áreas sensíveis.
  * Se retornar 403/401, o frontend deve invocar o fluxo de Re-autenticação.
  */
-auth.get('/step-up', async (c) => {
+auth.get('/step-up', authRateLimit, async (c) => {
     const authData = c.get('auth');
     if (!authData || !authData.sessionClaims) {
         return c.json({ valid: false, reason: 'no_session' }, 401);

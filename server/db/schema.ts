@@ -1,5 +1,5 @@
 
-import { pgTable, serial, text, timestamp, integer, jsonb, boolean, numeric, date, time } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, integer, jsonb, boolean, numeric, date, time, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -12,6 +12,7 @@ export const users = pgTable('users', {
   phone: text('phone'),
   birthdate: text('birthdate'),
   address: text('address'),
+  avatarUrl: text('avatar_url'), // Profile picture URL
   preferences: jsonb('preferences'), // { theme: 'dark'|'light', primaryColor: string }
   onboardingComplete: boolean('onboarding_complete').default(false),
   createdAt: timestamp('created_at').defaultNow(),
@@ -92,9 +93,19 @@ export const patients = pgTable('patients', {
   medications: text('medications'),
 
   status: text('status').default('active'), // active, archived
+
+  // Audit fields (LGPD compliance)
+  createdBy: text('created_by'), // User ID who created this record
+  updatedBy: text('updated_by'), // User ID who last updated this record
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
+}, (table) => ({
+  // Performance indexes
+  orgStatusIdx: index('patients_org_status_idx').on(table.organizationId, table.status),
+  orgCreatedIdx: index('patients_org_created_idx').on(table.organizationId, table.createdAt),
+  userIdIdx: index('patients_user_id_idx').on(table.userId),
+}));
 
 // Emergency Contacts (1:N)
 export const patientEmergencyContacts = pgTable('patient_emergency_contacts', {
@@ -237,12 +248,21 @@ export const appointments = pgTable('appointments', {
   reminder24hSent: boolean('reminder_24h_sent').default(false),
   reminder2hSent: boolean('reminder_2h_sent').default(false),
 
+  // Audit fields (LGPD compliance)
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+
   // Metadata
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   cancelledAt: timestamp('cancelled_at'),
   cancellationReason: text('cancellation_reason'),
-});
+}, (table) => ({
+  // Performance indexes
+  orgDateIdx: index('appointments_org_date_idx').on(table.organizationId, table.scheduledDate),
+  patientIdx: index('appointments_patient_idx').on(table.patientId),
+  dentistDateIdx: index('appointments_dentist_date_idx').on(table.dentistId, table.scheduledDate),
+}));
 
 export const appointmentSettings = pgTable('appointment_settings', {
   id: serial('id').primaryKey(),
@@ -433,7 +453,11 @@ export const auditLogs = pgTable('audit_logs', {
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at').defaultNow(),
-});
+}, (table) => ({
+  // Performance indexes for LGPD compliance queries
+  orgCreatedIdx: index('audit_logs_org_created_idx').on(table.organizationId, table.createdAt),
+  userActionIdx: index('audit_logs_user_action_idx').on(table.userId, table.action),
+}));
 
 export const financials = pgTable('financials', {
   id: serial('id').primaryKey(),
@@ -446,8 +470,17 @@ export const financials = pgTable('financials', {
   status: text('status').default('paid'),
   paymentMethod: text('payment_method'),
   patientId: integer('patient_id'), // Optional link to patient
+
+  // Audit fields (LGPD compliance)
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+
   createdAt: timestamp('created_at').defaultNow(),
-});
+}, (table) => ({
+  // Performance indexes
+  orgDateIdx: index('financials_org_date_idx').on(table.organizationId, table.date),
+  orgTypeIdx: index('financials_org_type_idx').on(table.organizationId, table.type),
+}));
 
 // DEPRECATED - Migrating to 'encounters' and specific tables
 export const clinicalRecords = pgTable('clinical_records', {
@@ -491,7 +524,11 @@ export const encounters = pgTable('encounters', {
 
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
+}, (table) => ({
+  // Performance indexes for clinical record lookups
+  patientDateIdx: index('encounters_patient_date_idx').on(table.patientId, table.date),
+  orgDateIdx: index('encounters_org_date_idx').on(table.organizationId, table.date),
+}));
 
 // 2. Prescriptions (Receitas)
 export const prescriptions = pgTable('prescriptions', {
@@ -1237,3 +1274,35 @@ export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
   }),
 }));
 
+// === USAGE TRACKING (Cost Control) ===
+
+export const aiUsage = pgTable('ai_usage', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  userId: text('user_id').notNull(),
+  date: date('date').notNull().defaultNow(),
+  tokensUsed: integer('tokens_used').default(0),
+  requestCount: integer('request_count').default(0),
+  estimatedCost: numeric('estimated_cost', { precision: 10, scale: 4 }).default('0'), // USD
+  model: text('model'), // e.g., 'gpt-4', 'gpt-3.5-turbo'
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  // Performance indexes for quota queries
+  orgDateIdx: index('ai_usage_org_date_idx').on(table.organizationId, table.date),
+  userDateIdx: index('ai_usage_user_date_idx').on(table.userId, table.date),
+}));
+
+export const whatsappUsage = pgTable('whatsapp_usage', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  userId: text('user_id').notNull(),
+  date: date('date').notNull().defaultNow(),
+  messagesSent: integer('messages_sent').default(0),
+  estimatedCost: numeric('estimated_cost', { precision: 10, scale: 4 }).default('0'), // USD
+  campaignId: integer('campaign_id'), // Optional link to campaign
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  // Performance indexes for quota queries
+  orgDateIdx: index('whatsapp_usage_org_date_idx').on(table.organizationId, table.date),
+  userDateIdx: index('whatsapp_usage_user_date_idx').on(table.userId, table.date),
+}));

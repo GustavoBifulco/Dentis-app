@@ -9,10 +9,18 @@ import { s3Client, BUCKET_NAME, PUBLIC_URL } from '../lib/s3';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import path from 'path';
 
+import { features, getFeatureError } from '../lib/features';
+import { uploadRateLimit } from '../middleware/rateLimit';
+
 const app = new Hono<{ Variables: { organizationId: string; userId: string } }>();
 app.use('*', authMiddleware);
 
-app.post('/', async (c) => {
+app.post('/', uploadRateLimit, async (c) => {
+    // Check if uploads feature is enabled
+    if (!features.uploads) {
+        return c.json({ ok: false, error: getFeatureError('uploads') }, 503);
+    }
+
     const body = await c.req.parseBody();
     const file = body['file'];
     const type = body['type'] as string || 'DOCUMENT';

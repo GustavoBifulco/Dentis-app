@@ -10,6 +10,10 @@ import { db } from '../db';
 import { aiConversations, aiMessages } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 
+import { features, getFeatureError } from '../lib/features';
+import { aiRateLimit } from '../middleware/rateLimit';
+import { checkAIQuota, logAIUsage } from '../lib/usageTracking';
+
 const app = new Hono<{ Variables: { user: any; auth: any; organizationId: string } }>();
 
 // --- Endpoints ---
@@ -60,8 +64,13 @@ app.get('/conversations/:id/messages', requireRole(['dentist', 'admin', 'recepti
   return c.json(msgs.reverse());
 });
 
-// 3. Chat Endpoint (Main)
-app.post("/chat", requireRole(['dentist', 'admin', 'receptionist']), requireMfa, async (c) => {
+// 3. Chat Endpoint (Main) - With rate limiting
+app.post("/chat", aiRateLimit, requireRole(['dentist', 'admin', 'receptionist']), requireMfa, async (c) => {
+  // Check if AI feature is enabled
+  if (!features.ai) {
+    return c.json({ error: getFeatureError('ai') }, 503);
+  }
+
   const user = c.get('user');
   const auth = c.get('auth');
 
@@ -89,6 +98,14 @@ app.post("/chat", requireRole(['dentist', 'admin', 'receptionist']), requireMfa,
       details: { input: safeMessage }
     });
     return c.json({ answer: "I cannot comply with that request due to safety policies." }, 403);
+  }
+
+  // 3.5. Quota Check (Cost Control)
+  try {
+    await checkAIQuota(auth.organizationId);
+  } catch (quotaError: any) {
+    console.warn(`AI Quota exceeded for org ${auth.organizationId}:`, quotaError.message);
+    return c.json({ error: quotaError.message }, 429);
   }
 
   // 4. Persistence: Resolve/Create Conversation
@@ -137,8 +154,18 @@ app.post("/chat", requireRole(['dentist', 'admin', 'receptionist']), requireMfa,
     });
 
     const answer = response.choices[0].message.content || "No response generated.";
+    const tokensUsed = response.usage?.total_tokens || 0;
+    const model = response.model || "gpt-4";
 
-    // 8. Assistant Message Persist
+    // 8. Log Usage for Cost Tracking
+    try {
+      await logAIUsage(auth.organizationId, user.id.toString(), tokensUsed, model);
+    } catch (logError) {
+      console.error("Failed to log AI usage:", logError);
+      // Don't fail the request if logging fails
+    }
+
+    // 9. Assistant Message Persist
     await db.insert(aiMessages).values({
       conversationId: activeConvId,
       role: 'assistant',

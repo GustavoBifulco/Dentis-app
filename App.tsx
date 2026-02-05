@@ -41,6 +41,9 @@ import CommunicationDashboard from './components/dashboards/CommunicationDashboa
 import { Terms, Help, Backup } from './components/BasePages';
 import { AIAssistant } from './components/AIAssistant';
 import AssistantPage from './components/AssistantPage';
+import { TermsOfService } from './components/legal/TermsOfService';
+import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
+import CookieConsent from 'react-cookie-consent';
 
 // Componente de Loading leve
 const LoadingFallback = () => (
@@ -144,9 +147,9 @@ const AppContent: React.FC = () => {
       case ViewType.MANAGE_CLINIC: return <ManageClinic />;
       case ViewType.CLINICAL_EXECUTION: return <Odontogram patientId={selectedPatient?.id || 0} />;
       case ViewType.DOCUMENTS: return <SmartPrescription />;
-      case ViewType.DOCUMENTS: return <SmartPrescription />;
       case ViewType.PATIENT_WALLET: return <PatientWallet onBack={() => setCurrentView(ViewType.DASHBOARD)} />;
-      case ViewType.TERMS: return <Terms />;
+      case ViewType.TERMS: return <TermsOfService />;
+      case ViewType.PRIVACY: return <PrivacyPolicy />;
       case ViewType.HELP: return <Help />;
       case ViewType.BACKUP: return <Backup />;
       case ViewType.COMMUNICATION: return <CommunicationDashboard />;
@@ -241,6 +244,68 @@ const App: React.FC = () => {
   return (
     <AppContextProvider>
       <AppContent />
+
+      {/* LGPD Cookie Consent Banner */}
+      <CookieConsent
+        location="bottom"
+        buttonText="Aceitar"
+        declineButtonText="Recusar"
+        enableDeclineButton
+        cookieName="dentis-cookie-consent"
+        style={{
+          background: "rgba(15, 23, 42, 0.95)",
+          backdropFilter: "blur(10px)",
+          borderTop: "1px solid rgba(99, 102, 241, 0.3)",
+          padding: "20px",
+          alignItems: "center",
+        }}
+        buttonStyle={{
+          background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+          color: "#ffffff",
+          fontSize: "14px",
+          fontWeight: "600",
+          padding: "10px 24px",
+          borderRadius: "8px",
+          border: "none",
+          cursor: "pointer",
+        }}
+        declineButtonStyle={{
+          background: "transparent",
+          color: "#94a3b8",
+          fontSize: "14px",
+          padding: "10px 24px",
+          borderRadius: "8px",
+          border: "1px solid #334155",
+          cursor: "pointer",
+        }}
+        expires={365}
+      >
+        <span style={{ fontSize: "14px", color: "#e2e8f0" }}>
+          🍪 Usamos cookies essenciais para autenticação e funcionais para melhorar sua experiência.
+          Ao continuar navegando, você concorda com nossa{" "}
+          <a
+            href="/privacy"
+            style={{ color: "#818cf8", textDecoration: "underline" }}
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "/privacy";
+            }}
+          >
+            Política de Privacidade
+          </a>
+          {" "}e{" "}
+          <a
+            href="/terms"
+            style={{ color: "#818cf8", textDecoration: "underline" }}
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "/terms";
+            }}
+          >
+            Termos de Serviço
+          </a>.
+        </span>
+      </CookieConsent>
     </AppContextProvider>
   );
 };

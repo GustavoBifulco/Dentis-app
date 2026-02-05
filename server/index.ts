@@ -44,6 +44,17 @@ import { HTTPException } from 'hono/http-exception';
 import { ZodError } from 'zod';
 
 import { redactPII } from './utils/privacy';
+import { features, logFeatureStatus, validateCriticalFeatures } from './lib/features';
+import { generalRateLimit } from './middleware/rateLimit';
+
+// Validate critical features at startup
+try {
+  validateCriticalFeatures();
+  logFeatureStatus();
+} catch (error) {
+  console.error(error);
+  process.exit(1);
+}
 
 const app = new Hono();
 
@@ -51,12 +62,28 @@ const app = new Hono();
 import { requestLogger } from './middleware/logger';
 app.use('*', requestLogger);
 // app.use('*', logger()); // Disable default logger to avoid PII leak
-app.use('*', secureHeaders()); // Proteção contra XSS, Clickjacking, etc.
+// Enhanced Security Headers with CSP
+app.use('*', secureHeaders({
+  contentSecurityPolicy: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    connectSrc: ["'self'", "https://api.clerk.io", "https://api.clerk.com"],
+    imgSrc: ["'self'", "data:", "https:"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+  }
+}));
+
+// CORS with domain whitelist in production
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? ['https://dentis.com.br', 'https://www.dentis.com.br']
+  : '*';
+
 app.use('*', cors({
-  origin: '*', // TODO: Em produção, definir domínios específicos
+  origin: allowedOrigins,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
-  maxAge: 86400, // Cache de preflight por 24h
+  credentials: true,
+  maxAge: 86400,
 }));
 
 
