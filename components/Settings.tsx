@@ -10,6 +10,7 @@ import { SectionHeader } from './Shared';
 import { useAppContext } from '../lib/useAppContext';
 import { UserProfile, useClerk } from '@clerk/clerk-react';
 import { ColorPicker } from './ColorPicker';
+import { ConnectSettings } from './stripe/ConnectSettings';
 
 interface SettingsProps {
   onNavigate: (view: ViewType) => void;
@@ -251,6 +252,25 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         >
           <button onClick={() => openUserProfile()} className="text-xs font-bold text-primary hover:underline px-2">Gerenciar</button>
         </SettingRow>
+      </div>
+
+      {/* Pagamentos & Marketplace (Connect V2) */}
+      <div className="bg-surface rounded-2xl shadow-lg border border-border overflow-hidden">
+        <div className="p-5 bg-gradient-to-r from-cyan-500/10 to-blue-500/5 border-b border-border">
+          <h3 className="font-black text-text-main flex items-center gap-2">
+            <CreditCard size={20} className="text-cyan-500" />
+            Pagamentos & Marketplace
+          </h3>
+        </div>
+        <div className="p-5">
+          <ConnectSettings />
+        </div>
+        <SettingRow
+          icon={Globe}
+          label="Demo Storefront"
+          description="Visualizar página de pagamentos diretos (Demo)"
+          onClick={() => onNavigate(ViewType.STOREFRONT)}
+        />
       </div>
 
       {/* Sistema */}

@@ -123,8 +123,11 @@ import clinicInvites from './routes/clinic-invites';
 app.route('/api/billing-provisioning', billingProvisioning);
 app.route('/api/clinic-invites', clinicInvites);
 
+import stripeConnect from './routes/stripe-connect';
+app.route('/api/stripe-connect', stripeConnect);
+
 import billing from './routes/billing';
-app.route('/api/billing', billing);
+// app.route('/api/billing', billing); // REMOVED FOR STRIPE CONNECT MIGRATION
 
 app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
 

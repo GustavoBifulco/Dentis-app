@@ -21,8 +21,8 @@ export default function PatientWallet({ onBack }: PatientWalletProps) {
     const { financials, loading, error } = usePatientFinancials();
 
     const handlePayment = (amount: string, description: string) => {
-        // Updated for Asaas integration
-        alert("Para pagar via PIX ou Boleto, solicite o link de cobrança ao seu profissional.");
+        // Updated for Stripe Marketplace integration
+        alert("O sistema de pagamentos está sendo atualizado para o Stripe Marketplace. Novos links de pagamento direto estarão disponíveis em breve.");
     };
 
     const downloadInvoice = (id: string) => {

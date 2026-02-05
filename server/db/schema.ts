@@ -17,6 +17,7 @@ export const users = pgTable('users', {
   onboardingComplete: boolean('onboarding_complete').default(false),
   planType: text('plan_type').default('free'), // free, dentis_pro
   stripeCustomerId: text('stripe_customer_id'),
+  stripeConnectedAccountId: text('stripe_connected_account_id'), // For solo professionals
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -222,6 +223,7 @@ export const clinics = pgTable('clinics', {
   seats: integer('seats').default(1),
   planType: text('plan_type').default('clinic_id'), // clinic_id, clinic_id_plus, clinic_id_pro
   stripeCustomerId: text('stripe_customer_id'),
+  stripeConnectedAccountId: text('stripe_connected_account_id'), // Connect V2
   subscriptionId: text('subscription_id'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -1469,3 +1471,24 @@ export const billingChargesRelations = relations(billingCharges, ({ one }) => ({
     references: [appointments.id]
   })
 }));
+
+export const payments = pgTable('payments', {
+  id: text('id').primaryKey(), // uuid
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').references(() => patients.id, { onDelete: 'set null' }),
+  appointmentId: integer('appointment_id').references(() => appointments.id, { onDelete: 'set null' }),
+
+  amount: numeric('amount').notNull(),
+  currency: text('currency').default('brl').notNull(),
+  status: text('status').notNull(), // pending, succeeded, failed, refunded
+
+  stripeConnectedAccountId: text('stripe_connected_account_id').notNull(),
+  stripeCheckoutSessionId: text('stripe_checkout_session_id').unique(),
+  stripePaymentIntentId: text('stripe_payment_intent_id').unique(),
+
+  description: text('description'),
+  metadata: jsonb('metadata'),
+
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});

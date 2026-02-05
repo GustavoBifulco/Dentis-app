@@ -211,64 +211,75 @@ webhooks.post('/stripe', async (c) => {
 });
 
 /**
- * Webhook do Asaas
+ * Webhook para Stripe Connect (Marketplace)
+ * Recebe eventos que acontecem nas contas conectadas (Direct Charges)
  */
-webhooks.post('/asaas', async (c) => {
-    try {
-        const token = c.req.header('asaas-access-token');
-        const secret = process.env.ASAAS_WEBHOOK_SECRET; // Optional if using token check or not set
+webhooks.post('/stripe-connect', async (c) => {
+    const sig = c.req.header('stripe-signature');
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_CONNECT_V2;
 
-        // Asaas sends a specific token if configured, checking it matches if strictly required
-        // Implementation detail: Asaas webhook config allows setting an access token that is sent in headers.
-        if (secret && token !== secret) {
-            console.error('❌ Asaas Webhook Token Mismatch');
-            return c.json({ error: 'Unauthorized' }, 401);
-        }
-
-        const body = await c.req.json();
-        const { event, payment } = body;
-
-        console.log(`🔔 [ASAAS WEBHOOK] Event: ${event} Payment: ${payment?.id}`);
-
-        // Log event
-        try {
-            await db.insert(billingWebhookEvents).values({
-                provider: 'asaas',
-                eventId: body.id, // Asaas event ID
-                eventType: event,
-                payload: body,
-                status: 'processed'
-            });
-        } catch (e) {
-            console.error('Failed to log billing webhook', e);
-        }
-
-        if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
-            // Update Charge Status
-            if (payment?.id) {
-                await db.update(billingCharges)
-                    .set({
-                        status: 'RECEIVED',
-                        paidAt: new Date(payment.paymentDate || Date.now())
-                    })
-                    .where(eq(billingCharges.asaasPaymentId, payment.id));
-                console.log(`✅ Charge ${payment.id} updated to RECEIVED`);
-            }
-        } else if (event === 'PAYMENT_OVERDUE') {
-            if (payment?.id) {
-                await db.update(billingCharges)
-                    .set({ status: 'OVERDUE' })
-                    .where(eq(billingCharges.asaasPaymentId, payment.id));
-            }
-        }
-
-        return c.json({ received: true });
-
-    } catch (e: any) {
-        console.error('❌ Asaas Webhook Error:', e);
-        return c.json({ error: e.message }, 500);
+    if (!sig || !webhookSecret) {
+        console.error('❌ Missing signature or Connect V2 webhook secret');
+        return c.json({ error: 'Webhook configuration error' }, 400);
     }
+
+    let event: Stripe.Event;
+
+    try {
+        const body = await c.req.text();
+        event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    } catch (err: any) {
+        console.error('❌ Connect Webhook signature verification failed:', err.message);
+        return c.json({ error: `Webhook Error: ${err.message}` }, 400);
+    }
+
+    console.log(`🔔 [CONNECT WEBHOOK] Event: ${event.type}`);
+
+    switch (event.type as string) {
+        case 'checkout.session.completed': {
+            const session = event.data.object as Stripe.Checkout.Session;
+            const metadata = session.metadata;
+
+            if (metadata?.type === 'direct_charge' && metadata.paymentId) {
+                console.log(`💰 Marketplace Direct Charge Completed: ${metadata.paymentId}`);
+
+                // Update payment status in local DB
+                const { payments } = await import('../db/schema');
+                await db.update(payments)
+                    .set({
+                        status: 'succeeded',
+                        stripePaymentIntentId: session.payment_intent as string,
+                        updatedAt: new Date()
+                    })
+                    .where(eq(payments.id, metadata.paymentId));
+            }
+            break;
+        }
+
+        case 'v2.core.event': {
+            // Stripe Connect V2 Thin Events
+            const thinEvent = event.data.object as any;
+            console.log(`📈 Connect V2 Thin Event: ${thinEvent.type}`);
+
+            if (thinEvent.type === 'account.updated') {
+                // Fetch the full account to update status
+                const accountId = thinEvent.context;
+                console.log(`🔄 Syncing account status for ${accountId}`);
+                // Sync logic would go here
+            }
+            break;
+        }
+
+        default:
+            console.log(`⚠️ Unhandled Connect event type: ${event.type}`);
+    }
+
+    return c.json({ received: true });
 });
+
+// Webhook do Asaas (REMOVED)
+// webhooks.post('/asaas', ...)
+
 
 
 export default webhooks;

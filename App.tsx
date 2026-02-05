@@ -37,6 +37,7 @@ import PatientWallet from './components/PatientWallet';
 import PatientRegister from './pages/PatientRegister';
 import CommunicationDashboard from './components/dashboards/CommunicationDashboard';
 import AddClinicWizard from './components/AddClinic/AddClinicWizard';
+import Storefront from './pages/Storefront';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 
 import { Terms, Help, Backup } from './components/BasePages';
@@ -171,6 +172,7 @@ const AppContent: React.FC = () => {
           {/* Polling logic would go here in a dedicated component */}
         </div>
       );
+      case ViewType.STOREFRONT: return <Storefront />;
       default: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
     }
   };
