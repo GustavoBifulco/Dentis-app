@@ -7,7 +7,6 @@ import { randomBytes } from 'crypto';
 import { authRateLimit } from '../middleware/rateLimit';
 
 const app = new Hono();
-app.use('*', authMiddleware);
 
 // Generate unique invitation token
 function generateToken(): string {
@@ -16,7 +15,7 @@ function generateToken(): string {
 
 // POST /api/patient-invite/create
 // Creates an invitation link for a patient
-app.post('/create', async (c) => {
+app.post('/create', authMiddleware, async (c) => {
     try {
         const auth = c.get('auth');
         const { patientId } = await c.req.json();
