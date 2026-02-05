@@ -19,17 +19,44 @@ billingProvisioning.use('*', authMiddleware);
 const provisioningSchema = z.object({
     desiredName: z.string().optional(),
     seats: z.number().min(1).default(1),
-    mode: z.string(), // solo, team, multi
-    planType: z.enum(['clinic_id', 'clinic_id_plus', 'clinic_id_pro']),
-    priceId: z.string(), // We trust the client sends the correct price ID mapped from the plan
+    mode: z.string(), // solo, team, multi, user_upgrade
+    planType: z.enum(['clinic_id', 'clinic_id_plus', 'clinic_id_pro', 'dentis_pro']),
+    priceId: z.string().optional(),
+    interval: z.enum(['month', 'year']).default('month'),
 });
 
 billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), async (c) => {
-    const { desiredName, seats, mode, planType, priceId } = c.req.valid('json');
+    const { desiredName, seats, mode, planType, interval } = c.req.valid('json');
     const userId = c.get('userId');
 
+    // Resolve Price ID
+    let priceId = c.req.valid('json').priceId;
+    if (!priceId) {
+        // Map planType + Interval to Env Vars
+        if (interval === 'month') {
+            switch (planType) {
+                case 'clinic_id': priceId = process.env.STRIPE_PRICE_SOLO_MONTHLY; break;
+                case 'clinic_id_plus': priceId = process.env.STRIPE_PRICE_TEAM_MONTHLY; break;
+                case 'clinic_id_pro': priceId = process.env.STRIPE_PRICE_MULTI_MONTHLY; break;
+                case 'dentis_pro': priceId = process.env.STRIPE_PRICE_DENTIS_PRO_MONTHLY; break;
+            }
+        } else {
+            switch (planType) {
+                case 'clinic_id': priceId = process.env.STRIPE_PRICE_SOLO_YEARLY; break;
+                case 'clinic_id_plus': priceId = process.env.STRIPE_PRICE_TEAM_YEARLY; break;
+                case 'clinic_id_pro': priceId = process.env.STRIPE_PRICE_MULTI_YEARLY; break;
+                case 'dentis_pro': priceId = process.env.STRIPE_PRICE_DENTIS_PRO_YEARLY; break;
+            }
+        }
+    }
+
+    if (!priceId) {
+        console.error(`Missing Stripe Price ID for plan: ${planType} (${interval}). Check env vars.`);
+        return c.json({ error: `Configuration Error: Price ID not found for ${planType} (${interval}).` }, 500);
+    }
+
     try {
-        // 1. Create Provisioning Request (Draft)
+        // 1. Create Provisioning Request
         const provisioningId = nanoid();
 
         await db.insert(clinicProvisioningRequests).values({
@@ -43,15 +70,14 @@ billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), as
         });
 
         // 2. Create Stripe Session
-        const origin = c.req.header('origin') || process.env.PUBLIC_APP_URL;
+        const origin = c.req.header('origin') || process.env.PUBLIC_APP_URL || 'https://dentis.com.br';
 
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
             line_items: [
                 {
                     price: priceId,
-                    quantity: 1, // Subscription quantity (usually 1 base fee, seats might be separate line items or tiered price)
-                    // keeping it simple 1 for now as per "Price ID" logic
+                    quantity: 1,
                 },
             ],
             mode: 'subscription',

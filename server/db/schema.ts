@@ -15,6 +15,8 @@ export const users = pgTable('users', {
   avatarUrl: text('avatar_url'), // Profile picture URL
   preferences: jsonb('preferences'), // { theme: 'dark'|'light', primaryColor: string }
   onboardingComplete: boolean('onboarding_complete').default(false),
+  planType: text('plan_type').default('free'), // free, dentis_pro
+  stripeCustomerId: text('stripe_customer_id'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -261,7 +263,9 @@ export const clinicLeadInvites = pgTable('clinic_lead_invites', {
 
 export const subscriptions = pgTable('subscriptions', {
   id: serial('id').primaryKey(),
-  clinicId: text('clinic_id').notNull().references(() => clinics.id, { onDelete: 'cascade' }),
+  // Polymorphic subscription (User OR Clinic)
+  clinicId: text('clinic_id').references(() => clinics.id, { onDelete: 'cascade' }),
+  userId: text('user_id'), // References Clerk ID (string)
   stripeCustomerId: text('stripe_customer_id').notNull(),
   stripeSubscriptionId: text('stripe_subscription_id').unique().notNull(),
   planType: text('plan_type').notNull(),

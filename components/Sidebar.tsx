@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ViewType, ContextType, AppContext } from '../types';
-import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package, ChevronDown, Building2, FlaskConical, User, Shield, HelpCircle, Database, FileCheck, MessageSquare, Sparkles } from 'lucide-react';
+import { X, LayoutDashboard, Calendar, Users, TestTube, DollarSign, LogOut, Settings as SettingsIcon, Smile, FileText, Layers, ShoppingBag, Truck, Package, ChevronDown, Building2, FlaskConical, User, Shield, HelpCircle, Database, FileCheck, MessageSquare, Sparkles, Zap } from 'lucide-react';
+import UserPlanModal from './UserSubscription/UserPlanModal';
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
@@ -28,6 +29,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { signOut, openUserProfile } = useClerk();
   const { user } = useUser();
+  /* New State for User Subscription Modal */
+  const [showUserPlanModal, setShowUserPlanModal] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
   const handleNavigation = (view: ViewType) => {
@@ -247,6 +250,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <button onClick={() => openUserProfile()} className="w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-600">
                         <Users size={16} /> Gerenciar Conta
                       </button>
+
+                      <button
+                        onClick={() => { setShowUserPlanModal(true); setIsAccountMenuOpen(false); }}
+                        className="w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-indigo-50 text-indigo-600 font-medium"
+                      >
+                        <Zap size={16} /> Meu Plano
+                      </button>
+
                       <button onClick={() => signOut()} className="w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-red-50 text-red-600">
                         <LogOut size={16} /> Sair
                       </button>

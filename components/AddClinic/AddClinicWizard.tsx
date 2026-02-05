@@ -21,6 +21,8 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
     const [seats, setSeats] = useState(1);
     const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
 
+    const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
+
     const { getToken } = useAuth();
 
     const handleInvite = async () => {
@@ -62,29 +64,16 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
             // Team/Multi -> >1 seats -> Clinic ID Plus (Price B)
             // Simplified Logic for Demo:
             let planType = 'clinic_id';
-            // In real app, these IDs come from envs or config
-            // Defaulting to "price_1Qu..." just as placeholder or env usage
-            // We will assume server validates priceId or we send planType and server maps it.
-            // But the previous implementation required priceId in the body for checkout/create-session
-            // The NEW billing-provisioning endpoint expects priceId too? Yes.
-            // Let's assume we have public env vars for prices or we hardcode known test prices here.
-            // For SAFETY, if envs are missing, this might fail. Ideally the API should resolve planType -> priceId.
-            // But let's send a placeholder or try to use keys if available in window? No.
-            // Let's rely on mapping in the client for now or pass 'STRIPE_PRICE_CLINIC_ID' as string and let server resolve?
-            // Detailed plan said: "priceId por plano (env)".
-            // I will use a dummy ID here and updating the backend to map it if needed, OR 
-            // better: Update the backend to accept 'planType' and resolve to ID there, which is safer.
-            // However, I already wrote the backend to expect `priceId`.
-            // I will trust that the user has these Price IDs. I'll use a generic string that the server *should* ideally resolve or client must know.
-            // Since I cannot read client envs easily in built app without Vite definition.
+            if (mode === 'solo') planType = 'clinic_id';
+            if (mode === 'team') planType = 'clinic_id_plus';
+            if (mode === 'multi') planType = 'clinic_id_pro';
+
+            // We trust the backend to resolve pricing based on planType + mode + cycle
             // I'll simulate a fetch to get config? Or just error gracefully?
             // Let's look at `server/routes/billing-provisioning.ts` again. 
             // It validates `priceId: z.string()`.
             // I will send a hardcoded placeholder that implies logic needs to be there, OR refer to `process.env` if Vite exposes it.
             // Let's assume the user has set up `VITE_STRIPE_PRICE_...`.
-
-            const priceId = 'price_123456789'; // Placeholder. 
-            // Ideally we would fetch '/api/config/prices' first.
 
             const res = await fetch('/api/billing-provisioning/checkout', {
                 method: 'POST',
@@ -97,7 +86,7 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
                     seats,
                     mode,
                     planType,
-                    priceId // This needs to be a real Stripe Price ID
+                    interval: billingCycle, // 'month' or 'year'
                 })
             });
 
@@ -242,13 +231,48 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
                                     />
                                 </div>
 
+                                <div className="flex justify-center mb-4">
+                                    <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
+                                        <button
+                                            onClick={() => setBillingCycle('month')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${billingCycle === 'month' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Mensal
+                                        </button>
+                                        <button
+                                            onClick={() => setBillingCycle('year')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${billingCycle === 'year' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Anual <span className="text-[10px] text-green-600 ml-1">(-10%)</span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 uppercase mb-3 block">Estrutura</label>
                                     <div className="grid grid-cols-1 gap-3">
                                         {[
-                                            { id: 'solo', label: 'Trabalho Sozinho', desc: 'Apenas eu e meus pacientes', icon: User },
-                                            { id: 'team', label: 'Eu + Equipe', desc: 'Tenho secretária ou auxiliar', icon: Users },
-                                            { id: 'multi', label: 'Múltiplos Dentistas', desc: 'Clínica com corpo clínico', icon: Building2 },
+                                            {
+                                                id: 'solo',
+                                                label: 'Trabalho Sozinho',
+                                                desc: 'Apenas eu e meus pacientes',
+                                                price: billingCycle === 'month' ? 'R$ 129,99/mês' : 'R$ 1.799,88/ano',
+                                                icon: User
+                                            },
+                                            {
+                                                id: 'team',
+                                                label: 'Eu + Equipe',
+                                                desc: 'Tenho secretária ou auxiliar',
+                                                price: billingCycle === 'month' ? 'R$ 259,99/mês' : 'R$ 2.399,88/ano',
+                                                icon: Users
+                                            },
+                                            {
+                                                id: 'multi',
+                                                label: 'Múltiplos Dentistas',
+                                                desc: 'Clínica com corpo clínico',
+                                                price: billingCycle === 'month' ? 'R$ 439,99/mês' : 'R$ 3.599,88/ano',
+                                                icon: Building2
+                                            },
                                         ].map((opt) => (
                                             <button
                                                 key={opt.id}
@@ -260,8 +284,11 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
                                                 <div className={`p-2 rounded-lg ${mode === opt.id ? 'bg-purple-200 text-purple-700' : 'bg-slate-100 text-slate-500'}`}>
                                                     <opt.icon size={20} />
                                                 </div>
-                                                <div>
-                                                    <h4 className={`font-bold ${mode === opt.id ? 'text-purple-900' : 'text-slate-700'}`}>{opt.label}</h4>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className={`font-bold ${mode === opt.id ? 'text-purple-900' : 'text-slate-700'}`}>{opt.label}</h4>
+                                                        <span className={`text-xs font-bold ${mode === opt.id ? 'text-purple-700' : 'text-slate-500'}`}>{opt.price}</span>
+                                                    </div>
                                                     <p className="text-xs text-slate-500">{opt.desc}</p>
                                                 </div>
                                                 {mode === opt.id && <Check className="ml-auto text-purple-600" size={20} />}
