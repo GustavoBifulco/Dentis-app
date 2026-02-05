@@ -67,10 +67,10 @@ app.use('*', requestLogger);
 app.use('*', secureHeaders({
   contentSecurityPolicy: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://js.stripe.com"],
-    connectSrc: ["'self'", "https://api.clerk.io", "https://api.clerk.com", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://api.stripe.com"],
+    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://js.stripe.com", "https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"],
+    connectSrc: ["'self'", "https://api.clerk.io", "https://api.clerk.com", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://api.stripe.com", "https://www.google.com/recaptcha/"],
     imgSrc: ["'self'", "data:", "https:", "https://img.clerk.com"],
-    frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+    frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     workerSrc: ["'self'", "blob:"],
   }
