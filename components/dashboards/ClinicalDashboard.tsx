@@ -87,7 +87,7 @@ const ClinicalDashboard: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
-                  className="relative overflow-hidden rounded-2xl bg-[#0F172A] text-white p-8 shadow-2xl group cursor-pointer border border-white/5"
+                  className="relative overflow-hidden rounded-2xl bg-card text-card-foreground p-8 shadow-2xl group cursor-pointer border border-border"
                >
                   <div className="absolute -right-20 -top-20 w-64 h-64 bg-lux-accent rounded-full blur-[100px] opacity-20 group-hover:opacity-30 transition-opacity duration-700"></div>
 

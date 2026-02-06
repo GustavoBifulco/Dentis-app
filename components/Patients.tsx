@@ -103,7 +103,7 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
               placeholder="Buscar por nome..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
             />
           </div>
           {/* Removed generic filter button in favor of the specific toggle above */}

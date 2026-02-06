@@ -35,10 +35,10 @@ export const LuxButton: React.FC<{
   const baseStyle = `flex items-center justify-center gap-2 font-medium tracking-tight disabled:opacity-50 disabled:cursor-not-allowed ${baseStyles[size]}`;
 
   const variants = {
-    primary: "bg-blue-600 text-white shadow-sm shadow-blue-200",
+    primary: "bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary-hover",
     secondary: "bg-slate-800 text-white shadow-sm shadow-slate-200",
-    outline: "border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300",
-    ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-transparent px-3"
+    outline: "border border-border text-foreground bg-card hover:bg-muted hover:border-border-hover",
+    ghost: "text-foreground hover:bg-muted hover:text-foreground bg-transparent px-3"
   };
 
   return (

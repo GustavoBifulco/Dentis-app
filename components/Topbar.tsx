@@ -120,7 +120,7 @@ const Topbar: React.FC<TopbarProps> = ({
                 className={`
           relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200
           ${isActive
-                        ? 'text-blue-600 bg-blue-50'
+                        ? 'text-primary bg-primary/10'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }
         `}
@@ -130,7 +130,7 @@ const Topbar: React.FC<TopbarProps> = ({
                 {isActive && (
                     <motion.div
                         layoutId="topbar-indicator"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full translate-y-2 opacity-0"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full translate-y-2 opacity-0"
                     // Hidden visually but could be a line bottom
                     />
                 )}
@@ -173,7 +173,7 @@ const Topbar: React.FC<TopbarProps> = ({
                                                     onClick={() => handleNavigation(item.type)}
                                                     className={`
                             w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors
-                            ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-slate-600 hover:bg-slate-50'}
+                            ${isActive ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-50'}
                           `}
                                                 >
                                                     <Icon size={18} />
@@ -278,9 +278,9 @@ const Topbar: React.FC<TopbarProps> = ({
                                                 <button
                                                     key={ctx.id}
                                                     onClick={() => { onContextSwitch(ctx); setIsAccountMenuOpen(false); }}
-                                                    className={`w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-slate-50 ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'}`}
+                                                    className={`w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-slate-50 ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-primary/10 text-primary font-bold' : 'text-slate-600'}`}
                                                 >
-                                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-blue-100' : 'bg-slate-100'}`}>
+                                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${activeContext?.id === ctx.id && activeContext.type === ctx.type ? 'bg-primary/20' : 'bg-slate-100'}`}>
                                                         {getContextIcon(ctx.type)}
                                                     </div>
                                                     <span className="truncate">{ctx.name}</span>

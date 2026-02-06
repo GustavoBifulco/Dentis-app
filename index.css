@@ -6,60 +6,282 @@
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 
   /* --- Dentis Prime: Core Tokens --- */
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;
+  /* 12px */
+  --text-sm: 0.875rem;
+  /* 14px */
+  --text-base: 1rem;
+  /* 16px */
+  --text-lg: 1.125rem;
+  /* 18px */
+  --text-xl: 1.25rem;
+  /* 20px */
+  --text-2xl: 1.5rem;
+  /* 24px */
+  --text-3xl: 1.875rem;
+  /* 30px */
+  --text-4xl: 2.25rem;
+  /* 36px */
+  --text-5xl: 3rem;
+  /* 48px */
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Spacing Scale (4px base) */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  /* 4px */
+  --space-2: 0.5rem;
+  /* 8px */
+  --space-3: 0.75rem;
+  /* 12px */
+  --space-4: 1rem;
+  /* 16px */
+  --space-5: 1.25rem;
+  /* 20px */
+  --space-6: 1.5rem;
+  /* 24px */
+  --space-8: 2rem;
+  /* 32px */
+  --space-10: 2.5rem;
+  /* 40px */
+  --space-12: 3rem;
+  /* 48px */
+  --space-16: 4rem;
+  /* 64px */
+  --space-20: 5rem;
+  /* 80px */
+  --space-24: 6rem;
+  /* 96px */
+
   /* Backgrounds */
-  --bg: #F8FAFC;         /* slate-50 */
-  --surface: #FFFFFF;    /* white */
-  --surface-hover: #F1F5F9; /* slate-100 */
+  --background: 210 17% 98%;
+  /* #FAFBFC - Light cool neutral */
+  --foreground: 215 25% 10%;
+  /* #0A1929 - Almost black with blue tint */
+
+  --card: 0 0% 100%;
+  /* #FFFFFF - Pure white for cards */
+  --card-foreground: 215 25% 10%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 25% 10%;
+
+  --surface: 0 0% 100%;
+  /* #FFFFFF */
+  --surface-hover: 214 32% 95%;
+  /* #F1F5F9 */
 
   /* Text */
-  --text-main: #0F172A;  /* slate-900 */
-  --text-muted: #64748B; /* slate-500 */
-  --text-desc: #94A3B8;  /* slate-400 */
+  --text-main: 215 25% 10%;
+  /* #0F172A - Primary text */
+  --text-muted: 215 16% 47%;
+  /* #64748B - Secondary text */
+  --text-desc: 214 20% 60%;
+  /* #94A3B8 - Tertiary text */
 
-  /* Borders */
-  --border: #E2E8F0;     /* slate-200 */
-  --border-focus: #3B82F6; /* blue-500 */
+  --muted: 214 32% 95%;
+  /* #F1F5F9 - Muted backgrounds */
+  --muted-foreground: 215 16% 47%;
 
-  /* Brand / Accent (Default Blue) */
-  --primary: #2563EB;    /* blue-600 */
-  --primary-hover: #1D4ED8; /* blue-700 */
-  --primary-foreground: #FFFFFF;
+  /* Borders & Rings */
+  --border: 214 32% 91%;
+  /* #E2E8F0 */
+  --border-hover: 214 20% 83%;
+  /* #CBD5E1 */
+  --border-focus: 221 83% 53%;
+  /* #3B82F6 - Focus indicator */
 
-  /* Status */
-  --success: #10B981;
-  --error: #EF4444;
-  --warning: #F59E0B;
+  --input: 214 32% 91%;
+  --ring: 180 100% 35%;
+  /* Aurora Teal for focus rings */
+
+  /* Brand / Accent (Clinical Aurora Teal) */
+  --primary: 180 100% 35%;
+  /* #0EA5A5 - Aurora Teal */
+  --primary-hover: 180 100% 30%;
+  /* Darker teal */
+  --primary-light: 180 100% 90%;
+  /* Very light teal */
+  --primary-foreground: 0 0% 100%;
+  /* White text on primary */
+
+  /* Accent variant for AI features */
+  --accent: 180 100% 35%;
+  /* Same as primary for now */
+  --accent-foreground: 0 0% 100%;
+
+  /* Violet hint for depth (minimal use) */
+  --violet-hint: 258 90% 66%;
+  /* #8B5CF6 */
+
+  /* Secondary (neutral) */
+  --secondary: 215 16% 47%;
+  /* Slate-500 */
+  --secondary-foreground: 0 0% 100%;
+
+  /* Status Colors with Variants */
+  --success: 160 84% 39%;
+  /* #10B981 - emerald-500 */
+  --success-bg: 152 76% 90%;
+  /* #D1FAE5 */
+  --success-border: 156 73% 74%;
+  /* #6EE7B7 */
+  --success-hover: 160 84% 34%;
+  /* #059669 */
+  --success-foreground: 0 0% 100%;
+
+  --error: 0 84% 60%;
+  /* #EF4444 - red-500 */
+  --destructive: 0 84% 60%;
+  /* Same as error */
+  --error-bg: 0 86% 95%;
+  /* #FEE2E2 */
+  --error-border: 0 93% 82%;
+  /* #FCA5A5 */
+  --error-hover: 0 72% 51%;
+  /* #DC2626 */
+  --destructive-foreground: 0 0% 100%;
+
+  --warning: 38 92% 50%;
+  /* #F59E0B - amber-500 */
+  --warning-bg: 48 97% 88%;
+  /* #FEF3C7 */
+  --warning-border: 48 96% 65%;
+  /* #FCD34D */
+  --warning-hover: 32 95% 45%;
+  /* #D97706 */
+  --warning-foreground: 215 25% 10%;
+
+  --info: 221 83% 53%;
+  /* #3B82F6 - blue-500 */
+  --info-bg: 214 95% 93%;
+  /* #DBEAFE */
+  --info-border: 213 97% 79%;
+  /* #93C5FD */
+  --info-hover: 221 83% 48%;
+  /* #2563EB */
+  --info-foreground: 0 0% 100%;
 
   /* Radius */
-  --radius-sm: 0.5rem;   /* 8px */
-  --radius-md: 0.75rem;  /* 12px */
-  --radius-lg: 1rem;     /* 16px */
-  --radius-xl: 1.5rem;   /* 24px */
+  --radius-sm: 0.5rem;
+  /* 8px */
+  --radius-md: 0.75rem;
+  /* 12px */
+  --radius-lg: 1rem;
+  /* 16px */
+  --radius-xl: 1.5rem;
+  /* 24px */
+  --radius-2xl: 2rem;
+  /* 32px */
+  --radius-full: 9999px;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-base: 200ms;
+  --transition-slow: 300ms;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Dark Mode Overrides */
 .dark {
-  /* Backgrounds */
-  --bg: #0F172A;         /* slate-900 */
-  --surface: #1E293B;    /* slate-800 */
-  --surface-hover: #334155; /* slate-700 */
+  /* Backgrounds - Clinical Aurora Dark */
+  --background: 215 25% 10%;
+  /* #0A1929 - Deep blue-black */
+  --foreground: 210 17% 98%;
+  /* #F0F4F8 - Almost white */
+
+  --card: 215 28% 17%;
+  /* #132F4C - Elevated surface */
+  --card-foreground: 210 17% 98%;
+
+  --popover: 215 28% 17%;
+  --popover-foreground: 210 17% 98%;
+
+  --surface: 215 28% 17%;
+  /* #132F4C */
+  --surface-hover: 215 25% 20%;
+  /* #1A3A52 */
 
   /* Text */
-  --text-main: #F8FAFC;  /* slate-50 */
-  --text-muted: #94A3B8; /* slate-400 */
-  --text-desc: #64748B;  /* slate-500 */
+  --text-main: 210 17% 98%;
+  /* #F0F4F8 - Primary text */
+  --text-muted: 215 15% 65%;
+  /* #B8C5D0 - Secondary text */
+  --text-desc: 215 14% 55%;
+  /* #7A8A99 - Tertiary text */
 
-  /* Borders */
-  --border: #334155;     /* slate-700 */
-  --border-focus: #60A5FA; /* blue-400 */
+  --muted: 215 25% 20%;
+  /* #1A3A52 - Muted backgrounds */
+  --muted-foreground: 215 15% 65%;
 
-  /* Brand / Accent remains dynamic via JS, but defaults here if needed */
-  /* --primary is usually set via JS style property */
+  /* Borders & Rings */
+  --border: 215 25% 25%;
+  /* #2D4A5F - Subtle borders */
+  --border-hover: 215 23% 30%;
+  /* #3D5A6F */
+  --border-focus: 221 83% 63%;
+  /* #60A5FA - Brighter focus */
+
+  --input: 215 25% 25%;
+  --ring: 180 100% 40%;
+  /* Aurora Teal brighter for dark mode */
+
+  /* Brand / Accent (Clinical Aurora Teal - brighter in dark) */
+  --primary: 180 100% 40%;
+  /* #14B8B8 - Brighter teal */
+  --primary-hover: 180 100% 45%;
+  /* Even brighter on hover */
+  --primary-light: 180 100% 20%;
+  /* Darker teal for backgrounds */
+  --primary-foreground: 215 25% 10%;
+  /* Dark text on primary */
+
+  /* Accent variant for AI features */
+  --accent: 180 100% 40%;
+  --accent-foreground: 215 25% 10%;
+
+  /* Violet hint for depth (brighter in dark) */
+  --violet-hint: 258 90% 76%;
+  /* #A78BFA */
+
+  /* Secondary (neutral) */
+  --secondary: 215 15% 65%;
+  --secondary-foreground: 215 25% 10%;
+
+  /* Status colors adjusted for dark mode */
+  --success: 160 84% 44%;
+  /* Brighter emerald */
+  --success-foreground: 215 25% 10%;
+
+  --destructive: 0 84% 65%;
+  /* Brighter red */
+  --destructive-foreground: 0 0% 100%;
+
+  --warning: 38 92% 55%;
+  /* Brighter amber */
+  --warning-foreground: 215 25% 10%;
+
+  --info: 221 83% 63%;
+  /* Brighter blue */
+  --info-foreground: 215 25% 10%;
 }
 
 @layer base {
@@ -76,20 +298,107 @@
   width: 6px;
   height: 6px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 99px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
 
 /* Global Transitions */
-body, div, span, button, input, textarea, aside, nav {
-    transition-property: background-color, border-color, color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
+body,
+div,
+span,
+button,
+input,
+textarea,
+aside,
+nav {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Micro Animations */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn var(--transition-base) var(--ease-out);
+  }
+
+  .animate-slide-up {
+    animation: slideUp var(--transition-base) var(--ease-out);
+  }
+
+  .animate-slide-down {
+    animation: slideDown var(--transition-base) var(--ease-out);
+  }
+
+  .animate-scale-in {
+    animation: scaleIn var(--transition-base) var(--ease-out);
+  }
+}
+
+/* Disable animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

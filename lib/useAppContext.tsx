@@ -67,19 +67,21 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const { getToken } = useAuth();
     const [theme, setTheme] = useState<{ mode: 'light' | 'dark', accentColor: string }>({
         mode: 'light',
-        accentColor: '#2563EB' // Default Blue
+        accentColor: '#0EA5A5' // Clinical Aurora Teal
     });
 
-    // Helper: HEX to HSL for better color manipulation
-    const getAdjustedColor = (hex: string, lightnessDelta: number) => {
+    // Helper: HEX to HSL conversion for Tailwind compatibility
+    const hexToHSL = (hex: string): string => {
         // Remove hash
         hex = hex.replace('#', '');
+
         // Parse RGB
         const r = parseInt(hex.substring(0, 2), 16) / 255;
         const g = parseInt(hex.substring(2, 4), 16) / 255;
         const b = parseInt(hex.substring(4, 6), 16) / 255;
 
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
         let h = 0, s = 0, l = (max + min) / 2;
 
         if (max !== min) {
@@ -93,11 +95,8 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             h /= 6;
         }
 
-        // Adjust lightness (and darken a bit more for dark mode if needed, but standard logic: hover is darker)
-        let newL = Math.max(0, Math.min(1, l + lightnessDelta));
-
-        // Convert back to RGB/Hex would be complex, simpler to return HSL string for CSS
-        return `hsl(${Math.round(h * 360)}, ${Math.round(s * 100)}%, ${Math.round(newL * 100)}%)`;
+        // Return HSL values as space-separated string (for CSS variables)
+        return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
     };
 
     // Initialize Theme
@@ -127,10 +126,17 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             root.style.colorScheme = 'light';
         }
 
-        // 2. Accent Color (CSS Variables)
-        root.style.setProperty('--primary', theme.accentColor);
-        // Hover: 10% darker
-        root.style.setProperty('--primary-hover', getAdjustedColor(theme.accentColor, -0.1));
+        // 2. Accent Color (Convert HEX to HSL for Tailwind)
+        const hslValue = hexToHSL(theme.accentColor);
+        root.style.setProperty('--primary', hslValue);
+        root.style.setProperty('--ring', hslValue); // Use same color for focus rings
+        root.style.setProperty('--accent', hslValue); // For AI features
+
+        // Calculate hover state (10% darker in lightness)
+        const [h, s, l] = hslValue.split(' ');
+        const lightnessValue = parseInt(l);
+        const hoverLightness = Math.max(0, lightnessValue - 10);
+        root.style.setProperty('--primary-hover', `${h} ${s} ${hoverLightness}%`);
 
         // Ensure persist locally
         localStorage.setItem('dentis-theme', JSON.stringify(theme));
