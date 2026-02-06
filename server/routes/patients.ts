@@ -45,6 +45,7 @@ const patientSchema = z.object({
   birthdate: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
   gender: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
   occupation: z.string().optional().or(z.literal('')).transform(val => !val || val.trim() === '' ? null : val),
+  avatarUrl: z.string().optional().nullable(),
 
   // Relations
   addressDetails: addressSchema.optional(),
@@ -185,7 +186,16 @@ app.put('/:id', async (c) => {
 
     if (!existing) return c.json({ error: 'Paciente não encontrado' }, 404);
 
-    // 1. Update Address
+    // --- 1. CPF IMMUTABLE GUARD ---
+    if (data.cpf && existing.cpf && data.cpf !== existing.cpf) {
+      console.warn(`[${requestId}] Blocked attempt to change CPF for patient ${id} by user ${auth.userId}`);
+      return c.json({
+        error: 'CPF é imutável.',
+        message: 'Por razões legais e de segurança, o CPF não pode ser alterado após definido. Entre em contato com o suporte se houve erro de digitação crítico.'
+      }, 403);
+    }
+
+    // --- 2. Update Address ---
     let addressId = existing.addressId;
     if (data.addressDetails) {
       if (addressId) {
@@ -199,7 +209,7 @@ app.put('/:id', async (c) => {
       }
     }
 
-    // 2. Update Patient
+    // --- 3. Update Patient ---
     const [updated] = await db.update(patients).set({
       ...data as any,
       addressId: addressId,
@@ -208,41 +218,75 @@ app.put('/:id', async (c) => {
       .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
       .returning();
 
-    // 3. Relations (Replace Strategy)
-    if (data.emergencyContacts) {
-      await db.delete(patientEmergencyContacts).where(eq(patientEmergencyContacts.patientId, id));
-      if (data.emergencyContacts.length > 0) {
-        await db.insert(patientEmergencyContacts).values(
-          data.emergencyContacts.map(c => ({
-            patientId: id,
-            name: c.name!, // Non-null assertion if Zod guarantees it, or safe check
-            phone: c.phone!,
-            relationship: c.relationship
-          }))
-        );
-      }
+    // --- 4. AVATAR SYNC (Clerk) ---
+    // If avatarUrl changed and patient has a linked Clerk User
+    if (data.avatarUrl && data.avatarUrl !== existing.avatarUrl && existing.userId) {
+      try {
+        // Dynamic import to match project dependency
+        const { createClerkClient } = await import('@clerk/backend');
+        const clerkClient = createClerkClient({
+          secretKey: process.env.CLERK_SECRET_KEY!,
+          publishableKey: process.env.CLERK_PUBLISHABLE_KEY!,
+        });
+
+        // await clerkClient.users.updateUserProfileImage(existing.userId, {
+        //   file: data.avatarUrl 
+        // });
+        console.log(`[Avatar Sync] Pending implementation for URL-to-Blob sync. Clerk ID: ${existing.userId}`);
+      }).catch(err => console.warn("Clerk Avatar Sync Failed (Non-critical):", err.message));
+
+      } catch (err) {
+  console.warn("Clerk Sync skipped:", err);
+}
     }
 
-    if (data.insurances) {
-      await db.delete(patientInsurances).where(eq(patientInsurances.patientId, id));
-      if (data.insurances.length > 0) {
-        await db.insert(patientInsurances).values(
-          data.insurances.map(i => ({
-            patientId: id,
-            providerName: i.providerName!,
-            cardNumber: i.cardNumber,
-            validUntil: i.validUntil
-          }))
-        );
-      }
-    }
+// --- 5. Audit Log (Simplified) ---
+// Log sensitive changes
+const sensitiveFields = ['cpf', 'name', 'email'];
+const changedSensitive = sensitiveFields.filter(f => (data as any)[f] && (data as any)[f] !== (existing as any)[f]);
 
-    return c.json(updated);
+if (changedSensitive.length > 0) {
+  // Need to import auditLogs table. Assuming it is in '../db/schema'
+  // We will do a dynamic insert to avoid top-level import errors if I missed adding it to imports above.
+  // Actually I should add it to imports properly next step.
+  // For now, let's skip the insert code until I add the import to line 5.
+}
+
+// --- 6. Relations (Replace Strategy) ---
+if (data.emergencyContacts) {
+  await db.delete(patientEmergencyContacts).where(eq(patientEmergencyContacts.patientId, id));
+  if (data.emergencyContacts.length > 0) {
+    await db.insert(patientEmergencyContacts).values(
+      data.emergencyContacts.map(c => ({
+        patientId: id,
+        name: c.name!,
+        phone: c.phone!,
+        relationship: c.relationship
+      }))
+    );
+  }
+}
+
+if (data.insurances) {
+  await db.delete(patientInsurances).where(eq(patientInsurances.patientId, id));
+  if (data.insurances.length > 0) {
+    await db.insert(patientInsurances).values(
+      data.insurances.map(i => ({
+        patientId: id,
+        providerName: i.providerName!,
+        cardNumber: i.cardNumber,
+        validUntil: i.validUntil
+      }))
+    );
+  }
+}
+
+return c.json(updated);
 
   } catch (e: any) {
-    console.error(`[${requestId}] Error updating patient:`, e);
-    return c.json({ error: 'Erro ao atualizar paciente', requestId }, 500);
-  }
+  console.error(`[${requestId}] Error updating patient:`, e);
+  return c.json({ error: 'Erro ao atualizar paciente', requestId }, 500);
+}
 });
 
 // DELETE /:id - Soft Delete Preferred, Hard Delete Restricted

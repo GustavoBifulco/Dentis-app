@@ -103,6 +103,7 @@ export const patients = pgTable('patients', {
   addressId: integer('address_id').references(() => addresses.id),
   // Legacy address field (keep for back-compat or migration)
   address: text('address'),
+  avatarUrl: text('avatar_url'), // Patient Profile Picture
 
   // Responsável Legal (<18 ou incapaz)
   legalGuardianName: text('legal_guardian_name'),

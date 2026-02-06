@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, FileText, Phone, MapPin, Briefcase, GraduationCap, Heart, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { User, FileText, Phone, MapPin, Briefcase, GraduationCap, Heart, AlertTriangle, Plus, Trash2, Camera, Loader2 } from 'lucide-react';
 import { Patient, EmergencyContact, Insurance, Address } from '../types';
 
 interface PatientFormProps {
-    initialData?: Partial<Patient>;
+    initialData?: Partial<Patient> & { avatarUrl?: string | null };
     onSubmit: (data: any) => void;
     loading?: boolean;
     mode: 'create' | 'edit';
@@ -12,11 +12,13 @@ interface PatientFormProps {
 
 const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loading, mode }) => {
     const [activeTab, setActiveTab] = useState<'personal' | 'docs' | 'contacts'>('personal');
+    const [uploading, setUploading] = useState(false);
 
     // Flattened state for simpler form handling
     const [formData, setFormData] = useState({
         // Personal
         name: initialData?.name || '',
+        avatarUrl: initialData?.avatarUrl || '',
         socialName: initialData?.socialName || '',
         gender: initialData?.gender || '',
         birthdate: initialData?.birthdate || '',
@@ -74,6 +76,32 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
         return (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) ? age - 1 < 18 : age < 18;
     };
 
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', 'PATIENT_AVATAR');
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('Upload falhou');
+            const data = await res.json();
+            handleChange('avatarUrl', data.url);
+        } catch (error) {
+            console.error("Upload error:", error);
+            // alert("Erro ao enviar foto. Tente novamente."); // Optional: user toast
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSubmit({
@@ -98,8 +126,8 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                         type="button"
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`flex items-center gap-2 px-6 py-4 border-b-2 font-medium transition-colors ${activeTab === tab.id
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         <tab.icon size={18} />
@@ -115,6 +143,29 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                     {/* --- PERSONAL TAB --- */}
                     {activeTab === 'personal' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2">
+
+                            {/* Avatar Section */}
+                            <div className="col-span-2 flex justify-center mb-6">
+                                <div className="relative group">
+                                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gray-100 flex items-center justify-center">
+                                        {formData.avatarUrl ? (
+                                            <img src={formData.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <User size={64} className="text-gray-300" />
+                                        )}
+                                        {uploading && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                <Loader2 className="animate-spin text-white" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg transition-transform hover:scale-110">
+                                        <Camera size={20} />
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} />
+                                    </label>
+                                </div>
+                            </div>
+
                             <div className="col-span-2">
                                 <label className="label">Nome Completo *</label>
                                 <input required className="input" value={formData.name} onChange={e => handleChange('name', e.target.value)} />
@@ -183,8 +234,23 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
-                                        <label className="label">CPF</label>
-                                        <input className="input" placeholder="000.000.000-00" value={formData.cpf} onChange={e => handleChange('cpf', e.target.value)} />
+                                        <label className="label flex justify-between">
+                                            CPF
+                                            {mode === 'edit' && formData.cpf && (
+                                                <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Imutável</span>
+                                            )}
+                                        </label>
+                                        <input
+                                            className={`input ${mode === 'edit' && initialData?.cpf ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                                            placeholder="000.000.000-00"
+                                            value={formData.cpf}
+                                            onChange={e => handleChange('cpf', e.target.value)}
+                                            readOnly={mode === 'edit' && !!initialData?.cpf}
+                                            title={mode === 'edit' && !!initialData?.cpf ? "O CPF não pode ser alterado por motivos de segurança e histórico." : ""}
+                                        />
+                                        {mode === 'edit' && !!initialData?.cpf && (
+                                            <p className="text-xs text-gray-400 mt-1">Para corrigir, contate o suporte.</p>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="label">RG</label>

@@ -67,8 +67,8 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({ patient, viewType, onActi
     return (
         <div className="bg-white border-b" style={{ borderColor: 'hsl(var(--border))' }}>
             {/* Main Header */}
-            <div className="px-6 py-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="px-8 py-6 bg-gradient-to-b from-white to-slate-50/50">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                     {/* Left: Avatar + Info */}
                     <div className="flex items-center gap-4">
                         {/* Avatar */}

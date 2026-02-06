@@ -245,6 +245,9 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 // TODO: Open chat/contact modal
                 showToast('Funcionalidade em desenvolvimento', 'info');
                 break;
+            case 'edit-profile':
+                setIsEditModalOpen(true);
+                break;
         }
     };
 
@@ -259,19 +262,15 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
     };
 
     return (
-        <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in relative overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>
+        <div className="flex flex-col h-full bg-[hsl(var(--background))] animate-fade-in relative overflow-hidden">
 
-            {/* Back Button */}
-            <div className="px-6 py-4 bg-white" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+            {/* Back Button - Compact */}
+            <div className="bg-white border-b border-[hsl(var(--border))]">
                 <button
                     onClick={onBack}
-                    className="p-2 rounded-full transition-all hover:shadow-sm"
-                    style={{
-                        backgroundColor: 'hsl(var(--muted))',
-                        color: 'hsl(var(--text-muted))'
-                    }}
+                    className="p-3 hover:bg-slate-50 text-slate-500 transition-colors flex items-center gap-2 text-sm font-medium"
                 >
-                    <ArrowLeft size={20} />
+                    <ArrowLeft size={16} /> Voltar para Lista
                 </button>
             </div>
 
