@@ -63,17 +63,30 @@ app.get('/:id/overview', async (c) => {
             return c.json({ error: 'Patient not found' }, 404);
         }
 
-        // Resolve avatar URL
+        // Check if patient already has an account (userId OR CPF match in users table)
+        let hasAccount = !!patient.userId;
         let avatarUrl = null;
+
         if (patient.userId) {
-            // Try to get from users table (cached Clerk data)
+            // Linked user found
             const [userRecord] = await db
                 .select({ avatarUrl: users.avatarUrl })
                 .from(users)
                 .where(eq(users.clerkId, patient.userId))
                 .limit(1);
-
             avatarUrl = userRecord?.avatarUrl || null;
+        } else if (patient.cpf) {
+            // Check if user exists by CPF (unlinked but exists)
+            const [userByCpf] = await db
+                .select({ id: users.id, avatarUrl: users.avatarUrl })
+                .from(users)
+                .where(eq(users.cpf, patient.cpf))
+                .limit(1);
+
+            if (userByCpf) {
+                hasAccount = true;
+                avatarUrl = userByCpf.avatarUrl || null;
+            }
         }
 
         // Fetch recent appointments (last 5)

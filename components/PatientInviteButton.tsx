@@ -2,17 +2,24 @@ import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { UserPlus, Copy, Check, Loader, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LuxButton } from './Shared';
 
 interface PatientInviteButtonProps {
     patientId: number;
     patientName: string;
     hasAccount?: boolean;
+    label?: string;
+    variant?: 'primary' | 'ghost' | 'outline';
+    size?: 'sm' | 'md' | 'lg';
 }
 
 const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
     patientId,
     patientName,
-    hasAccount = false
+    hasAccount = false,
+    label = 'Convidar',
+    variant = 'primary',
+    size = 'md'
 }) => {
     const { getToken } = useAuth();
     const [showModal, setShowModal] = useState(false);
@@ -41,7 +48,12 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to create invitation');
+                if (data.hasAccount) {
+                    setError('Paciente já possui conta.');
+                } else {
+                    throw new Error(data.error || 'Failed to create invitation');
+                }
+                return;
             }
 
             setInvitationLink(data.invitationLink);
@@ -81,26 +93,20 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
     };
 
     if (hasAccount) {
-        return (
-            <button
-                disabled
-                className="px-4 py-2 rounded-xl font-bold text-lux-text-secondary bg-lux-subtle cursor-not-allowed flex items-center gap-2"
-            >
-                <Check size={18} />
-                Conta Criada
-            </button>
-        );
+        return null; // As per user request: "se a pessoa ja tiver conta esse botão some"
+        // Previous implementation showed a disabled button. User explicitly asked for it to disappear.
     }
 
     return (
         <>
-            <button
+            <LuxButton
                 onClick={handleOpenModal}
-                className="px-4 py-2 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition flex items-center gap-2"
+                variant={variant}
+                size={size}
+                icon={<UserPlus size={size === 'sm' ? 16 : 18} />}
             >
-                <UserPlus size={18} />
-                Convidar
-            </button>
+                {label}
+            </LuxButton>
 
             <AnimatePresence>
                 {showModal && (
@@ -110,16 +116,18 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
+                            style={{ border: '1px solid hsl(var(--border))' }}
                         >
                             {/* Header */}
-                            <div className="p-6 border-b border-lux-border flex items-center justify-between">
+                            <div className="p-6 border-b border-gray-100 flex items-center justify-between" style={{ borderColor: 'hsl(var(--border))' }}>
                                 <div>
-                                    <h2 className="text-2xl font-black text-lux-text">Convidar Paciente</h2>
-                                    <p className="text-sm text-lux-text-secondary mt-1">{patientName}</p>
+                                    <h2 className="text-2xl font-black" style={{ color: 'hsl(var(--text-main))' }}>Convidar Paciente</h2>
+                                    <p className="text-sm mt-1" style={{ color: 'hsl(var(--text-muted))' }}>{patientName}</p>
                                 </div>
                                 <button
                                     onClick={handleClose}
-                                    className="w-10 h-10 rounded-full bg-lux-subtle hover:bg-lux-border transition flex items-center justify-center"
+                                    className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-gray-100"
+                                    style={{ color: 'hsl(var(--text-muted))' }}
                                 >
                                     <X size={20} />
                                 </button>
@@ -129,8 +137,8 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                             <div className="p-6 space-y-4">
                                 {loading && (
                                     <div className="flex flex-col items-center justify-center py-8">
-                                        <Loader size={48} className="text-blue-600 animate-spin mb-4" />
-                                        <p className="text-lux-text-secondary">Gerando link de convite...</p>
+                                        <Loader size={48} className="animate-spin mb-4" style={{ color: 'hsl(var(--primary))' }} />
+                                        <p style={{ color: 'hsl(var(--text-muted))' }}>Gerando link de convite...</p>
                                     </div>
                                 )}
 
@@ -150,8 +158,8 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                                             </p>
                                         </div>
 
-                                        <div className="bg-lux-subtle rounded-xl p-4">
-                                            <p className="text-xs font-bold text-lux-text-secondary mb-2 uppercase tracking-wide">
+                                        <div className="bg-gray-50 rounded-xl p-4" style={{ backgroundColor: 'hsl(var(--muted))' }}>
+                                            <p className="text-xs font-bold mb-2 uppercase tracking-wide" style={{ color: 'hsl(var(--text-muted))' }}>
                                                 Link de Convite
                                             </p>
                                             <div className="flex items-center gap-2">
@@ -159,36 +167,22 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                                                     type="text"
                                                     value={invitationLink}
                                                     readOnly
-                                                    className="flex-1 bg-white border border-lux-border rounded-lg px-3 py-2 text-sm font-mono text-lux-text"
+                                                    className="flex-1 bg-white border rounded-lg px-3 py-2 text-sm font-mono"
+                                                    style={{
+                                                        borderColor: 'hsl(var(--border))',
+                                                        color: 'hsl(var(--text-main))'
+                                                    }}
                                                 />
-                                                <button
-                                                    onClick={handleCopyLink}
-                                                    className={`px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 ${copied
-                                                            ? 'bg-emerald-600 text-white'
-                                                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                                                        }`}
-                                                >
-                                                    {copied ? (
-                                                        <>
-                                                            <Check size={18} />
-                                                            Copiado!
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Copy size={18} />
-                                                            Copiar
-                                                        </>
-                                                    )}
-                                                </button>
+                                                <div onClick={handleCopyLink} className="cursor-pointer">
+                                                    <LuxButton
+                                                        variant={copied ? "primary" : "outline"}
+                                                        size="sm"
+                                                        icon={copied ? <Check size={16} /> : <Copy size={16} />}
+                                                    >
+                                                        {copied ? "Copiado!" : "Copiar"}
+                                                    </LuxButton>
+                                                </div>
                                             </div>
-                                        </div>
-
-                                        <div className="bg-lux-subtle rounded-xl p-4">
-                                            <p className="text-xs text-lux-text-secondary">
-                                                💡 <strong>Como funciona:</strong> O paciente clicará no link,
-                                                verá seus dados pré-preenchidos e criará sua senha para acessar
-                                                o portal do paciente.
-                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -196,13 +190,10 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
 
                             {/* Footer */}
                             {invitationLink && (
-                                <div className="p-6 border-t border-lux-border flex justify-end">
-                                    <button
-                                        onClick={handleClose}
-                                        className="px-6 py-3 rounded-xl font-bold bg-lux-accent text-white hover:bg-opacity-90 transition"
-                                    >
+                                <div className="p-6 border-t border-gray-100 flex justify-end" style={{ borderColor: 'hsl(var(--border))' }}>
+                                    <LuxButton onClick={handleClose} variant="primary">
                                         Fechar
-                                    </button>
+                                    </LuxButton>
                                 </div>
                             )}
                         </motion.div>

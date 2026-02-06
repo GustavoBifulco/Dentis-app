@@ -15,6 +15,7 @@ import {
     Stethoscope
 } from 'lucide-react';
 import { LuxButton } from '../Shared';
+import PatientInviteButton from '../PatientInviteButton';
 
 interface PatientHeaderProps {
     patient: {
@@ -189,16 +190,14 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({ patient, viewType, onActi
                                 >
                                     Cobrar
                                 </LuxButton>
-                                {!patient.hasAccount && (
-                                    <LuxButton
-                                        variant="ghost"
-                                        size="sm"
-                                        icon={<UserPlus size={16} />}
-                                        onClick={() => onAction('invite-patient')}
-                                    >
-                                        Enviar Link
-                                    </LuxButton>
-                                )}
+                                <PatientInviteButton
+                                    patientId={patient.id}
+                                    patientName={patient.name}
+                                    hasAccount={patient.hasAccount}
+                                    label="Enviar Link para Cadastro"
+                                    variant="ghost"
+                                    size="sm"
+                                />
                             </>
                         ) : (
                             <>
