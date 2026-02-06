@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Patient } from '../types';
+import { useUser } from '@clerk/clerk-react';
 import { LuxButton, IslandCard } from './Shared';
 import {
     ArrowLeft, Clock, FileText, Camera, Plus,
@@ -55,7 +56,13 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
     // Overview data from new endpoint
     const [overviewData, setOverviewData] = useState<any>(null);
     const [loadingOverview, setLoadingOverview] = useState(false);
-    const viewType = 'dentist'; // TODO: detect if patient is logged in
+
+    // Dynamic role detection: if logged-in user is the patient, show patient view
+    const { user: clerkUser } = useUser();
+    const viewType: 'dentist' | 'patient' =
+        (clerkUser?.id && activePatient.userId && clerkUser.id === activePatient.userId)
+            ? 'patient'
+            : 'dentist';
 
     useEffect(() => {
         if (activePatient?.id) {
