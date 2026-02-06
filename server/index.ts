@@ -39,6 +39,7 @@ import anamnesis from './routes/anamnesis';
 import settings from './routes/settings';
 import records from './routes/records';
 import whatsapp from './routes/whatsapp';
+import overview from './routes/overview';
 
 // import { secureHeaders } from 'hono/secure-headers'; // Removed in favor of middleware/security
 import { HTTPException } from 'hono/http-exception';
@@ -78,6 +79,7 @@ app.route('/api/webhooks', webhooks); // Stripe webhooks
 app.route('/api/inventory', inventory);
 app.route('/api/procedures', procedures);
 app.route('/api/patients', patients);
+app.route('/api/patients', overview); // Consolidated overview endpoint
 app.route('/api/patient', patient); // Check conflicts later
 app.route('/api/appointments', appointments);
 app.route('/api/appointment-requests', appointmentRequests);

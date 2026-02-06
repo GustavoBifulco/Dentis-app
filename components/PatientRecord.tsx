@@ -23,6 +23,8 @@ import ConsentManager from './ConsentManager';
 import ImageGallery from './ImageGallery';
 import TreatmentPlans from './TreatmentPlans';
 import CreateBillingModal from './Billing/CreateBillingModal';
+import PatientHeader from './screens/PatientHeader';
+import SmartCards from './screens/SmartCards';
 
 interface PatientRecordProps {
     patient: Patient;
@@ -50,9 +52,35 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
     // Phase 2: Alerts
     const [alerts, setAlerts] = useState<any[]>([]);
 
+    // Overview data from new endpoint
+    const [overviewData, setOverviewData] = useState<any>(null);
+    const [loadingOverview, setLoadingOverview] = useState(false);
+    const viewType = 'dentist'; // TODO: detect if patient is logged in
+
     useEffect(() => {
-        if (activePatient?.id) fetchAlerts();
+        if (activePatient?.id) {
+            fetchOverview();
+            fetchAlerts();
+        }
     }, [activePatient?.id]);
+
+    const fetchOverview = async () => {
+        setLoadingOverview(true);
+        try {
+            const token = await getToken();
+            const res = await fetch(`/api/patients/${activePatient.id}/overview?view=${viewType}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setOverviewData(data.data);
+            }
+        } catch (e) {
+            console.error("Failed to load overview");
+        } finally {
+            setLoadingOverview(false);
+        }
+    };
 
     const fetchAlerts = async () => {
         try {
@@ -176,136 +204,167 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
         { id: 'anamnesis', label: 'Anamnese', icon: MessageSquare },
     ];
 
+    const handleHeaderAction = (action: string) => {
+        switch (action) {
+            case 'new-record':
+                setActiveTab('encounters');
+                setIsCreatingEncounter(true);
+                break;
+            case 'new-appointment':
+                // TODO: Open appointment modal
+                showToast('Funcionalidade em desenvolvimento', 'info');
+                break;
+            case 'upload-document':
+                // TODO: Open upload modal
+                showToast('Funcionalidade em desenvolvimento', 'info');
+                break;
+            case 'create-charge':
+                setIsBillingModalOpen(true);
+                break;
+            case 'invite-patient':
+                // Handled by PatientInviteButton
+                break;
+            case 'my-documents':
+                setActiveTab('docs');
+                break;
+            case 'my-payments':
+                // TODO: Navigate to patient wallet
+                showToast('Funcionalidade em desenvolvimento', 'info');
+                break;
+            case 'consents':
+                setActiveTab('docs');
+                break;
+            case 'contact-clinic':
+                // TODO: Open chat/contact modal
+                showToast('Funcionalidade em desenvolvimento', 'info');
+                break;
+        }
+    };
+
+    const handleEditEvent = (event: any) => {
+        showToast('Edição de evento em desenvolvimento', 'info');
+        // TODO: Open edit modal based on event type
+    };
+
+    const handleAddNote = (event: any) => {
+        showToast('Adicionar nota em desenvolvimento', 'info');
+        // TODO: Open note modal
+    };
+
     return (
-        <div className="h-[calc(100vh-140px)] flex flex-col animate-in fade-in duration-500 bg-slate-50 relative overflow-hidden">
+        <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in relative overflow-hidden" style={{ backgroundColor: 'hsl(var(--background))' }}>
 
-            {/* HERDER */}
-            <div className="bg-white border-b border-slate-200 z-10 flex-shrink-0">
-                {/* Top Bar with Back & Actions */}
-                <div className="px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition">
-                            <ArrowLeft size={20} />
-                        </button>
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                {activePatient.name.charAt(0)}
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-slate-900 leading-tight">{activePatient.name}</h1>
-                                <p className="text-xs text-slate-500 font-medium">Cod: {activePatient.id} • {activePatient.cpf || 'Sem CPF'}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <PatientInviteButton
-                            patientId={activePatient.id}
-                            patientName={activePatient.name}
-                            hasAccount={!!activePatient.userId}
-                        />
-                        <LuxButton variant="ghost" onClick={() => setIsEditModalOpen(true)} icon={<User size={16} />}>Editar Perfil</LuxButton>
-                        <LuxButton variant="ghost" className="text-red-500" onClick={() => setIsDeleteModalOpen(true)} icon={<Trash2 size={16} />}>Excluir</LuxButton>
-                    </div>
-                </div>
-
-                {/* Tags Navigation */}
-                <div className="px-6 flex gap-6 overflow-x-auto custom-scrollbar">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as Tab)}
-                            className={`flex items-center gap-2 py-3 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${activeTab === tab.id
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-800'
-                                }`}
-                        >
-                            <tab.icon size={16} />
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+            {/* Back Button */}
+            <div className="px-6 py-4 bg-white" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                <button
+                    onClick={onBack}
+                    className="p-2 rounded-full transition-all hover:shadow-sm"
+                    style={{
+                        backgroundColor: 'hsl(var(--muted))',
+                        color: 'hsl(var(--text-muted))'
+                    }}
+                >
+                    <ArrowLeft size={20} />
+                </button>
             </div>
 
-            {/* CONTENT AREA */}
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
-                <div className="max-w-[1200px] mx-auto">
+            {/* NEW HEADER */}
+            <PatientHeader
+                patient={{
+                    id: activePatient.id,
+                    name: activePatient.name,
+                    email: activePatient.email,
+                    phone: activePatient.phone,
+                    cpf: activePatient.cpf,
+                    birthdate: activePatient.birthdate,
+                    gender: activePatient.gender,
+                    status: activePatient.status,
+                    avatarUrl: overviewData?.patient?.avatarUrl || null,
+                    hasAccount: !!activePatient.userId
+                }}
+                viewType={viewType}
+                onAction={handleHeaderAction}
+            />
+
+            {/* Tab Navigation */}
+            <div className="px-6 flex gap-6 overflow-x-auto custom-scrollbar bg-white" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as Tab)}
+                        className="flex items-center gap-2 py-3 border-b-2 transition-all font-medium text-sm whitespace-nowrap"
+                        style={{
+                            borderColor: activeTab === tab.id ? 'hsl(var(--primary))' : 'transparent',
+                            color: activeTab === tab.id ? 'hsl(var(--primary))' : 'hsl(var(--text-muted))'
+                        }}
+                    >
+                        <tab.icon size={16} />
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* CONTENT AREA - NEW TWO-COLUMN LAYOUT */}
+            <div className="flex-1 overflow-y-auto p-6" style={{ backgroundColor: 'hsl(var(--background))' }}>
+                <div className="max-w-[1400px] mx-auto">
 
                     {activeTab === 'overview' && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* LEFT COLUMN: Timeline/Feed (60%) */}
                             <div className="lg:col-span-2 space-y-6">
-                                {/* Quick Access / Highlights */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div onClick={() => setActiveTab('encounters')} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center gap-2 text-center group">
-                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-full group-hover:bg-blue-600 group-hover:text-white transition"><Stethoscope size={24} /></div>
-                                        <span className="text-sm font-bold text-slate-700">Atendimento</span>
-                                    </div>
-                                    <div onClick={() => setActiveTab('docs')} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center gap-2 text-center group">
-                                        <div className="p-3 bg-green-50 text-green-600 rounded-full group-hover:bg-green-600 group-hover:text-white transition"><FileText size={24} /></div>
-                                        <span className="text-sm font-bold text-slate-700">Prescrição</span>
-                                    </div>
-                                    <div onClick={() => setActiveTab('exams')} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center gap-2 text-center group">
-                                        <div className="p-3 bg-purple-50 text-purple-600 rounded-full group-hover:bg-purple-600 group-hover:text-white transition"><Activity size={24} /></div>
-                                        <span className="text-sm font-bold text-slate-700">Exames</span>
-                                    </div>
-                                    <div onClick={() => setActiveTab('odontogram')} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center gap-2 text-center group">
-                                        <div className="p-3 bg-orange-50 text-orange-600 rounded-full group-hover:bg-orange-600 group-hover:text-white transition"><Pill size={24} /></div>
-                                        <span className="text-sm font-bold text-slate-700">Odonto</span>
-                                    </div>
-                                    <div onClick={() => setIsBillingModalOpen(true)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center gap-2 text-center group">
-                                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full group-hover:bg-emerald-600 group-hover:text-white transition"><DollarSign size={24} /></div>
-                                        <span className="text-sm font-bold text-slate-700">Cobrar</span>
-                                    </div>
-                                </div>
-
-                                {/* Recent Activity Preview */}
-                                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <Clock size={18} className="text-slate-400" /> Atividade Recente
+                                {/* Timeline */}
+                                <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: '1px solid hsl(var(--border))' }}>
+                                    <h3 className="font-bold text-lg mb-6" style={{ color: 'hsl(var(--text-main))' }}>
+                                        <Clock size={18} className="inline mr-2" style={{ color: 'hsl(var(--primary))' }} />
+                                        Timeline de Eventos
                                     </h3>
-                                    <PatientTimeline events={timelineEvents.slice(0, 3)} loading={loadingTimeline} />
-                                    <button onClick={() => setActiveTab('timeline')} className="w-full mt-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition">
-                                        Ver histórico completo
-                                    </button>
+                                    <PatientTimeline
+                                        events={timelineEvents}
+                                        loading={loadingTimeline}
+                                        viewType={viewType}
+                                        onEdit={handleEditEvent}
+                                        onAddNote={handleAddNote}
+                                    />
+                                    {timelineEvents.length === 0 && !loadingTimeline && (
+                                        <div className="text-center py-12">
+                                            <p className="text-sm" style={{ color: 'hsl(var(--text-muted))' }}>
+                                                Nenhum evento registrado ainda.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Alerts and Info */}
-                            <div className="space-y-6">
-                                <ClinicalAlerts
-                                    alerts={alerts}
-                                    onAddAlert={handleAddAlert}
+                            {/* RIGHT COLUMN: Smart Cards (40%) */}
+                            <div>
+                                <SmartCards
+                                    patient={{
+                                        id: activePatient.id,
+                                        name: activePatient.name
+                                    }}
+                                    alerts={overviewData?.alerts || alerts}
+                                    nextSteps={[]} // TODO: Calculate next steps from overview data
+                                    summary={{
+                                        lastVisit: overviewData?.appointments?.[0]?.scheduledDate,
+                                        nextAppointment: overviewData?.appointments?.find((a: any) => new Date(a.scheduledDate) > new Date())?.scheduledDate,
+                                        pendingDocuments: 0,
+                                        activeTreatments: overviewData?.treatmentProgress?.activePlans || 0
+                                    }}
                                 />
-
-                                {/* Patient Info Card */}
-                                <IslandCard className="p-5 border-none shadow-sm space-y-4">
-                                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                        <h3 className="font-bold text-slate-700 text-sm uppercase">Dados Pessoais</h3>
-                                        <button onClick={() => setIsEditModalOpen(true)} className="text-blue-600 text-xs font-bold hover:underline">Editar</button>
-                                    </div>
-                                    <div className="space-y-3 text-sm">
-                                        <div><span className="block text-slate-400 text-xs font-bold uppercase">Email</span> {activePatient.email || '-'}</div>
-                                        <div><span className="block text-slate-400 text-xs font-bold uppercase">Telefone</span> {activePatient.phone || '-'}</div>
-                                        <div><span className="block text-slate-400 text-xs font-bold uppercase">Nascimento</span> {activePatient.birthdate || '-'}</div>
-                                        <div><span className="block text-slate-400 text-xs font-bold uppercase">CPF</span> {activePatient.cpf || '-'}</div>
-                                    </div>
-                                </IslandCard>
-
-                                {/* Legacy Medical History (ReadOnly) */}
-                                {activePatient.medicalHistory && (
-                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-500">
-                                        <h4 className="font-bold mb-1 flex items-center gap-2 uppercase">Histórico Prévio</h4>
-                                        <p>{activePatient.medicalHistory}</p>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'timeline' && (
-                        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[500px]">
-                            <h3 className="font-bold text-lg mb-6 text-slate-800">Linha do Tempo Completa</h3>
-                            <PatientTimeline events={timelineEvents} loading={loadingTimeline} />
+                        <div className="bg-white p-6 rounded-2xl shadow-sm min-h-[500px]" style={{ border: '1px solid hsl(var(--border))' }}>
+                            <h3 className="font-bold text-lg mb-6" style={{ color: 'hsl(var(--text-main))' }}>Linha do Tempo Completa</h3>
+                            <PatientTimeline
+                                events={timelineEvents}
+                                loading={loadingTimeline}
+                                viewType={viewType}
+                                onEdit={handleEditEvent}
+                                onAddNote={handleAddNote}
+                            />
                         </div>
                     )}
 

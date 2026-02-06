@@ -328,6 +328,7 @@ export interface UnifiedTimelineEvent {
     title: string;
     summary?: string;
     metadata?: any;
+    attachments?: Array<{ name: string; url: string }>;
     createdAt: string;
     createdBy: string;
 }

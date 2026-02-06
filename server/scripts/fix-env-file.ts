@@ -55,7 +55,3 @@ try {
 } catch (error) {
     console.error('❌ Failed to write file:', error);
 }
-`;
-
-
-// IMPORTANT: Do NOT wait for user, I will use notify_user next.
