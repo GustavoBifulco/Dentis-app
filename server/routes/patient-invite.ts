@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import { patients, patientInvitations } from '../db/schema';
+import { patients, patientInvitations, users } from '../db/schema';
 import { db } from '../db';
 import { eq, and, gt } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
@@ -153,21 +153,28 @@ app.get('/:token', authRateLimit, async (c) => {
     }
 });
 
-// POST /api/patient-invite/:token/accept
-// POST /api/patient-invite/:token/accept
-// Marks invitation as used and links patient to user
-app.post('/:token/accept', authRateLimit, async (c) => {
+// POST /api/patient-invite/:token/register
+// Create patient account using custom authentication
+app.post('/:token/register', authRateLimit, async (c) => {
     try {
         const token = c.req.param('token');
-        const { clerkUserId } = await c.req.json();
+        const { email, password, name } = await c.req.json();
 
-        if (!token || !clerkUserId) {
-            return c.json({ error: 'Token and Clerk user ID required' }, 400);
+        if (!token || !email || !password || !name) {
+            return c.json({ error: 'Token, email, password, and name required' }, 400);
+        }
+
+        // Validate password strength
+        if (password.length < 8) {
+            return c.json({ error: 'Password must be at least 8 characters' }, 400);
         }
 
         // Find invitation
         const invitation = await db.query.patientInvitations.findFirst({
             where: eq(patientInvitations.token, token),
+            with: {
+                patient: true,
+            },
         });
 
         if (!invitation) {
@@ -182,26 +189,46 @@ app.post('/:token/accept', authRateLimit, async (c) => {
             return c.json({ error: 'Invitation expired' }, 400);
         }
 
-        // Mark as used
+        // Check if email already exists
+        const existingUser = await db.query.users.findFirst({
+            where: eq(users.email, email),
+        });
+
+        if (existingUser) {
+            return c.json({ error: 'Email already registered' }, 400);
+        }
+
+        // Create user account
+        const { createPatientUser } = await import('../services/auth-service');
+        const { userId, sessionToken } = await createPatientUser({
+            email,
+            password,
+            name,
+            cpf: invitation.patient?.cpf,
+            phone: invitation.patient?.phone,
+        });
+
+        // Mark invitation as used
         await db.update(patientInvitations)
             .set({ usedAt: new Date() })
             .where(eq(patientInvitations.id, invitation.id));
 
         // Link patient to user
         await db.update(patients)
-            .set({ userId: clerkUserId })
+            .set({ userId })
             .where(eq(patients.id, invitation.patientId));
 
         return c.json({
             success: true,
             patientId: invitation.patientId,
-            message: 'Account linked successfully',
+            sessionToken,
+            message: 'Account created successfully',
         });
 
     } catch (error: any) {
-        console.error('Error accepting invitation:', error);
+        console.error('Error registering patient:', error);
         return c.json({
-            error: 'Failed to accept invitation',
+            error: 'Failed to create account',
             details: error.message
         }, 500);
     }

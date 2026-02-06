@@ -18,6 +18,21 @@ export const users = pgTable('users', {
   planType: text('plan_type').default('free'), // free, dentis_pro
   stripeCustomerId: text('stripe_customer_id'),
   stripeConnectedAccountId: text('stripe_connected_account_id'), // For solo professionals
+  // Patient authentication fields
+  passwordHash: text('password_hash'), // For patients with custom auth
+  emailVerified: boolean('email_verified').default(false),
+  verificationToken: text('verification_token'),
+  resetPasswordToken: text('reset_password_token'),
+  resetPasswordExpires: timestamp('reset_password_expires'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Sessions table for patient authentication
+export const sessions = pgTable('sessions', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

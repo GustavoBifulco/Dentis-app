@@ -284,6 +284,29 @@
   --info-foreground: 215 25% 10%;
 }
 
+/* Aurora Gradients */
+.aurora-gradient {
+  background: linear-gradient(90deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--violet-hint)) 100%);
+}
+
+.aurora-gradient-text {
+  background: linear-gradient(90deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--violet-hint)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.aurora-glow {
+  background: radial-gradient(circle at center,
+      hsl(var(--primary) / 0.15) 0%,
+      hsl(var(--violet-hint) / 0.05) 50%,
+      transparent 100%);
+}
+
 @layer base {
   body {
     /* Use tokens instead of hardcoded tailwind colors */
