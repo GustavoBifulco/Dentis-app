@@ -98,6 +98,7 @@ billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), as
             metadata: {
                 provisioningRequestId: provisioningId,
                 dentistId: userId,
+                userId: userId, // Required for Webhook logic
                 planType,
                 seats: String(seats),
                 desiredName: desiredName || '',
