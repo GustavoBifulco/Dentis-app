@@ -12,7 +12,8 @@ import {
     MessageSquare,
     Shield,
     CreditCard,
-    Stethoscope
+    Stethoscope,
+    Edit
 } from 'lucide-react';
 import { LuxButton } from '../Shared';
 import PatientInviteButton from '../PatientInviteButton';
@@ -198,6 +199,16 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({ patient, viewType, onActi
                                     variant="ghost"
                                     size="sm"
                                 />
+                                {!patient.hasAccount && (
+                                    <LuxButton
+                                        variant="ghost"
+                                        size="sm"
+                                        icon={<Edit size={16} />}
+                                        onClick={() => onAction('edit-profile')}
+                                    >
+                                        Editar Perfil
+                                    </LuxButton>
+                                )}
                             </>
                         ) : (
                             <>
