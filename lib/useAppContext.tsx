@@ -141,8 +141,8 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Ensure persist locally
         localStorage.setItem('dentis-theme', JSON.stringify(theme));
 
-        // Save to Backend (Debounced or immediate)
-        const saveToBackend = async () => {
+        // Save to Backend (Debounced)
+        const timer = setTimeout(async () => {
             if (session?.user?.id) {
                 try {
                     const token = await getToken();
@@ -163,10 +163,9 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     console.warn("Failed to save prefs backend", err);
                 }
             }
-        };
-        // Simple debounce: only save if user is logged in. 
-        // ideally use a ref timeout but for now direct call is fine as frequency is low (color picker on release)
-        saveToBackend();
+        }, 1000); // 1s debounce
+
+        return () => clearTimeout(timer);
 
     }, [theme, session, getToken]);
 
