@@ -54,6 +54,68 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Polling Component for Success
+const BillingSuccessView = ({ onComplete }: { onComplete: () => void }) => {
+  const [status, setStatus] = useState('provisioning');
+  const { getToken } = useAuth();
+  // const { initSession } = useAppContext(); // Not available in context, relying on hard reload
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const provisioningId = params.get('provisioning_id');
+
+    if (!provisioningId) {
+      setStatus('error');
+      return;
+    }
+
+    const poll = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`/api/billing-provisioning/provisioning/${provisioningId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'provisioned') {
+            setStatus('complete');
+            // Clear URL params
+            window.history.pushState({}, '', '/');
+            setTimeout(() => {
+              window.location.href = '/'; // Hard reload to clear state and re-init session
+            }, 2000);
+          }
+        }
+      } catch (e) { console.error(e); }
+    };
+
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (status === 'complete') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
+        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-bounce">
+          <CheckCircle2 size={40} />
+        </div>
+        <h2 className="text-3xl font-bold text-slate-800">Tudo Pronto!</h2>
+        <p className="text-slate-500 max-w-md">Sua clínica foi criada com sucesso. Redirecionando...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
+      <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center animate-pulse">
+        <Loader2 size={40} className="animate-spin" />
+      </div>
+      <h2 className="text-3xl font-bold text-slate-800">Preparando sua Clínica...</h2>
+      <p className="text-slate-500 max-w-md">Estamos configurando seu ambiente seguro. Isso pode levar alguns segundos.</p>
+    </div>
+  );
+};
+
 const AppContent: React.FC = () => {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -160,18 +222,7 @@ const AppContent: React.FC = () => {
       case ViewType.COMMUNICATION: return <CommunicationDashboard />;
       case ViewType.AI_ASSISTANT: return <AssistantPage />;
       case ViewType.ADD_CLINIC: return <AddClinicWizard onCancel={() => setCurrentView(ViewType.DASHBOARD)} />;
-      case ViewType.BILLING_SUCCESS: return (
-        <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-bounce">
-            <CheckCircle2 size={40} />
-          </div>
-          <h2 className="text-3xl font-bold text-slate-800">Pagamento Confirmado!</h2>
-          <p className="text-slate-500 max-w-md">
-            Estamos provisionando sua clínica e preparando seu ambiente. Você será redirecionado em instantes.
-          </p>
-          {/* Polling logic would go here in a dedicated component */}
-        </div>
-      );
+      case ViewType.BILLING_SUCCESS: return <BillingSuccessView onComplete={() => window.location.href = '/'} />;
       case ViewType.STOREFRONT: return <Storefront />;
       default: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
     }
@@ -258,68 +309,6 @@ const AppContent: React.FC = () => {
         )}
       </SignedIn>
     </>
-  );
-};
-
-// Polling Component for Success
-const BillingSuccessView = ({ onComplete }: { onComplete: () => void }) => {
-  const [status, setStatus] = useState('provisioning');
-  const { getToken } = useAuth();
-  // const { initSession } = useAppContext(); // Not available in context, relying on hard reload
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const provisioningId = params.get('provisioning_id');
-
-    if (!provisioningId) {
-      setStatus('error');
-      return;
-    }
-
-    const poll = async () => {
-      try {
-        const token = await getToken();
-        const res = await fetch(`/api/billing-provisioning/provisioning/${provisioningId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === 'provisioned') {
-            setStatus('complete');
-            // Clear URL params
-            window.history.pushState({}, '', '/');
-            setTimeout(() => {
-              window.location.href = '/'; // Hard reload to clear state and re-init session
-            }, 2000);
-          }
-        }
-      } catch (e) { console.error(e); }
-    };
-
-    const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  if (status === 'complete') {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-bounce">
-          <CheckCircle2 size={40} />
-        </div>
-        <h2 className="text-3xl font-bold text-slate-800">Tudo Pronto!</h2>
-        <p className="text-slate-500 max-w-md">Sua clínica foi criada com sucesso. Redirecionando...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-      <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center animate-pulse">
-        <Loader2 size={40} className="animate-spin" />
-      </div>
-      <h2 className="text-3xl font-bold text-slate-800">Preparando sua Clínica...</h2>
-      <p className="text-slate-500 max-w-md">Estamos configurando seu ambiente seguro. Isso pode levar alguns segundos.</p>
-    </div>
   );
 };
 
