@@ -67,7 +67,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const { getToken } = useAuth();
     const [theme, setTheme] = useState<{ mode: 'light' | 'dark', accentColor: string }>({
         mode: 'light',
-        accentColor: '#0EA5A5' // Clinical Aurora Teal
+        accentColor: '#2563EB' // Clinical Aurora Blue (Safira)
     });
 
     // Helper: HEX to HSL conversion for Tailwind compatibility
