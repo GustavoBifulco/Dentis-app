@@ -40,6 +40,7 @@ import settings from './routes/settings';
 import records from './routes/records';
 import whatsapp from './routes/whatsapp';
 import overview from './routes/overview';
+import admin from './routes/admin'; // TEMPORARY: Admin utilities
 
 // import { secureHeaders } from 'hono/secure-headers'; // Removed in favor of middleware/security
 import { HTTPException } from 'hono/http-exception';
@@ -107,6 +108,7 @@ app.route('/api/patient-auth', patientAuth);
 app.route('/api/treatment', treatment);
 app.route('/api/anamnesis', anamnesis);
 app.route('/api/settings', settings);
+app.route('/api/admin', admin); // TEMPORARY: Admin utilities
 
 import automations from './routes/automations';
 
