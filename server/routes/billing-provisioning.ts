@@ -80,11 +80,10 @@ billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), as
             status: 'checkout_created',
         });
 
-        // 2. Create Stripe Session
+        // 2. Create Stripe Session (Hosted)
         const origin = c.req.header('origin') || process.env.PUBLIC_APP_URL || 'https://dentis.com.br';
 
         const session = await stripe.checkout.sessions.create({
-            ui_mode: 'embedded',
             line_items: [
                 {
                     price: priceId,
@@ -92,7 +91,8 @@ billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), as
                 },
             ],
             mode: 'subscription',
-            return_url: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}&provisioning_id=${provisioningId}`,
+            success_url: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}&provisioning_id=${provisioningId}`,
+            cancel_url: `${origin}/settings`, // User canceled, go back to settings or dashboard
             client_reference_id: userId,
             metadata: {
                 provisioningRequestId: provisioningId,
@@ -109,7 +109,7 @@ billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), as
             .where(eq(clinicProvisioningRequests.id, provisioningId));
 
         return c.json({
-            clientSecret: session.client_secret,
+            url: session.url,
             provisioningId
         });
 

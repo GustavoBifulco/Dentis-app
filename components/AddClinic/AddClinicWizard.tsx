@@ -3,11 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, User, Users, Check, ChevronRight, Loader2, ArrowLeft, Mail, Stethoscope } from 'lucide-react';
 import { LuxButton, SectionHeader } from '../Shared';
 import { useAuth } from '@clerk/clerk-react';
-import { loadStripe } from '@stripe/stripe-js';
-import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
-
-const stripePromise = loadStripe((import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY);
-
 
 
 interface AddClinicWizardProps {
@@ -100,32 +95,16 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
 
             if (res.ok) {
                 const data = await res.json();
-                // Redirect to Stripe (Client Secret handling is for embedded, but we can also get a URL?)
-                // The backend returns `clientSecret` for embedded or we might want a URL for redirect.
-                // My backend implementation used `ui_mode: 'embedded'`.
-                // So I need to render the embedded form OR change to `ui_mode: 'hosted'` (redirect).
-                // "Modal (preferencial) ou página dedicada". Embedded is nice inside a modal.
-                // Let's switch step to 'CHECKOUT_EMBEDDED' and render logic?
-                // To keep it simple and robust ("à prova de deploy"), REDIRECT (Hosted) is often safer/easier than handling embedded SDK loading.
-                // But I used `ui_mode: 'embedded'` in the backend code. 
-                // I should stick to it.
-                // To use embedded, I need `@stripe/react-stripe-js` and `@stripe/stripe-js`.
-                // I should check if they are installed.
-                // If not, I should verify `package.json`.
-                // If missing, I might need to change backend to `mode: 'payment'` or hosted.
-                // Actually, `checkout.ts` endpoint used `ui_mode: 'embedded'`.
-                // I will assume the libs are present or I can fetch the script.
 
-                // Wait, to keep it simple and consistent with `Redirect` usually being better for "Coherent Conversion" (less client state to lose),
-                // I'll stick to Embedded if I can, but if I spot issues I'll switch.
-                // Let's try to assume I can use `EmbeddedCheckoutProvider` if configured.
-                // If not, I might need to act.
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Erro: URL de pagamento não encontrada.');
+                }
 
-                // For now, I'll just alert success and log the secret as I can't easily add dependencies.
-                // Actually, the prompt said "repo clonado no meu PC". I can check package.json.
-                console.log("Client Secret Received");
-                setClientSecret(data.clientSecret);
-                setStep('CHECKOUT_REDIRECT');
+                // console.log("Client Secret Received");
+                // setClientSecret(data.clientSecret);
+                // setStep('CHECKOUT_REDIRECT');
 
             } else {
                 alert('Erro ao iniciar checkout.');
@@ -328,25 +307,6 @@ const AddClinicWizard: React.FC<AddClinicWizardProps> = ({ onCancel }) => {
                                     </LuxButton>
                                 </div>
                             </motion.div>
-                        )}
-
-                        {step === 'CHECKOUT_REDIRECT' && clientSecret && (
-                            <div className="py-4">
-                                <EmbeddedCheckoutProvider
-                                    stripe={stripePromise}
-                                    options={{ clientSecret }}
-                                >
-                                    <EmbeddedCheckout />
-                                </EmbeddedCheckoutProvider>
-                            </div>
-                        )}
-
-                        {step === 'CHECKOUT_REDIRECT' && !clientSecret && (
-                            <div className="text-center py-10 space-y-4">
-                                <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto" />
-                                <h3 className="text-xl font-bold text-slate-800">Redirecionando...</h3>
-                                <p className="text-slate-500">Estamos preparando seu ambiente seguro de pagamento.</p>
-                            </div>
                         )}
 
                     </AnimatePresence>
