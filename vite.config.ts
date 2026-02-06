@@ -27,7 +27,24 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      chunkSizeWarningLimit: 1000
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              // Extract icons (large) to own chunk
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              if (id.includes('@clerk')) {
+                return 'vendor-auth';
+              }
+              // Keep react and others together to avoid circular dependencies
+              return 'vendor';
+            }
+          }
+        }
+      }
     }
   };
 });

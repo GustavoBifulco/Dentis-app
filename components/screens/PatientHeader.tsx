@@ -196,7 +196,7 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({ patient, viewType, onActi
                                         icon={<UserPlus size={16} />}
                                         onClick={() => onAction('invite-patient')}
                                     >
-                                        Convidar
+                                        Enviar Link
                                     </LuxButton>
                                 )}
                             </>
