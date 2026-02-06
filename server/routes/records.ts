@@ -139,7 +139,8 @@ app.get('/timeline/:patientId', async (c) => {
         resourceId: patientId,
         tenantId: organizationId,
         ip: c.req.header('x-forwarded-for') || 'unknown',
-        details: { patientId }
+        details: { patientId },
+        resource: 'patient_timeline' // ✅ Explicit resource to prevent null constraint violation
     });
 
     return c.json({ ok: true, timeline });

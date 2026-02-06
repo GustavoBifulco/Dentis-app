@@ -144,6 +144,10 @@ export interface Patient {
     medicalHistory?: string;
     allergies?: string;
     medications?: string;
+
+    // Audit fields
+    createdAt?: string | Date;
+    updatedAt?: string | Date;
 }
 
 export interface Address {

@@ -777,6 +777,18 @@ export const patientInvitations = pgTable('patient_invitations', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const patientInvitationsRelations = relations(patientInvitations, ({ one }) => ({
+  patient: one(patients, {
+    fields: [patientInvitations.patientId],
+    references: [patients.id],
+  }),
+  organization: one(organizations, {
+    fields: [patientInvitations.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+
 // Marketplace / Suppliers
 export const catalogItems = pgTable('catalog_items', {
   id: serial('id').primaryKey(),

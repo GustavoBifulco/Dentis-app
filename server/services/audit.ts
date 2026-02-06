@@ -6,6 +6,7 @@ type AuditEvent = {
     action: string;
     resourceType: string;
     resourceId?: string | number;
+    resource?: string; // Optional explicit resource name
     tenantId?: string;
     ip?: string;
     reason?: string;
@@ -22,7 +23,7 @@ export const logAudit = async (event: AuditEvent) => {
             userId: String(event.userId || 'system'),
             action: event.action,
             organizationId: event.tenantId, // Map tenantId to organizationId column
-            resource: event.resourceId ? `${event.resourceType}/${event.resourceId}` : event.resourceType,
+            resource: event.resource || (event.resourceId ? `${event.resourceType}/${event.resourceId}` : event.resourceType),
             ipAddress: event.ip || '0.0.0.0', // Corrected column name from ip to ipAddress
             details: JSON.stringify({ ...(event.details || {}), reason: event.reason }),
             createdAt: new Date()
