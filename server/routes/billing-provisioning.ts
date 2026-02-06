@@ -91,6 +91,7 @@ billingProvisioning.post('/checkout', zValidator('json', provisioningSchema), as
                 },
             ],
             mode: 'subscription',
+            allow_promotion_codes: true,
             success_url: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}&provisioning_id=${provisioningId}`,
             cancel_url: `${origin}/settings`, // User canceled, go back to settings or dashboard
             client_reference_id: userId,
