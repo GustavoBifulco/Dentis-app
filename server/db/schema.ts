@@ -36,6 +36,13 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.clerkId],
+  }),
+}));
+
 export const organizations = pgTable('organizations', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
