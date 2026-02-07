@@ -11,6 +11,7 @@ import { useAppContext } from '../lib/useAppContext';
 import { UserProfile, useClerk } from '@clerk/clerk-react';
 import { ColorPicker } from './ColorPicker';
 import { ConnectSettings } from './stripe/ConnectSettings';
+import { useI18n } from '../lib/i18n';
 
 interface SettingsProps {
   onNavigate: (view: ViewType) => void;
@@ -28,6 +29,7 @@ const COLORS = [
 const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
   const { showToast, theme, setTheme, session } = useAppContext();
   const { openUserProfile } = useClerk(); // Clerk hook to open profile modal
+  const { t, locale, setLocale } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -128,8 +130,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
 
       <SectionHeader
-        title="Configurações"
-        subtitle="Gerencie preferências, aparência e integrações do sistema."
+        title={t('settings.title')}
+        subtitle={t('settings.subtitle', { default: "Gerencie preferências, aparência e integrações do sistema." })}
       />
 
       {/* Aparência */}
@@ -137,28 +139,28 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         <div className="p-5 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-border">
           <h3 className="font-black text-text-main flex items-center gap-2">
             <Palette size={20} />
-            Aparência
+            {t('settings.appearance')}
           </h3>
         </div>
 
         {/* Tema Claro/Escuro */}
         <SettingRow
           icon={theme.mode === 'light' ? Sun : Moon}
-          label="Modo de Cor"
-          description="Escolha entre tema claro ou escuro"
+          label={t('settings.darkMode')}
+          description={t('settings.darkModeDesc')}
         >
           <div className="flex bg-surface-hover p-1 rounded-lg">
             <button
               onClick={() => setTheme({ ...theme, mode: 'light' })}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-text-muted'}`}
             >
-              Claro
+              {t('settings.light')}
             </button>
             <button
               onClick={() => setTheme({ ...theme, mode: 'dark' })}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${theme.mode === 'dark' ? 'bg-surface text-text-main shadow-sm' : 'text-text-muted'}`}
             >
-              Escuro
+              {t('settings.dark')}
             </button>
           </div>
         </SettingRow>
@@ -171,8 +173,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                 <Palette size={20} strokeWidth={2.5} />
               </div>
               <div>
-                <span className="block font-bold text-text-main text-sm">Cor Principal</span>
-                <span className="text-xs text-text-muted">Identidade visual da clínica</span>
+                <span className="block font-bold text-text-main text-sm">{t('settings.accentColor')}</span>
+                <span className="text-xs text-text-muted">{t('settings.accentColorDesc')}</span>
               </div>
             </div>
 
@@ -190,14 +192,14 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         <div className="p-5 bg-gradient-to-r from-warning/10 to-warning/5 border-b border-border">
           <h3 className="font-black text-text-main flex items-center gap-2">
             <Bell size={20} />
-            Notificações
+            {t('settings.notifications')}
           </h3>
         </div>
 
         <SettingRow
           icon={Bell}
-          label="Consultas e Agendamentos"
-          description="Lembretes de consultas agendadas"
+          label={t('settings.notificationApps')}
+          description={t('settings.notificationAppsDesc')}
         >
           <Toggle
             enabled={notifications.emailAppointments}
@@ -207,8 +209,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
 
         <SettingRow
           icon={CreditCard}
-          label="Pagamentos e Cobranças"
-          description="Alertas de pagamentos recebidos"
+          label={t('settings.notificationFinancial')}
+          description={t('settings.notificationFinancialDesc')}
         >
           <Toggle
             enabled={notifications.emailPayments}
@@ -218,8 +220,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
 
         <SettingRow
           icon={Mail}
-          label="Marketing e Novidades"
-          description="Dicas e atualizações do sistema"
+          label={t('settings.notificationMarketing')}
+          description={t('settings.notificationMarketingDesc')}
         >
           <Toggle
             enabled={notifications.emailMarketing}
@@ -233,24 +235,24 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         <div className="p-5 bg-gradient-to-r from-primary/5 to-secondary/10 border-b border-border">
           <h3 className="font-black text-text-main flex items-center gap-2">
             <Users2 size={20} />
-            Equipe e Acesso
+            {t('settings.team')}
           </h3>
         </div>
 
         <SettingRow
           icon={Users2}
-          label="Gerenciar Equipe"
-          description="Usuários, permissões e comissões"
+          label={t('settings.manageTeam')}
+          description={t('settings.manageTeamDesc')}
           onClick={() => onNavigate(ViewType.MANAGE_CLINIC)}
         />
 
         <SettingRow
           icon={Shield}
-          label="Segurança da Conta"
-          description="Senha, Autenticação de Dois Fatores (2FA) e Sessões"
+          label={t('settings.security')}
+          description={t('settings.securityDesc')}
           onClick={() => openUserProfile()}
         >
-          <button onClick={() => openUserProfile()} className="text-xs font-bold text-primary hover:underline px-2">Gerenciar</button>
+          <button onClick={() => openUserProfile()} className="text-xs font-bold text-primary hover:underline px-2">{t('settings.manage')}</button>
         </SettingRow>
       </div>
 
@@ -259,7 +261,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         <div className="p-5 bg-gradient-to-r from-cyan-500/10 to-blue-500/5 border-b border-border">
           <h3 className="font-black text-text-main flex items-center gap-2">
             <CreditCard size={20} className="text-cyan-500" />
-            Pagamentos & Marketplace
+            {t('settings.payments')}
           </h3>
         </div>
         <div className="p-5">
@@ -267,8 +269,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         </div>
         <SettingRow
           icon={Globe}
-          label="Demo Storefront"
-          description="Visualizar página de pagamentos diretos (Demo)"
+          label={t('settings.demoStorefront')}
+          description={t('settings.demoStorefrontDesc')}
           onClick={() => onNavigate(ViewType.STOREFRONT)}
         />
       </div>
@@ -278,28 +280,48 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         <div className="p-5 bg-gradient-to-r from-surface-hover to-bg border-b border-border">
           <h3 className="font-black text-text-main flex items-center gap-2">
             <SettingsIcon size={20} />
-            Sistema
+            {t('settings.system')}
           </h3>
         </div>
 
         <SettingRow
           icon={Database}
-          label="Backup e Dados"
-          description="Exportar e restaurar informações"
+          label={t('settings.backup')}
+          description={t('settings.backupDesc')}
           onClick={() => onNavigate(ViewType.BACKUP)}
         />
 
         <SettingRow
           icon={Globe}
-          label="Idioma e Região"
-          description="Português (Brasil)"
-          onClick={() => showToast('Em breve: Seleção de idioma', 'info')}
-        />
+          label={t('settings.language')}
+          description={t('settings.languageDesc')}
+        >
+          <div className="flex bg-surface-hover p-1 rounded-lg">
+            <button
+              onClick={() => setLocale('pt-BR')}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${locale === 'pt-BR' ? 'bg-surface text-primary shadow-sm' : 'text-text-muted'}`}
+            >
+              PT
+            </button>
+            <button
+              onClick={() => setLocale('en')}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${locale === 'en' ? 'bg-surface text-primary shadow-sm' : 'text-text-muted'}`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLocale('es')}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${locale === 'es' ? 'bg-surface text-primary shadow-sm' : 'text-text-muted'}`}
+            >
+              ES
+            </button>
+          </div>
+        </SettingRow>
 
         <SettingRow
           icon={FileText}
-          label="Termos e Privacidade"
-          description="Políticas e documentos legais"
+          label={t('settings.terms')}
+          description={t('settings.termsDesc')}
           onClick={() => onNavigate(ViewType.TERMS)}
         />
       </div>
@@ -307,7 +329,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
       {/* Versão */}
       <div className="text-center text-xs text-slate-400 mt-8">
         <p className="font-bold">Dentis OS v2.0.0</p>
-        <p className="mt-1">© 2024 Dentis. Todos os direitos reservados.</p>
+        <p className="mt-1">{t('settings.copyright')}</p>
       </div>
 
     </div>

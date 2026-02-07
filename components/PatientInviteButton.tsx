@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { UserPlus, Copy, Check, Loader, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LuxButton } from './Shared';
+import { useI18n } from '../lib/i18n';
 
 interface PatientInviteButtonProps {
     patientId: number;
@@ -22,6 +23,7 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
     size = 'md'
 }) => {
     const { getToken } = useAuth();
+    const { t } = useI18n();
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [invitationLink, setInvitationLink] = useState<string | null>(null);
@@ -49,9 +51,9 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
 
             if (!response.ok) {
                 if (data.hasAccount) {
-                    setError('Paciente já possui conta.');
+                    setError(t('patients.invite.alreadyHasAccount'));
                 } else {
-                    throw new Error(data.error || 'Failed to create invitation');
+                    throw new Error(data.error || t('patients.invite.failed'));
                 }
                 return;
             }
@@ -59,7 +61,7 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
             setInvitationLink(data.invitationLink);
 
         } catch (err: any) {
-            setError(err.message || 'Failed to generate invitation');
+            setError(err.message || t('patients.invite.failed'));
         } finally {
             setLoading(false);
         }
@@ -73,7 +75,7 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
-            setError('Failed to copy link');
+            setError(t('common.error'));
         }
     };
 
@@ -121,7 +123,7 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                             {/* Header */}
                             <div className="p-6 border-b border-gray-100 flex items-center justify-between" style={{ borderColor: 'hsl(var(--border))' }}>
                                 <div>
-                                    <h2 className="text-2xl font-black" style={{ color: 'hsl(var(--text-main))' }}>Convidar Paciente</h2>
+                                    <h2 className="text-2xl font-black" style={{ color: 'hsl(var(--text-main))' }}>{t('patients.invite.title')}</h2>
                                     <p className="text-sm mt-1" style={{ color: 'hsl(var(--text-muted))' }}>{patientName}</p>
                                 </div>
                                 <button
@@ -138,7 +140,7 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                                 {loading && (
                                     <div className="flex flex-col items-center justify-center py-8">
                                         <Loader size={48} className="animate-spin mb-4" style={{ color: 'hsl(var(--primary))' }} />
-                                        <p style={{ color: 'hsl(var(--text-muted))' }}>Gerando link de convite...</p>
+                                        <p style={{ color: 'hsl(var(--text-muted))' }}>{t('patients.invite.generating')}</p>
                                     </div>
                                 )}
 
@@ -151,16 +153,15 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                                 {invitationLink && (
                                     <div className="space-y-4">
                                         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                                            <p className="text-sm font-bold text-blue-900 mb-2">✅ Link Gerado!</p>
+                                            <p className="text-sm font-bold text-blue-900 mb-2">✅ {t('patients.invite.success')}</p>
                                             <p className="text-xs text-blue-700">
-                                                Envie este link para o paciente via WhatsApp, Email ou SMS.
-                                                Válido por 7 dias.
+                                                {t('patients.invite.instructions')}
                                             </p>
                                         </div>
 
                                         <div className="bg-gray-50 rounded-xl p-4" style={{ backgroundColor: 'hsl(var(--muted))' }}>
                                             <p className="text-xs font-bold mb-2 uppercase tracking-wide" style={{ color: 'hsl(var(--text-muted))' }}>
-                                                Link de Convite
+                                                {t('patients.invite.link')}
                                             </p>
                                             <div className="flex items-center gap-2">
                                                 <input
@@ -179,7 +180,7 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                                                         size="sm"
                                                         icon={copied ? <Check size={16} /> : <Copy size={16} />}
                                                     >
-                                                        {copied ? "Copiado!" : "Copiar"}
+                                                        {copied ? t('common.copied') : t('common.copy')}
                                                     </LuxButton>
                                                 </div>
                                             </div>
@@ -192,7 +193,7 @@ const PatientInviteButton: React.FC<PatientInviteButtonProps> = ({
                             {invitationLink && (
                                 <div className="p-6 border-t border-gray-100 flex justify-end" style={{ borderColor: 'hsl(var(--border))' }}>
                                     <LuxButton onClick={handleClose} variant="primary">
-                                        Fechar
+                                        {t('common.close')}
                                     </LuxButton>
                                 </div>
                             )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SectionHeader, LuxButton, IslandCard, LoadingState } from './Shared';
 import { CheckCircle2, FileText, ArrowRight, Save } from 'lucide-react';
 import { useAppContext } from '../lib/useAppContext';
+import { useI18n } from '../lib/i18n';
 
 interface Question {
     id: number;
@@ -21,6 +22,7 @@ import { useAuth } from '@clerk/clerk-react';
 const Anamnesis: React.FC<AnamnesisProps> = ({ patientId }) => {
     const { getToken } = useAuth();
     const { showToast } = useAppContext();
+    const { t } = useI18n();
     const [template, setTemplate] = useState<any>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -55,7 +57,7 @@ const Anamnesis: React.FC<AnamnesisProps> = ({ patientId }) => {
             }
         } catch (error) {
             console.error(error);
-            showToast('Erro ao carregar anamnese', 'error');
+            showToast(t('anamnesis.loadError'), 'error');
         } finally {
             setLoading(false);
         }
@@ -86,13 +88,13 @@ const Anamnesis: React.FC<AnamnesisProps> = ({ patientId }) => {
             });
 
             if (res.ok) {
-                showToast('Anamnese salva com sucesso!', 'success');
+                showToast(t('anamnesis.saveSuccess'), 'success');
             } else {
-                showToast('Erro ao salvar anamnese', 'error');
+                showToast(t('anamnesis.saveError'), 'error');
             }
         } catch (error) {
             console.error(error);
-            showToast('Erro ao salvar anamnese', 'error');
+            showToast(t('anamnesis.saveError'), 'error');
         } finally {
             setSaving(false);
         }

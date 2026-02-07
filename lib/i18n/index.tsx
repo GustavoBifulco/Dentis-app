@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAuth } from "@clerk/clerk-react";
+import { useAppContext } from '../useAppContext';
 import { Locale, Translations } from './types';
 import ptBR from './locales/pt-BR';
 import en from './locales/en';
@@ -44,8 +46,47 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const setLocale = (newLocale: Locale) => {
         setLocaleState(newLocale);
         localStorage.setItem('dentis-locale', newLocale);
-        // TODO: Sync with DB preferences here or in a separate effect
     };
+
+    const { getToken } = useAuth();
+    const { session } = useAppContext();
+
+    // Sync FROM backend (Cloud > Local)
+    useEffect(() => {
+        if (session?.preferences?.locale) {
+            const cloudLocale = session.preferences.locale as Locale;
+            if (['pt-BR', 'en', 'es'].includes(cloudLocale) && cloudLocale !== locale) {
+                console.log(`Syncing locale from cloud: ${cloudLocale}`);
+                setLocaleState(cloudLocale);
+                localStorage.setItem('dentis-locale', cloudLocale);
+            }
+        }
+    }, [session?.preferences?.locale]);
+
+    // Sync TO backend
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (session?.user?.id) {
+                try {
+                    const token = await getToken();
+                    if (!token) return;
+
+                    await fetch('/api/preferences', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ locale })
+                    });
+                } catch (err) {
+                    console.warn("Failed to save locale pref", err);
+                }
+            }
+        }, 1000); // Debounce
+
+        return () => clearTimeout(timer);
+    }, [locale, session?.user?.id]);
 
     // Helper to get nested keys (e.g. 'dashboard.greeting')
     const getNestedTranslation = (obj: any, path: string): string | undefined => {

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import { useAppContext } from '../lib/useAppContext';
+import { useI18n } from '../lib/i18n';
 
 import PatientTimeline from './PatientTimeline';
 import EncounterForm from './EncounterForm';
@@ -38,6 +39,7 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
     const [activePatient, setActivePatient] = useState<Patient>(patient);
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const { showToast } = useAppContext();
+    const { t } = useI18n();
     const { getToken } = useAuth();
 
     // Modals
@@ -116,11 +118,11 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 })
             });
             if (res.ok) {
-                showToast('Alerta adicionado', 'success');
+                showToast(t('common.saved'), 'success');
                 fetchAlerts();
             }
         } catch (e) {
-            showToast('Erro ao salvar alerta', 'error');
+            showToast(t('common.failed'), 'error');
         }
     };
 
@@ -157,7 +159,7 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
 
     const handleEditSave = (updated: Patient) => {
         setActivePatient(updated);
-        showToast('Perfil atualizado com sucesso!', 'success');
+        showToast(t('common.saved'), 'success');
         setIsEditModalOpen(false);
     };
 
@@ -189,14 +191,14 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
             });
 
             if (res.ok) {
-                showToast(isDraft ? 'Rascunho salvo' : 'Atendimento finalizado', 'success');
+                showToast(t('common.saved'), 'success');
                 setIsCreatingEncounter(false);
                 fetchTimeline(); // Refresh
             } else {
                 throw new Error('Falha ao salvar');
             }
         } catch (e) {
-            showToast('Erro ao salvar atendimento', 'error');
+            showToast(t('common.failed'), 'error');
         }
     };
 
@@ -219,11 +221,11 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 break;
             case 'new-appointment':
                 // TODO: Open appointment modal
-                showToast('Funcionalidade em desenvolvimento', 'info');
+                showToast(t('common.comingSoon'), 'info');
                 break;
             case 'upload-document':
                 // TODO: Open upload modal
-                showToast('Funcionalidade em desenvolvimento', 'info');
+                showToast(t('common.comingSoon'), 'info');
                 break;
             case 'create-charge':
                 setIsBillingModalOpen(true);
@@ -236,14 +238,14 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 break;
             case 'my-payments':
                 // TODO: Navigate to patient wallet
-                showToast('Funcionalidade em desenvolvimento', 'info');
+                showToast(t('common.comingSoon'), 'info');
                 break;
             case 'consents':
                 setActiveTab('docs');
                 break;
             case 'contact-clinic':
                 // TODO: Open chat/contact modal
-                showToast('Funcionalidade em desenvolvimento', 'info');
+                showToast(t('common.comingSoon'), 'info');
                 break;
             case 'edit-profile':
                 setIsEditModalOpen(true);
@@ -252,12 +254,12 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
     };
 
     const handleEditEvent = (event: any) => {
-        showToast('Edição de evento em desenvolvimento', 'info');
+        showToast(t('common.comingSoon'), 'info');
         // TODO: Open edit modal based on event type
     };
 
     const handleAddNote = (event: any) => {
-        showToast('Adicionar nota em desenvolvimento', 'info');
+        showToast(t('common.comingSoon'), 'info');
         // TODO: Open note modal
     };
 
@@ -270,7 +272,7 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                     onClick={onBack}
                     className="p-3 hover:bg-slate-50 text-slate-500 transition-colors flex items-center gap-2 text-sm font-medium"
                 >
-                    <ArrowLeft size={16} /> Voltar para Lista
+                    <ArrowLeft size={16} /> {t('common.back')}
                 </button>
             </div>
 
@@ -465,7 +467,7 @@ const PatientRecord: React.FC<PatientRecordProps> = ({ patient, onBack }) => {
                 patient={activePatient}
                 onConfirm={async () => {
                     // Re-implement delete logic if needed or pass existing handler
-                    showToast('Funcionalidade de exclusão mantida.', 'info');
+                    showToast(t('common.comingSoon'), 'info');
                     setIsDeleteModalOpen(false);
                 }}
             />

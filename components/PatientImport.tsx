@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { LuxButton, IslandCard } from './Shared';
+import { useI18n } from '../lib/i18n';
 
 // --- CONSTANTS & HELPERS ---
 
@@ -25,15 +26,15 @@ const COLUMN_MAPPINGS: Record<string, string[]> = {
 };
 
 const MAPPABLE_FIELDS = [
-    { key: 'name', label: 'Nome Completo', icon: User, required: true },
-    { key: 'firstName', label: 'Primeiro Nome', icon: User },
-    { key: 'lastName', label: 'Sobrenome', icon: User },
-    { key: 'phone', label: 'Telefone/WhatsApp', icon: Phone },
-    { key: 'email', label: 'E-mail', icon: Mail },
-    { key: 'cpf', label: 'CPF', icon: FileText },
-    { key: 'birthDate', label: 'Nascimento', icon: Calendar },
-    { key: 'address', label: 'Endereço', icon: MapPin },
-    { key: 'occupation', label: 'Profissão', icon: Briefcase },
+    { key: 'name', label: 'patients.import.fields.fullName', icon: User, required: true },
+    { key: 'firstName', label: 'patients.import.fields.firstName', icon: User },
+    { key: 'lastName', label: 'patients.import.fields.lastName', icon: User },
+    { key: 'phone', label: 'patients.import.fields.phone', icon: Phone },
+    { key: 'email', label: 'patients.import.fields.email', icon: Mail },
+    { key: 'cpf', label: 'patients.import.fields.cpf', icon: FileText },
+    { key: 'birthDate', label: 'patients.import.fields.birthdate', icon: Calendar },
+    { key: 'address', label: 'patients.import.fields.address', icon: MapPin },
+    { key: 'occupation', label: 'patients.import.fields.profession', icon: Briefcase },
 ];
 
 function normalizeColumnName(col: string): string {
@@ -52,6 +53,7 @@ interface PatientImportProps {
 
 const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSuccess }) => {
     const { getToken } = useAuth();
+    const { t } = useI18n();
     const [step, setStep] = useState<Step>('upload');
     const [file, setFile] = useState<File | null>(null);
     const [rawData, setRawData] = useState<any[]>([]);
@@ -89,7 +91,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
         const fileExtension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
 
         if (!fileExtension || !validExtensions.includes(fileExtension)) {
-            setError('Formato inválido. Use CSV ou Excel (.xlsx, .xls).');
+            setError(t('patients.import.errors.invalidFormat'));
             return;
         }
 
@@ -116,7 +118,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                         autoMapColumns(detectedHeaders);
                         setStep('mapping');
                     } else {
-                        setError('O arquivo CSV parece estar vazio.');
+                        setError(t('patients.import.errors.emptyCsv'));
                     }
                     setLoading(false);
                 },
@@ -142,7 +144,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                         autoMapColumns(detectedHeaders);
                         setStep('mapping');
                     } else {
-                        setError('O arquivo Excel parece estar vazio.');
+                        setError(t('patients.import.errors.emptyExcel'));
                     }
                 } catch (err) {
                     setError('Erro ao processar Excel.');
@@ -151,7 +153,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
             };
             reader.readAsBinaryString(file);
         } else {
-            setError('Formato não suportado.');
+            setError(t('patients.import.errors.unsupportedFormat'));
             setLoading(false);
         }
     };
@@ -214,7 +216,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
     const handleContinueToPreview = () => {
         const transformed = transformData(rawData, columnMapping);
         if (transformed.length === 0) {
-            setError("Identifique a coluna de NOME para prosseguir.");
+            setError(t('patients.import.errors.identifyNameColumn'));
             return;
         }
         setPatients(transformed);
@@ -243,7 +245,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
 
         try {
             const token = await getToken();
-            if (!token) throw new Error('Não autenticado');
+            if (!token) throw new Error(t('common.unauthorized'));
 
             const payloadPath = patients.map(({ id, ...rest }) => ({
                 ...rest,
@@ -260,13 +262,13 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Erro ao importar');
+            if (!response.ok) throw new Error(data.error || t('patients.import.errors.importFailed'));
 
             setImportResult(data);
             setStep('summary');
             if (data.success) onSuccess();
         } catch (err: any) {
-            setError(err.message || 'Erro ao processar');
+            setError(err.message || t('patients.import.errors.processFailed'));
         } finally {
             setLoading(false);
         }
@@ -277,10 +279,10 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
     const renderStepper = () => (
         <div className="flex items-center justify-center mb-12 px-12">
             {[
-                { id: 'upload', label: 'Upload' },
-                { id: 'mapping', label: 'Mapeamento' },
-                { id: 'preview', label: 'Revisão' },
-                { id: 'summary', label: 'Concluído' }
+                { id: 'upload', label: t('patients.import.steps.upload') },
+                { id: 'mapping', label: t('patients.import.steps.mapping') },
+                { id: 'preview', label: t('patients.import.steps.preview') },
+                { id: 'summary', label: t('patients.import.steps.completed') }
             ].map((s, idx, arr) => (
                 <React.Fragment key={s.id}>
                     <div className="flex flex-col items-center relative">
@@ -311,8 +313,8 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                 {/* Header */}
                 <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white z-10">
                     <div>
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Importação de Pacientes</h2>
-                        <p className="text-sm text-slate-400 font-medium uppercase tracking-widest mt-1">Dentis OS Data Transfer</p>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">{t('patients.import.title')}</h2>
+                        <p className="text-sm text-slate-400 font-medium uppercase tracking-widest">{t('patients.import.subtitle')}</p>
                     </div>
                     <button onClick={onClose} className="w-12 h-12 flex items-center justify-center hover:bg-slate-100 rounded-2xl transition-all text-slate-400 hover:text-slate-900">
                         <X size={24} />
@@ -341,10 +343,9 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                     <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner shadow-blue-100/50">
                                         <Upload size={48} strokeWidth={2.5} />
                                     </div>
-                                    <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Selecione seu arquivo</h3>
+                                    <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">{t('patients.import.dragDropTitle')}</h3>
                                     <p className="text-slate-500 mb-10 text-center max-w-sm font-medium leading-relaxed">
-                                        Arraste e solte seu arquivo .csv ou .xlsx aqui. <br />
-                                        O Dentis detectará as colunas automaticamente.
+                                        {t('patients.import.dragDropDesc')}
                                     </p>
                                     <input
                                         type="file"
@@ -363,7 +364,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                         loading={loading}
                                         className="px-12 py-4 text-base"
                                     >
-                                        Procurar Arquivo
+                                        {t('patients.import.browseFile')}
                                     </LuxButton>
                                 </div>
 
@@ -372,10 +373,9 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                         <Info size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="font-black text-blue-900 text-sm uppercase tracking-widest">Dica Premium</h4>
+                                        <h4 className="font-black text-blue-900 text-sm uppercase tracking-widest">{t('patients.import.premiumTipTitle')}</h4>
                                         <p className="text-blue-700 text-sm leading-relaxed mt-2 font-medium">
-                                            Arquivos com cabeçalho na primeira linha são processados instantaneamente.
-                                            Suportamos nomes separados ou completos, e formatos flexíveis de CPF e Telefone.
+                                            {t('patients.import.premiumTipDesc')}
                                         </p>
                                     </div>
                                 </IslandCard>
@@ -386,16 +386,16 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                             <div className="space-y-8">
                                 <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-200/50">
                                     <div className="bg-slate-50/80 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
-                                        <h3 className="font-black text-slate-900 tracking-tight">Mapeamento Inteligente</h3>
+                                        <h3 className="font-black text-slate-900 tracking-tight">{t('patients.import.smartMapping')}</h3>
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-white px-3 py-1 rounded-full border border-slate-100">{file?.name}</span>
                                     </div>
                                     <div className="p-0">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="bg-slate-50/30">
-                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Destino (Dentis)</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Status</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Origem (Seu Arquivo)</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('patients.import.destination')}</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">{t('patients.import.status')}</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('patients.import.source')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
@@ -409,7 +409,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                                                         <field.icon size={20} strokeWidth={2.5} />
                                                                     </div>
                                                                     <div>
-                                                                        <div className="text-sm font-black text-slate-900">{field.label} {field.required && <span className="text-red-500">*</span>}</div>
+                                                                        <div className="text-sm font-black text-slate-900">{t(field.label)} {field.required && <span className="text-red-500">*</span>}</div>
                                                                         <div className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-0.5">Módulo Paciente</div>
                                                                     </div>
                                                                 </div>
@@ -417,11 +417,11 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                                             <td className="px-8 py-6 text-center">
                                                                 {mappedHeader ? (
                                                                     <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
-                                                                        <Check size={12} strokeWidth={4} /> Mapeado
+                                                                        <Check size={12} strokeWidth={4} /> {t('patients.import.mapped')}
                                                                     </span>
                                                                 ) : (
                                                                     <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100">
-                                                                        Pendente
+                                                                        {t('patients.import.pending')}
                                                                     </span>
                                                                 )}
                                                             </td>
@@ -432,7 +432,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                                                     className={`w-full bg-slate-50 border rounded-2xl px-5 py-3 text-sm font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all ${mappedHeader ? 'border-blue-100 text-blue-900' : 'border-slate-100 text-slate-400'
                                                                         }`}
                                                                 >
-                                                                    <option value="">-- Ignorar Coluna --</option>
+                                                                    <option value="">{t('patients.import.ignoreColumn')}</option>
                                                                     {headers.map(h => (
                                                                         <option key={h} value={h}>{h}</option>
                                                                     ))}
@@ -446,14 +446,14 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
-                                    <LuxButton variant="ghost" onClick={() => setStep('upload')} icon={<ArrowLeft size={18} />}>Trocar Arquivo</LuxButton>
+                                    <LuxButton variant="ghost" onClick={() => setStep('upload')} icon={<ArrowLeft size={18} />}>{t('patients.import.changeFile')}</LuxButton>
                                     <LuxButton
                                         disabled={!Object.values(columnMapping).includes('name') && !Object.values(columnMapping).includes('firstName')}
                                         onClick={handleContinueToPreview}
                                         icon={<ChevronRight size={18} />}
                                         className="px-10"
                                     >
-                                        Revisar Pacientes
+                                        {t('patients.import.reviewPatients')}
                                     </LuxButton>
                                 </div>
                             </div>
@@ -463,8 +463,8 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                             <div className="space-y-8">
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Revisão e Ajustes</h3>
-                                        <p className="text-sm text-slate-400 font-medium mt-1">Limpamos os dados para você. Clique em qualquer campo para editar.</p>
+                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">{t('patients.import.reviewTitle')}</h3>
+                                        <p className="text-sm text-slate-400 font-medium mt-1">{t('patients.import.reviewDesc')}</p>
                                     </div>
                                     <LuxButton
                                         onClick={handleUpload}
@@ -472,7 +472,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                         icon={<Check size={20} strokeWidth={3} />}
                                         className="px-12 py-4"
                                     >
-                                        Importar {patients.length} Pacientes
+                                        {t('patients.import.importCount', { count: patients.length })}
                                     </LuxButton>
                                 </div>
 
@@ -481,9 +481,9 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                         <table className="w-full text-left text-sm border-collapse">
                                             <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-md z-10 border-b border-slate-100">
                                                 <tr>
-                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Identificação</th>
-                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contato Profissional</th>
-                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ações</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patients.import.col.identification')}</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patients.import.col.contact')}</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">{t('patients.import.col.actions')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
@@ -512,7 +512,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                                                                 type="text"
                                                                                 value={p.cpf || ''}
                                                                                 onChange={(e) => handleCellChange(idx, 'cpf', e.target.value)}
-                                                                                placeholder="CPF não informado"
+                                                                                placeholder={t('patients.import.noCpf')}
                                                                                 className="bg-transparent border-none focus:ring-2 focus:ring-blue-100 px-2 rounded-lg py-0.5 w-full uppercase"
                                                                             />
                                                                         </div>
@@ -528,7 +528,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                                                         type="text"
                                                                         value={p.email || ''}
                                                                         onChange={(e) => handleCellChange(idx, 'email', e.target.value)}
-                                                                        placeholder="Sem e-mail"
+                                                                        placeholder={t('patients.import.noEmail')}
                                                                         className="bg-transparent border-none focus:ring-2 focus:ring-blue-100 px-2 py-1 rounded-xl text-sm font-medium text-slate-600 w-full transition-all"
                                                                     />
                                                                 </div>
@@ -538,7 +538,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                                                         type="text"
                                                                         value={p.phone || ''}
                                                                         onChange={(e) => handleCellChange(idx, 'phone', e.target.value)}
-                                                                        placeholder="Sem telefone"
+                                                                        placeholder={t('patients.import.noPhone')}
                                                                         className="bg-transparent border-none focus:ring-2 focus:ring-blue-100 px-2 py-1 rounded-xl text-sm font-medium text-slate-600 w-full transition-all"
                                                                     />
                                                                 </div>
@@ -559,9 +559,9 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <LuxButton variant="outline" onClick={() => setStep('mapping')} icon={<ArrowLeft size={18} />}>Ajustar Mapeamento</LuxButton>
+                                    <LuxButton variant="outline" onClick={() => setStep('mapping')} icon={<ArrowLeft size={18} />}>{t('patients.import.adjustMapping')}</LuxButton>
                                     <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        <Info size={14} /> Dica: os dados acima são salvos apenas após confirmar
+                                        <Info size={14} /> {t('patients.import.saveTip')}
                                     </div>
                                 </div>
                             </div>
@@ -577,30 +577,30 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                 </div>
 
                                 <div className="space-y-3">
-                                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Importação de Sucesso!</h2>
-                                    <p className="text-lg text-slate-500 font-medium">Seus novos pacientes já estão prontos no prontuário.</p>
+                                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">{t('patients.import.successTitle')}</h2>
+                                    <p className="text-lg text-slate-500 font-medium">{t('patients.import.successDesc')}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
                                     <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm transition-transform hover:scale-105">
                                         <div className="text-5xl font-black text-emerald-500">{importResult.imported}</div>
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">Importados</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">{t('patients.import.countImported')}</div>
                                     </div>
                                     <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm transition-transform hover:scale-105">
                                         <div className="text-5xl font-black text-red-500">{importResult.total - importResult.imported}</div>
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">Falhas/Ignorados</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">{t('patients.import.countFailed')}</div>
                                     </div>
                                 </div>
 
                                 {importResult.errors.length > 0 && (
                                     <div className="bg-red-50/50 border border-red-100 rounded-[2rem] p-8 text-left max-w-2xl mx-auto overflow-hidden">
                                         <h4 className="font-black text-red-900 text-sm uppercase tracking-widest flex items-center gap-3 mb-5">
-                                            <AlertCircle size={20} /> Detalhes das inconsistências
+                                            <AlertCircle size={20} /> {t('patients.import.errors.detailsHeader')}
                                         </h4>
                                         <div className="space-y-3 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
                                             {importResult.errors.map((err, idx) => (
                                                 <div key={idx} className="text-xs font-bold text-red-700 bg-white/70 p-4 rounded-2xl border border-red-50 flex justify-between items-center group hover:bg-white transition-colors">
-                                                    <span>Paciente na linha <span className="text-red-900 font-black px-1.5 py-0.5 bg-red-100 rounded-md mx-1">{err.row}</span></span>
+                                                    <span>{t('patients.import.errors.rowPrefix')} <span className="text-red-900 font-black px-1.5 py-0.5 bg-red-100 rounded-md mx-1">{err.row}</span></span>
                                                     <span className="text-red-500/70 font-black">{err.message}</span>
                                                 </div>
                                             ))}
@@ -609,7 +609,7 @@ const PatientImport: React.FC<PatientImportProps> = ({ isOpen, onClose, onSucces
                                 )}
 
                                 <div className="pt-8">
-                                    <LuxButton onClick={onClose} size="lg" className="px-16 py-5 rounded-2xl text-lg font-black shadow-2xl">Voltar ao Dentis OS</LuxButton>
+                                    <LuxButton onClick={onClose} size="lg" className="px-16 py-5 rounded-2xl text-lg font-black shadow-2xl">{t('patients.import.backToSystem')}</LuxButton>
                                 </div>
                             </div>
                         )}

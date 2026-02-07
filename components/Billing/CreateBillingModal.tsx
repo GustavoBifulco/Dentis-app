@@ -4,6 +4,7 @@ import { X, Copy, Check, QrCode, Receipt, CreditCard, Banknote, Loader2 } from '
 import { LuxButton } from '../Shared';
 import { useAuth } from '@clerk/clerk-react';
 import { useAppContext } from '../../lib/useAppContext';
+import { useI18n } from '../../lib/i18n';
 
 interface CreateBillingModalProps {
     isOpen: boolean;
@@ -24,6 +25,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
 }) => {
     const { getToken } = useAuth();
     const { showToast } = useAppContext();
+    const { t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
 
@@ -40,7 +42,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
 
     const handleCreate = async () => {
         if (!form.amount || Number(form.amount) <= 0) {
-            showToast('Informe um valor válido', 'error');
+            showToast(t('finance.invalidValue'), 'error');
             return;
         }
 
@@ -66,11 +68,11 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
             if (res.ok) {
                 const data = await res.json();
                 setResult(data);
-                showToast('Cobrança gerada com sucesso!', 'success');
+                showToast(t('finance.chargeCreated'), 'success');
                 onSuccess?.(data);
             } else {
                 const err = await res.json();
-                throw new Error(err.error || 'Erro ao gerar cobrança');
+                throw new Error(err.error || t('finance.createChargeError'));
             }
         } catch (error: any) {
             showToast(error.message, 'error');
@@ -90,9 +92,9 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
             <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="p-8 pb-4 flex justify-between items-center border-b border-slate-50">
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Gerar Cobrança</h3>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">{t('finance.createCharge')}</h3>
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">
-                            Paciente: <span className="text-blue-600">{patientName}</span>
+                            {t('finance.patient')}: <span className="text-blue-600">{patientName}</span>
                         </p>
                     </div>
                     <button onClick={onClose} className="p-3 hover:bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-all h-fit">
@@ -104,7 +106,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                     <div className="p-8 space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor (R$)</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.amount')}</label>
                                 <input
                                     type="number"
                                     className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black tracking-tight outline-none focus:border-blue-500 focus:bg-white transition-all text-xl"
@@ -114,7 +116,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vencimento</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.dueDate')}</label>
                                 <input
                                     type="date"
                                     className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
@@ -125,7 +127,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Método de Pagamento</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.method')}</label>
                             <div className="grid grid-cols-2 gap-3">
                                 {[
                                     { id: 'PIX', label: 'PIX', icon: QrCode, color: 'text-emerald-600' },
@@ -147,7 +149,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Descrição / Procedimento</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.description')}</label>
                             <textarea
                                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium outline-none focus:border-blue-500 focus:bg-white transition-all min-h-[100px]"
                                 placeholder="Descreva o motivo da cobrança..."
@@ -163,7 +165,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                                 disabled={loading}
                                 icon={loading ? <Loader2 className="animate-spin" /> : <Banknote size={20} />}
                             >
-                                {loading ? 'Gerando...' : 'Gerar Cobrança Agora'}
+                                {loading ? t('finance.generating') : t('finance.generateNow')}
                             </LuxButton>
                         </div>
                     </div>
@@ -174,8 +176,8 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                         </div>
 
                         <div className="space-y-2">
-                            <h4 className="text-2xl font-black text-slate-900 tracking-tight">Sucesso!</h4>
-                            <p className="text-slate-500 text-sm">A cobrança via {form.method} foi emitida.</p>
+                            <h4 className="text-2xl font-black text-slate-900 tracking-tight">{t('finance.successTitle')}</h4>
+                            <p className="text-slate-500 text-sm">{t('finance.successDesc', { method: form.method })}</p>
                         </div>
 
                         {form.method === 'PIX' && result.pix && (
@@ -186,7 +188,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                                     </div>
                                 )}
                                 <div className="w-full flex flex-col gap-2">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Código Pix (Copia e Cola)</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.copyCode')}</p>
                                     <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden p-1">
                                         <input
                                             readOnly
@@ -212,7 +214,7 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                                     rel="noreferrer"
                                     className="w-full flex items-center justify-center gap-3 py-5 bg-orange-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-orange-500/20 hover:bg-orange-700 transition-all"
                                 >
-                                    <Receipt size={24} /> Abrir Boleto (PDF)
+                                    <Receipt size={24} /> {t('finance.openBoleto')}
                                 </a>
                             </div>
                         )}
@@ -224,13 +226,13 @@ const CreateBillingModal: React.FC<CreateBillingModalProps> = ({
                                 rel="noreferrer"
                                 className="block text-sm font-bold text-blue-600 hover:underline"
                             >
-                                Ver Link de Pagamento Completo
+                                {t('finance.paymentLink')}
                             </a>
                         )}
 
                         <div className="pt-4 border-t border-slate-50">
                             <LuxButton variant="outline" className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest" onClick={onClose}>
-                                Fechar Manual
+                                {t('finance.closeManual')}
                             </LuxButton>
                         </div>
                     </div>

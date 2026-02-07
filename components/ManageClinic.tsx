@@ -4,6 +4,7 @@ import { SectionHeader, IslandCard, LuxButton } from './Shared';
 import { Users, Mail, Shield, AlertTriangle, Check, UserPlus, Trash2 } from 'lucide-react';
 import { UserRole } from '../types';
 import { useAppContext } from '../lib/useAppContext';
+import { useI18n } from '../lib/i18n';
 
 const ROLES = [
     { value: 'dentist', label: 'Dentista' },
@@ -19,6 +20,7 @@ const ManageClinic: React.FC = () => {
     });
     const { user } = useUser();
     const { showToast } = useAppContext();
+    const { t } = useI18n();
 
     const [activeTab, setActiveTab] = useState<'team' | 'invites'>('team');
     const [inviteEmail, setInviteEmail] = useState('');
@@ -48,13 +50,13 @@ const ManageClinic: React.FC = () => {
             // We can try to rely on the backend hook or just set it later.
             // For now, we assume the simple invite works.
 
-            showToast('Convite enviado com sucesso!', 'success');
+            showToast(t('settings.inviteSent'), 'success');
             setInviteEmail('');
             setActiveTab('team');
 
         } catch (err: any) {
             console.error(err);
-            showToast(err.errors?.[0]?.message || 'Erro ao enviar convite', 'error');
+            showToast(err.errors?.[0]?.message || t('settings.inviteError'), 'error');
         } finally {
             setLoading(false);
         }
@@ -89,8 +91,8 @@ const ManageClinic: React.FC = () => {
                 <button
                     onClick={() => setActiveTab('team')}
                     className={`pb-3 px-1 text-sm font-bold transition-all ${activeTab === 'team'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-slate-500 hover:text-slate-800'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-slate-500 hover:text-slate-800'
                         }`}
                 >
                     Equipe ({memberships?.count || 0})
@@ -98,8 +100,8 @@ const ManageClinic: React.FC = () => {
                 <button
                     onClick={() => setActiveTab('invites')}
                     className={`pb-3 px-1 text-sm font-bold transition-all ${activeTab === 'invites'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-slate-500 hover:text-slate-800'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-slate-500 hover:text-slate-800'
                         }`}
                 >
                     Convidar Membros
@@ -194,8 +196,8 @@ const ManageClinic: React.FC = () => {
                                             type="button"
                                             onClick={() => setInviteRole(role.value)}
                                             className={`px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all text-left flex items-center justify-between ${inviteRole === role.value
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                                    : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                                                 }`}
                                         >
                                             {role.label}

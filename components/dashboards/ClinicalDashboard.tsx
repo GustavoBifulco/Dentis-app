@@ -6,7 +6,6 @@ import { IslandCard, LuxButton } from '../Shared';
 import { BarChart, Bar, ResponsiveContainer, Cell, Tooltip } from 'recharts';
 const { user } = useUser();
 const { t, formatMoney, locale } = useI18n();
-const { getSalutation } = useI18n() as any; // Temporary cast until I export it from hook or use helper
 // Actually getSalutation is not in hook return type in prior step, I should use the helper directly or add it to hook
 // Let's use the helper directly or update hook. 
 // Update hook is better but let's import helper for now to avoid breaking changes if hook not updated yet

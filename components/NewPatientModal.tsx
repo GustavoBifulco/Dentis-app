@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { X, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PatientForm from './PatientForm';
+import { useI18n } from '../lib/i18n';
 
 interface NewPatientModalProps {
     isOpen: boolean;
@@ -12,12 +13,13 @@ interface NewPatientModalProps {
 
 const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSuccess }) => {
     const { getToken } = useAuth();
+    const { t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const handleSubmitData = async (data: any) => {
         if (!data.name?.trim()) {
-            setError('Nome é obrigatório');
+            setError(t('patients.errors.nameRequired'));
             return;
         }
 
@@ -38,7 +40,7 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
 
             if (!response.ok) {
                 console.error("Failed to create patient:", result);
-                throw new Error(result.error || 'Falha ao criar paciente. Verifique os dados.');
+                throw new Error(result.error || t('patients.errors.createFailed'));
             }
 
             // Success - reset and close
@@ -46,7 +48,7 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
             onClose();
         } catch (e: any) {
             console.error("Create patient error:", e);
-            setError(e.message || "Erro desconhecido ao criar paciente.");
+            setError(e.message || t('patients.errors.unknown'));
         } finally {
             setLoading(false);
         }
@@ -71,8 +73,8 @@ const NewPatientModal: React.FC<NewPatientModalProps> = ({ isOpen, onClose, onSu
                     {/* Header */}
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
                         <div>
-                            <h2 className="text-2xl font-black text-gray-900">Cadastrar Paciente</h2>
-                            <p className="text-gray-500 text-sm mt-1">Cadastro rápido - apenas o nome é obrigatório</p>
+                            <h2 className="text-2xl font-black text-gray-900">{t('patients.newPatient')}</h2>
+                            <p className="text-gray-500 text-sm mt-1">{t('patients.quickRegister')}</p>
                         </div>
                         <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full transition">
                             <X size={24} />

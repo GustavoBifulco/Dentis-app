@@ -90,6 +90,12 @@ export interface UserSession {
     // Compatibility
     activeOrganization: any | null;
     orgRole: OrganizationRole | null;
+    preferences?: {
+        locale?: string;
+        theme?: string;
+        primaryColor?: string;
+        [key: string]: any;
+    };
 }
 
 export type ApiResponse<T> = {

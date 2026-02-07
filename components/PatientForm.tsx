@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, FileText, Phone, MapPin, Briefcase, GraduationCap, Heart, AlertTriangle, Plus, Trash2, Camera, Loader2 } from 'lucide-react';
 import { Patient, EmergencyContact, Insurance, Address } from '../types';
+import { useI18n } from '../lib/i18n';
 
 interface PatientFormProps {
     initialData?: Partial<Patient> & { avatarUrl?: string | null };
@@ -11,6 +12,7 @@ interface PatientFormProps {
 }
 
 const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loading, mode }) => {
+    const { t } = useI18n();
     const [activeTab, setActiveTab] = useState<'personal' | 'docs' | 'contacts'>('personal');
     const [uploading, setUploading] = useState(false);
 
@@ -117,9 +119,9 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
             {/* Tabs */}
             <div className="flex border-b border-gray-200 px-6">
                 {[
-                    { id: 'personal', label: 'Dados Pessoais', icon: User },
-                    { id: 'docs', label: 'Documentos & Convênio', icon: FileText },
-                    { id: 'contacts', label: 'Contatos & Endereço', icon: Phone },
+                    { id: 'personal', label: t('patients.form.personal'), icon: User },
+                    { id: 'docs', label: t('patients.form.docs'), icon: FileText },
+                    { id: 'contacts', label: t('patients.form.contacts'), icon: Phone },
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -167,58 +169,58 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                             </div>
 
                             <div className="col-span-2">
-                                <label className="label">Nome Completo *</label>
+                                <label className="label">{t('patients.form.fullName')} *</label>
                                 <input required className="input" value={formData.name} onChange={e => handleChange('name', e.target.value)} />
                             </div>
 
                             <div>
-                                <label className="label">Nome Social</label>
+                                <label className="label">{t('patients.form.socialName')}</label>
                                 <input className="input" value={formData.socialName} onChange={e => handleChange('socialName', e.target.value)} />
                             </div>
 
                             <div>
-                                <label className="label">Gênero</label>
+                                <label className="label">{t('patients.form.gender')}</label>
                                 <select className="input" value={formData.gender} onChange={e => handleChange('gender', e.target.value)}>
-                                    <option value="">Selecione...</option>
-                                    <option value="M">Masculino</option>
-                                    <option value="F">Feminino</option>
-                                    <option value="O">Outro</option>
+                                    <option value="">{t('common.select')}...</option>
+                                    <option value="M">{t('patients.form.gender.male')}</option>
+                                    <option value="F">{t('patients.form.gender.female')}</option>
+                                    <option value="O">{t('patients.form.gender.other')}</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="label">Data de Nascimento</label>
+                                <label className="label">{t('patients.form.birthdate')}</label>
                                 <input type="date" className="input" value={formData.birthdate} onChange={e => handleChange('birthdate', e.target.value)} />
                             </div>
 
                             <div>
-                                <label className="label">Naturalidade</label>
-                                <input className="input" placeholder="Cidade/Estado" value={formData.placeOfBirth} onChange={e => handleChange('placeOfBirth', e.target.value)} />
+                                <label className="label">{t('patients.form.birthplace')}</label>
+                                <input className="input" placeholder={t('patients.form.birthplacePlaceholder')} value={formData.placeOfBirth} onChange={e => handleChange('placeOfBirth', e.target.value)} />
                             </div>
 
                             <div>
-                                <label className="label">Estado Civil</label>
+                                <label className="label">{t('patients.form.maritalStatus')}</label>
                                 <select className="input" value={formData.maritalStatus} onChange={e => handleChange('maritalStatus', e.target.value)}>
-                                    <option value="">Selecione...</option>
-                                    <option value="single">Solteiro(a)</option>
-                                    <option value="married">Casado(a)</option>
-                                    <option value="divorced">Divorciado(a)</option>
-                                    <option value="widowed">Viúvo(a)</option>
+                                    <option value="">{t('common.select')}...</option>
+                                    <option value="single">{t('patients.form.maritalStatus.single')}</option>
+                                    <option value="married">{t('patients.form.maritalStatus.married')}</option>
+                                    <option value="divorced">{t('patients.form.maritalStatus.divorced')}</option>
+                                    <option value="widowed">{t('patients.form.maritalStatus.widowed')}</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="label">Escolaridade</label>
+                                <label className="label">{t('patients.form.education')}</label>
                                 <select className="input" value={formData.educationLevel} onChange={e => handleChange('educationLevel', e.target.value)}>
-                                    <option value="">Selecione...</option>
-                                    <option value="fundamental">Ensino Fundamental</option>
-                                    <option value="medio">Ensino Médio</option>
-                                    <option value="superior">Ensino Superior</option>
+                                    <option value="">{t('common.select')}...</option>
+                                    <option value="fundamental">{t('patients.form.education.fundamental')}</option>
+                                    <option value="medio">{t('patients.form.education.highSchool')}</option>
+                                    <option value="superior">{t('patients.form.education.university')}</option>
                                 </select>
                             </div>
 
                             <div className="col-span-2">
-                                <label className="label">Profissão / Ocupação</label>
+                                <label className="label">{t('patients.form.profession')}</label>
                                 <input className="input" value={formData.occupation} onChange={e => handleChange('occupation', e.target.value)} />
                             </div>
                         </div>
@@ -230,14 +232,14 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                             {/* Docs Pessoais */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <FileText className="text-blue-600" size={20} /> Documentos
+                                    <FileText className="text-blue-600" size={20} /> {t('patients.form.documents')}
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <label className="label flex justify-between">
                                             CPF
                                             {mode === 'edit' && formData.cpf && (
-                                                <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Imutável</span>
+                                                <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">{t('patients.form.immutable')}</span>
                                             )}
                                         </label>
                                         <input
@@ -246,10 +248,10 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                                             value={formData.cpf}
                                             onChange={e => handleChange('cpf', e.target.value)}
                                             readOnly={mode === 'edit' && !!initialData?.cpf}
-                                            title={mode === 'edit' && !!initialData?.cpf ? "O CPF não pode ser alterado por motivos de segurança e histórico." : ""}
+                                            title={mode === 'edit' && !!initialData?.cpf ? t('patients.form.cpfImmutableMsg') : ""}
                                         />
                                         {mode === 'edit' && !!initialData?.cpf && (
-                                            <p className="text-xs text-gray-400 mt-1">Para corrigir, contate o suporte.</p>
+                                            <p className="text-xs text-gray-400 mt-1">{t('patients.form.contactSupport')}</p>
                                         )}
                                     </div>
                                     <div>
@@ -257,7 +259,7 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                                         <input className="input" value={formData.rg} onChange={e => handleChange('rg', e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className="label">Cartão SUS (CNS)</label>
+                                        <label className="label">{t('patients.form.cns')}</label>
                                         <input className="input" value={formData.cns} onChange={e => handleChange('cns', e.target.value)} />
                                     </div>
                                 </div>
@@ -266,10 +268,10 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                             {/* Empresa */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <Briefcase className="text-emerald-600" size={20} /> Empresa / Benefício
+                                    <Briefcase className="text-emerald-600" size={20} /> {t('patients.form.companyBenefit')}
                                 </h3>
                                 <div>
-                                    <label className="label">Nome da Empresa ou Benefício</label>
+                                    <label className="label">{t('patients.form.companyName')}</label>
                                     <input className="input" placeholder="Ex: Google, Banco do Brasil..." value={formData.companyName} onChange={e => handleChange('companyName', e.target.value)} />
                                 </div>
                             </div>
@@ -278,36 +280,36 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                                        <Heart className="text-rose-600" size={20} /> Convênios
+                                        <Heart className="text-rose-600" size={20} /> {t('patients.form.insurance')}
                                     </h3>
                                     <button
                                         type="button"
                                         onClick={() => setInsurances([...insurances, { providerName: '', cardNumber: '', validUntil: '' }])}
                                         className="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1"
                                     >
-                                        <Plus size={16} /> Adicionar
+                                        <Plus size={16} /> {t('common.add')}
                                     </button>
                                 </div>
 
-                                {insurances.length === 0 && <p className="text-gray-400 text-sm italic">Nenhum convênio registrado.</p>}
+                                {insurances.length === 0 && <p className="text-gray-400 text-sm italic">{t('patients.form.noInsurance')}</p>}
 
                                 <div className="space-y-4">
                                     {insurances.map((ins, idx) => (
                                         <div key={idx} className="flex gap-3 items-end p-3 bg-gray-50 rounded-lg">
                                             <div className="flex-1">
-                                                <label className="text-xs font-bold text-gray-500">Operadora</label>
+                                                <label className="text-xs font-bold text-gray-500">{t('patients.form.insuranceProvider')}</label>
                                                 <input className="input-sm w-full" value={ins.providerName} onChange={e => {
                                                     const list = [...insurances]; list[idx].providerName = e.target.value; setInsurances(list);
                                                 }} />
                                             </div>
                                             <div className="flex-1">
-                                                <label className="text-xs font-bold text-gray-500">Carteirinha</label>
+                                                <label className="text-xs font-bold text-gray-500">{t('patients.form.insuranceCard')}</label>
                                                 <input className="input-sm w-full" value={ins.cardNumber} onChange={e => {
                                                     const list = [...insurances]; list[idx].cardNumber = e.target.value; setInsurances(list);
                                                 }} />
                                             </div>
                                             <div className="w-32">
-                                                <label className="text-xs font-bold text-gray-500">Validade</label>
+                                                <label className="text-xs font-bold text-gray-500">{t('patients.form.validUntil')}</label>
                                                 <input type="date" className="input-sm w-full" value={ins.validUntil} onChange={e => {
                                                     const list = [...insurances]; list[idx].validUntil = e.target.value; setInsurances(list);
                                                 }} />
@@ -328,35 +330,35 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                             {/* Address */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <MapPin className="text-blue-600" size={20} /> Endereço
+                                    <MapPin className="text-blue-600" size={20} /> {t('patients.form.address')}
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div className="md:col-span-1">
-                                        <label className="label">CEP</label>
+                                        <label className="label">{t('patients.form.zip')}</label>
                                         <input className="input" value={address.postalCode} onChange={e => handleAddressChange('postalCode', e.target.value)} />
                                     </div>
                                     <div className="md:col-span-3">
-                                        <label className="label">Rua</label>
+                                        <label className="label">{t('patients.form.street')}</label>
                                         <input className="input" value={address.street} onChange={e => handleAddressChange('street', e.target.value)} />
                                     </div>
                                     <div className="md:col-span-1">
-                                        <label className="label">Número</label>
+                                        <label className="label">{t('patients.form.number')}</label>
                                         <input className="input" value={address.number} onChange={e => handleAddressChange('number', e.target.value)} />
                                     </div>
                                     <div className="md:col-span-1">
-                                        <label className="label">Complemento</label>
+                                        <label className="label">{t('patients.form.complement')}</label>
                                         <input className="input" value={address.complement} onChange={e => handleAddressChange('complement', e.target.value)} />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="label">Bairro</label>
+                                        <label className="label">{t('patients.form.neighborhood')}</label>
                                         <input className="input" value={address.neighborhood} onChange={e => handleAddressChange('neighborhood', e.target.value)} />
                                     </div>
                                     <div className="md:col-span-3">
-                                        <label className="label">Cidade</label>
+                                        <label className="label">{t('patients.form.city')}</label>
                                         <input className="input" value={address.city} onChange={e => handleAddressChange('city', e.target.value)} />
                                     </div>
                                     <div className="md:col-span-1">
-                                        <label className="label">Estado (UF)</label>
+                                        <label className="label">{t('patients.form.state')}</label>
                                         <input className="input" maxLength={2} value={address.state} onChange={e => handleAddressChange('state', e.target.value)} />
                                     </div>
                                 </div>
@@ -365,15 +367,15 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                             {/* Contacts */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <Phone className="text-emerald-600" size={20} /> Contatos
+                                    <Phone className="text-emerald-600" size={20} /> {t('patients.form.contacts')}
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="label">Celular (WhatsApp)</label>
+                                        <label className="label">{t('patients.form.mobile')}</label>
                                         <input className="input" value={formData.phone} onChange={e => handleChange('phone', e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className="label">Email</label>
+                                        <label className="label">{t('patients.form.email')}</label>
                                         <input className="input" value={formData.email} onChange={e => handleChange('email', e.target.value)} />
                                     </div>
                                 </div>
@@ -381,32 +383,32 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                                 {/* Emergency */}
                                 <div className="mt-6 border-t pt-4">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-sm font-bold text-gray-700 uppercase tracking-widest">Contatos de Emergência</h4>
+                                        <h4 className="text-sm font-bold text-gray-700 uppercase tracking-widest">{t('patients.form.emergencyContacts')}</h4>
                                         <button
                                             type="button"
                                             onClick={() => setEmergencyContacts([...emergencyContacts, { name: '', relationship: '', phone: '' }])}
                                             className="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1"
                                         >
-                                            <Plus size={16} /> Adicionar
+                                            <Plus size={16} /> {t('common.add')}
                                         </button>
                                     </div>
                                     <div className="space-y-3">
                                         {emergencyContacts.map((ec, idx) => (
                                             <div key={idx} className="flex gap-3 items-end p-3 bg-red-50/50 rounded-lg border border-red-100">
                                                 <div className="flex-1">
-                                                    <label className="text-xs font-bold text-gray-500">Nome</label>
+                                                    <label className="text-xs font-bold text-gray-500">{t('patients.form.name')}</label>
                                                     <input className="input-sm w-full" value={ec.name} onChange={e => {
                                                         const list = [...emergencyContacts]; list[idx].name = e.target.value; setEmergencyContacts(list);
                                                     }} />
                                                 </div>
                                                 <div className="w-32">
-                                                    <label className="text-xs font-bold text-gray-500">Vínculo</label>
+                                                    <label className="text-xs font-bold text-gray-500">{t('patients.form.relationship')}</label>
                                                     <input className="input-sm w-full" value={ec.relationship} onChange={e => {
                                                         const list = [...emergencyContacts]; list[idx].relationship = e.target.value; setEmergencyContacts(list);
                                                     }} />
                                                 </div>
                                                 <div className="w-40">
-                                                    <label className="text-xs font-bold text-gray-500">Telefone</label>
+                                                    <label className="text-xs font-bold text-gray-500">{t('patients.form.phone')}</label>
                                                     <input className="input-sm w-full" value={ec.phone} onChange={e => {
                                                         const list = [...emergencyContacts]; list[idx].phone = e.target.value; setEmergencyContacts(list);
                                                     }} />
@@ -424,19 +426,19 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                             {isMinor() && (
                                 <div className="bg-amber-50 rounded-xl p-6 border border-amber-200">
                                     <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
-                                        <AlertTriangle size={20} /> Responsável Legal (Menor de Idade)
+                                        <AlertTriangle size={20} /> {t('patients.form.legalGuardian')}
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div>
-                                            <label className="label text-amber-900">Nome do Responsável</label>
+                                            <label className="label text-amber-900">{t('patients.form.guardianName')}</label>
                                             <input className="input bg-white" value={formData.legalGuardianName} onChange={e => handleChange('legalGuardianName', e.target.value)} />
                                         </div>
                                         <div>
-                                            <label className="label text-amber-900">Vínculo</label>
+                                            <label className="label text-amber-900">{t('patients.form.relationship')}</label>
                                             <input className="input bg-white" value={formData.legalGuardianRelationship} onChange={e => handleChange('legalGuardianRelationship', e.target.value)} />
                                         </div>
                                         <div>
-                                            <label className="label text-amber-900">Telefone</label>
+                                            <label className="label text-amber-900">{t('patients.form.phone')}</label>
                                             <input className="input bg-white" value={formData.legalGuardianPhone} onChange={e => handleChange('legalGuardianPhone', e.target.value)} />
                                         </div>
                                     </div>
@@ -454,7 +456,7 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                     disabled={loading}
                     className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 disabled:opacity-50 transition-all transform active:scale-95"
                 >
-                    {loading ? 'Salvando...' : 'Salvar Ficha'}
+                    {loading ? t('common.saving') : t('common.save')}
                 </button>
             </div>
 
