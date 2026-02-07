@@ -218,6 +218,7 @@ app.put('/:id', async (c) => {
       .where(and(eq(patients.id, id), eq(patients.organizationId, auth.organizationId)))
       .returning();
 
+
     // --- 4. AVATAR SYNC (Clerk) ---
     // If avatarUrl changed and patient has a linked Clerk User
     if (data.avatarUrl && data.avatarUrl !== existing.avatarUrl && existing.userId) {
@@ -233,60 +234,58 @@ app.put('/:id', async (c) => {
         //   file: data.avatarUrl 
         // });
         console.log(`[Avatar Sync] Pending implementation for URL-to-Blob sync. Clerk ID: ${existing.userId}`);
-      }).catch(err => console.warn("Clerk Avatar Sync Failed (Non-critical):", err.message));
-
       } catch (err) {
-  console.warn("Clerk Sync skipped:", err);
-}
+        console.warn("Clerk Sync skipped:", err);
+      }
     }
 
-// --- 5. Audit Log (Simplified) ---
-// Log sensitive changes
-const sensitiveFields = ['cpf', 'name', 'email'];
-const changedSensitive = sensitiveFields.filter(f => (data as any)[f] && (data as any)[f] !== (existing as any)[f]);
+    // --- 5. Audit Log (Simplified) ---
+    // Log sensitive changes
+    const sensitiveFields = ['cpf', 'name', 'email'];
+    const changedSensitive = sensitiveFields.filter(f => (data as any)[f] && (data as any)[f] !== (existing as any)[f]);
 
-if (changedSensitive.length > 0) {
-  // Need to import auditLogs table. Assuming it is in '../db/schema'
-  // We will do a dynamic insert to avoid top-level import errors if I missed adding it to imports above.
-  // Actually I should add it to imports properly next step.
-  // For now, let's skip the insert code until I add the import to line 5.
-}
+    if (changedSensitive.length > 0) {
+      // Need to import auditLogs table. Assuming it is in '../db/schema'
+      // We will do a dynamic insert to avoid top-level import errors if I missed adding it to imports above.
+      // Actually I should add it to imports properly next step.
+      // For now, let's skip the insert code until I add the import to line 5.
+    }
 
-// --- 6. Relations (Replace Strategy) ---
-if (data.emergencyContacts) {
-  await db.delete(patientEmergencyContacts).where(eq(patientEmergencyContacts.patientId, id));
-  if (data.emergencyContacts.length > 0) {
-    await db.insert(patientEmergencyContacts).values(
-      data.emergencyContacts.map(c => ({
-        patientId: id,
-        name: c.name!,
-        phone: c.phone!,
-        relationship: c.relationship
-      }))
-    );
-  }
-}
+    // --- 6. Relations (Replace Strategy) ---
+    if (data.emergencyContacts) {
+      await db.delete(patientEmergencyContacts).where(eq(patientEmergencyContacts.patientId, id));
+      if (data.emergencyContacts.length > 0) {
+        await db.insert(patientEmergencyContacts).values(
+          data.emergencyContacts.map(c => ({
+            patientId: id,
+            name: c.name!,
+            phone: c.phone!,
+            relationship: c.relationship
+          }))
+        );
+      }
+    }
 
-if (data.insurances) {
-  await db.delete(patientInsurances).where(eq(patientInsurances.patientId, id));
-  if (data.insurances.length > 0) {
-    await db.insert(patientInsurances).values(
-      data.insurances.map(i => ({
-        patientId: id,
-        providerName: i.providerName!,
-        cardNumber: i.cardNumber,
-        validUntil: i.validUntil
-      }))
-    );
-  }
-}
+    if (data.insurances) {
+      await db.delete(patientInsurances).where(eq(patientInsurances.patientId, id));
+      if (data.insurances.length > 0) {
+        await db.insert(patientInsurances).values(
+          data.insurances.map(i => ({
+            patientId: id,
+            providerName: i.providerName!,
+            cardNumber: i.cardNumber,
+            validUntil: i.validUntil
+          }))
+        );
+      }
+    }
 
-return c.json(updated);
+    return c.json(updated);
 
   } catch (e: any) {
-  console.error(`[${requestId}] Error updating patient:`, e);
-  return c.json({ error: 'Erro ao atualizar paciente', requestId }, 500);
-}
+    console.error(`[${requestId}] Error updating patient:`, e);
+    return c.json({ error: 'Erro ao atualizar paciente', requestId }, 500);
+  }
 });
 
 // DELETE /:id - Soft Delete Preferred, Hard Delete Restricted
