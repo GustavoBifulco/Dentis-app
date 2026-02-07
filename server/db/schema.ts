@@ -1527,3 +1527,28 @@ export const payments = pgTable('payments', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// === CYCLE 3: CPF CORRECTION FLOW ===
+
+export const cpfCorrectionRequests = pgTable('cpf_correction_requests', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  patientId: integer('patient_id').notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  requestedBy: text('requested_by').notNull(), // clerkId of the requester
+  oldCpf: text('old_cpf'),
+  newCpf: text('new_cpf').notNull(),
+  reason: text('reason').notNull(),
+  status: text('status').notNull().default('pending'), // 'pending', 'approved', 'rejected'
+  reviewedBy: text('reviewed_by'), // clerkId of the reviewer
+  reviewedAt: timestamp('reviewed_at'),
+  rejectionReason: text('rejection_reason'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const cpfCorrectionRequestsRelations = relations(cpfCorrectionRequests, ({ one }) => ({
+  patient: one(patients, {
+    fields: [cpfCorrectionRequests.patientId],
+    references: [patients.id],
+  }),
+}));
+

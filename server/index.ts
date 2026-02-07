@@ -21,6 +21,7 @@ import appointments from './routes/appointments';
 import appointmentRequests from './routes/appointment-requests';
 import clinical from './routes/clinical';
 import finance from './routes/finance';
+import cpfCorrections from './routes/cpf-corrections';
 import fiscal from './routes/fiscal';
 import kiosk from './routes/kiosk';
 import marketing from './routes/marketing';
@@ -89,6 +90,7 @@ app.route('/api/appointment-requests', appointmentRequests);
 app.route('/api/clinical', clinical);
 app.route('/api/records', records); // NEW: Clinical Records (Phase 1)
 app.route('/api/finance', finance);
+app.route('/api/cpf-corrections', cpfCorrections);
 app.route('/api/fiscal', fiscal);
 app.route('/api/kiosk', kiosk);
 app.route('/api/marketing', marketing);

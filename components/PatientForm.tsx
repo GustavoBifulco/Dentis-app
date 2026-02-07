@@ -238,21 +238,32 @@ const PatientForm: React.FC<PatientFormProps> = ({ initialData, onSubmit, loadin
                                     <div>
                                         <label className="label flex justify-between">
                                             CPF
-                                            {mode === 'edit' && formData.cpf && (
+                                            {mode === 'edit' && initialData?.cpf && (
                                                 <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">{t('patients.form.immutable')}</span>
                                             )}
                                         </label>
-                                        <input
-                                            className={`input ${mode === 'edit' && initialData?.cpf ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
-                                            placeholder="000.000.000-00"
-                                            value={formData.cpf}
-                                            onChange={e => handleChange('cpf', e.target.value)}
-                                            readOnly={mode === 'edit' && !!initialData?.cpf}
-                                            title={mode === 'edit' && !!initialData?.cpf ? t('patients.form.cpfImmutableMsg') : ""}
-                                        />
-                                        {mode === 'edit' && !!initialData?.cpf && (
-                                            <p className="text-xs text-gray-400 mt-1">{t('patients.form.contactSupport')}</p>
-                                        )}
+                                        <div className="relative">
+                                            <input
+                                                className={`input ${mode === 'edit' && initialData?.cpf ? 'bg-gray-100/50 text-gray-500 cursor-not-allowed border-dashed' : ''}`}
+                                                placeholder="000.000.000-00"
+                                                value={formData.cpf}
+                                                onChange={e => handleChange('cpf', e.target.value)}
+                                                readOnly={mode === 'edit' && !!initialData?.cpf}
+                                                title={mode === 'edit' && !!initialData?.cpf ? t('patients.form.cpfImmutableMsg') : ""}
+                                            />
+                                            {mode === 'edit' && !!initialData?.cpf && (
+                                                <div className="mt-1.5 flex justify-between items-center px-1">
+                                                    <p className="text-[11px] text-gray-400 font-medium italic">{t('patients.form.contactSupport')}</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => alert("Funcionalidade de Solicitação de Correção em implementação.")}
+                                                        className="text-[11px] text-blue-600 font-bold hover:underline"
+                                                    >
+                                                        Solicitar correção
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="label">RG</label>
