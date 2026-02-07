@@ -27,8 +27,8 @@ declare module 'hono' {
 export const authMiddleware = async (c: Context, next: Next) => {
   const authHeader = c.req.header('Authorization');
 
-  // 1. Modo de Bypass para desenvolvimento (Hardening: só funciona se explicitamente habilitado)
-  if (process.env.DISABLE_AUTH === 'true') {
+  // 1. Modo de Bypass para desenvolvimento (Hardening: NÃO funciona em produção)
+  if (process.env.DISABLE_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
     c.set('user', {
       id: 'dev_user_id',
       clerkId: 'dev_clerk_id',
@@ -188,7 +188,85 @@ export const requireRole = (allowedRoles: string[]) => {
   };
 };
 
+/**
+ * MFA enforcement middleware with smart gating.
+ * - Always requires MFA for clinical/sensitive actions (prontuário, sign, export, download)
+ * - Non-clinical actions have 7-day grace period after signup
+ * - Uses Clerk's MFA verification status
+ */
 export const requireMfa = async (c: Context, next: Next) => {
-  // ⚠️ MFA temporariamente desabilitado para onboarding simplificado
-  await next();
+  const user = c.get('user');
+  const auth = c.get('auth');
+
+  // Skip MFA check in development mode
+  if (process.env.DISABLE_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
+    await next();
+    return;
+  }
+
+  // If user doesn't exist in DB yet (onboarding), skip MFA
+  if (!user || !user.id || user.role === 'guest') {
+    await next();
+    return;
+  }
+
+  // Check if MFA is verified via Clerk session claims
+  // Clerk sets 'amr' (authentication method reference) when MFA is used
+  const sessionClaims = auth?.sessionClaims || {};
+  const mfaVerified = sessionClaims.amr?.includes('mfa') ||
+    sessionClaims.amr?.includes('totp') ||
+    user.mfaVerified === true;
+
+  if (mfaVerified) {
+    c.set('user', { ...user, mfaVerified: true });
+    await next();
+    return;
+  }
+
+  // User has NOT verified MFA - check grace period for non-clinical routes
+  const userCreatedAt = user.createdAt ? new Date(user.createdAt) : new Date(0);
+  const daysSinceSignup = Math.floor((Date.now() - userCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+  const GRACE_PERIOD_DAYS = 7;
+  const isWithinGracePeriod = daysSinceSignup <= GRACE_PERIOD_DAYS;
+
+  // Determine if this is a sensitive action that ALWAYS requires MFA
+  const path = c.req.path.toLowerCase();
+  const method = c.req.method.toUpperCase();
+
+  const sensitivePatterns = [
+    '/api/records/',      // All clinical records
+    '/encounters',        // Clinical encounters
+    '/prescriptions',     // Prescriptions
+    '/download',          // File downloads
+    '/export',            // Data exports
+    '/sign',              // Document signing
+    '/api/finance',       // Financial operations
+    '/api/billing',       // Billing
+  ];
+
+  const isSensitiveAction = sensitivePatterns.some(pattern => path.includes(pattern)) ||
+    (method === 'DELETE'); // All deletes are sensitive
+
+  if (isSensitiveAction) {
+    // Sensitive actions NEVER skip MFA (no grace period)
+    console.warn(`[MFA] Blocked sensitive action ${method} ${path} for user ${user.id} - MFA not verified`);
+    throw new HTTPException(403, {
+      message: 'MFA required for this action. Please verify your identity.',
+      cause: 'MFA_REQUIRED'
+    });
+  }
+
+  // Non-sensitive action within grace period - allow but log warning
+  if (isWithinGracePeriod) {
+    console.info(`[MFA] Grace period active for user ${user.id} (day ${daysSinceSignup}/${GRACE_PERIOD_DAYS})`);
+    await next();
+    return;
+  }
+
+  // Grace period expired and MFA not verified
+  console.warn(`[MFA] Grace period expired for user ${user.id}. MFA required.`);
+  throw new HTTPException(403, {
+    message: 'Please enable two-factor authentication to continue.',
+    cause: 'MFA_REQUIRED'
+  });
 };
