@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db';
+import { verifyPatientAccess, generateRequestId } from '../utils/tenant';
 import { financialLedger, accountsReceivable } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { logTimelineEvent } from '../services/timeline';
@@ -24,6 +25,12 @@ app.post('/transaction', async (c) => {
   const organizationId = c.get('organizationId');
   const user = c.get('user');
   const body = await c.req.json();
+  const requestId = crypto.randomUUID();
+
+  if (body.patientId) {
+    // IDOR Check
+    await verifyPatientAccess(body.patientId, organizationId, requestId);
+  }
 
   // 1. Calculate running balance? (Simplified: Just store amount for now, running balance requires locking or strictly ordered processing)
   // We'll skip balanceAfter logic for this MVP step to avoid race conditions without heavy locking.

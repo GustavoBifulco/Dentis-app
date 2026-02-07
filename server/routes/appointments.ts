@@ -4,7 +4,7 @@ import { scopedDb } from '../db/scoped';
 import { db } from '../db';
 import { authMiddleware } from '../middleware/auth';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
-import { verifyPatientAccess } from '../utils/tenant';
+import { verifyPatientAccess, verifyAppointmentAccess, generateRequestId } from '../utils/tenant';
 
 const app = new Hono();
 
@@ -64,6 +64,12 @@ app.get('/', async (c) => {
 // GET /api/appointments/:id - Get single appointment
 app.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
+  const auth = c.get('auth');
+  const requestId = generateRequestId();
+
+  // Anti-IDOR
+  await verifyAppointmentAccess(id, auth.organizationId, requestId);
+
   const scoped = scopedDb(c);
 
   const [result] = await db
@@ -98,8 +104,9 @@ app.post('/', async (c) => {
   const body = await c.req.json();
 
   try {
+    const requestId = generateRequestId();
     // IDOR Check
-    await verifyPatientAccess(body.patient_id, auth.organizationId);
+    await verifyPatientAccess(body.patient_id, auth.organizationId, requestId);
 
     const [newAppointment] = await scoped.insert(appointments).values({
       organizationId: auth.organizationId,
@@ -128,6 +135,12 @@ app.post('/', async (c) => {
 // PUT /api/appointments/:id - Update appointment
 app.put('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
+  const auth = c.get('auth');
+  const requestId = generateRequestId();
+
+  // Anti-IDOR
+  await verifyAppointmentAccess(id, auth.organizationId, requestId);
+
   const scoped = scopedDb(c);
   const body = await c.req.json();
 
@@ -165,6 +178,12 @@ app.put('/:id', async (c) => {
 // DELETE /api/appointments/:id - Cancel appointment
 app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
+  const auth = c.get('auth');
+  const requestId = generateRequestId();
+
+  // Anti-IDOR
+  await verifyAppointmentAccess(id, auth.organizationId, requestId);
+
   const scoped = scopedDb(c);
   const body = await c.req.json();
 
@@ -194,6 +213,12 @@ app.delete('/:id', async (c) => {
 // POST /api/appointments/:id/confirm - Confirm appointment
 app.post('/:id/confirm', async (c) => {
   const id = parseInt(c.req.param('id'));
+  const auth = c.get('auth');
+  const requestId = generateRequestId();
+
+  // Anti-IDOR
+  await verifyAppointmentAccess(id, auth.organizationId, requestId);
+
   const scoped = scopedDb(c);
   const body = await c.req.json();
 
@@ -224,6 +249,11 @@ app.post('/:id/confirm', async (c) => {
 app.post('/:id/complete', async (c) => {
   const id = parseInt(c.req.param('id'));
   const auth = c.get('auth');
+  const requestId = generateRequestId();
+
+  // Anti-IDOR
+  await verifyAppointmentAccess(id, auth.organizationId, requestId);
+
   const scoped = scopedDb(c);
 
   try {

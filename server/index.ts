@@ -137,7 +137,15 @@ app.route('/api/stripe-connect', stripeConnect);
 import billing from './routes/billing';
 // app.route('/api/billing', billing); // REMOVED FOR STRIPE CONNECT MIGRATION
 
-app.get('/health', (c) => c.json({ status: 'ok', uptime: process.uptime() }));
+app.get('/api/health', (c) => {
+  return c.json({
+    status: 'ok',
+    version: process.env.npm_package_version || '1.0.0',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV
+  });
+});
 
 
 // 5. Tratamento de Erros Global Aprimorado
@@ -191,7 +199,7 @@ app.notFound((c) => {
   return c.text('Página não encontrada', 404);
 });
 
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.DEV_PORT || process.env.PORT) || 3000;
 
 console.log(`🚀 Servidor Dentis rodando na porta ${port}`);
 

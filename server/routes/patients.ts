@@ -5,6 +5,7 @@ import { zValidator } from '@hono/zod-validator'; // Assuming this package is av
 import { patients, users, addresses, patientEmergencyContacts, patientInsurances } from '../db/schema';
 import { db } from '../db';
 import { authMiddleware, requireMfa } from '../middleware/auth';
+import { verifyPatientAccess } from '../utils/tenant';
 import { eq, and, desc } from 'drizzle-orm';
 
 const app = new Hono();
@@ -169,6 +170,9 @@ app.put('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
   const requestId = crypto.randomUUID();
 
+  // Anti-IDOR
+  await verifyPatientAccess(id, auth.organizationId, requestId);
+
   try {
     const rawBody = await c.req.json();
     // Validate
@@ -292,6 +296,10 @@ app.put('/:id', async (c) => {
 app.delete('/:id', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
+  const requestId = crypto.randomUUID();
+
+  // Anti-IDOR
+  await verifyPatientAccess(id, auth.organizationId, requestId);
 
   // Check constraints
   const [patient] = await db.select().from(patients)
@@ -337,6 +345,10 @@ app.delete('/:id', async (c) => {
 app.patch('/:id/archive', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
+  const requestId = crypto.randomUUID();
+
+  // Anti-IDOR
+  await verifyPatientAccess(id, auth.organizationId, requestId);
 
   const [archived] = await db.update(patients)
     .set({ status: 'archived' })
@@ -350,6 +362,10 @@ app.patch('/:id/archive', async (c) => {
 app.post('/:id/unarchive', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
+  const requestId = crypto.randomUUID();
+
+  // Anti-IDOR
+  await verifyPatientAccess(id, auth.organizationId, requestId);
 
   const [restored] = await db.update(patients)
     .set({ status: 'active' })

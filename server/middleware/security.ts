@@ -22,6 +22,9 @@ export const securityHeaders = async (c: Context, next: Next) => {
     // Referrer Policy - Only send origin (domain)
     c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
 
+    // Permissions Policy (FKA Feature Policy)
+    c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+
     // Content Security Policy (CSP)
     // Migrated from server/index.ts
     const cspDirectives = {

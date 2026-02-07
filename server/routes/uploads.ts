@@ -5,6 +5,7 @@ import { db } from '../db';
 import { documents, users, patients } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { verifyPatientAccess } from '../utils/tenant';
 import { s3Client, BUCKET_NAME, PUBLIC_URL } from '../lib/s3';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import path from 'path';
@@ -44,17 +45,8 @@ app.post('/', uploadRateLimit, async (c) => {
     // IDOR Protection: Verify if patient belongs to organization (BEFORE upload)
     if (patientId) {
         const organizationId = c.get('organizationId');
-        // Validate access
-        const patient = await db.query.patients.findFirst({
-            where: and(
-                eq(patients.id, patientId),
-                eq(patients.organizationId, organizationId)
-            ),
-        });
-
-        if (!patient) {
-            return c.json({ ok: false, error: 'Access denied: Patient not found in your organization' }, 403);
-        }
+        // Standardized check
+        await verifyPatientAccess(patientId, organizationId, randomUUID());
     }
 
     // Magic Bytes Validation (Mock implementation for common types)
