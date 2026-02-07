@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db';
 import { verifyPatientAccess, generateRequestId } from '../utils/tenant';
-import { financialLedger, accountsReceivable } from '../db/schema';
+import { financials } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { logTimelineEvent } from '../services/timeline';
 import { authMiddleware } from '../middleware/auth';
@@ -13,9 +13,9 @@ app.use('*', authMiddleware);
 // GET /api/finance/ledger
 app.get('/ledger', async (c) => {
   const organizationId = c.get('organizationId');
-  const items = await db.select().from(financialLedger)
-    .where(eq(financialLedger.organizationId, organizationId))
-    .orderBy(desc(financialLedger.transactionDate))
+  const items = await db.select().from(financials)
+    .where(eq(financials.organizationId, organizationId))
+    .orderBy(desc(financials.date))
     .limit(100);
   return c.json(items);
 });
@@ -25,35 +25,31 @@ app.post('/transaction', async (c) => {
   const organizationId = c.get('organizationId');
   const user = c.get('user');
   const body = await c.req.json();
-  const requestId = crypto.randomUUID();
+  const requestId = generateRequestId();
 
   if (body.patientId) {
     // IDOR Check
     await verifyPatientAccess(body.patientId, organizationId, requestId);
   }
 
-  // 1. Calculate running balance? (Simplified: Just store amount for now, running balance requires locking or strictly ordered processing)
-  // We'll skip balanceAfter logic for this MVP step to avoid race conditions without heavy locking.
-
-  const [entry] = await db.insert(financialLedger).values({
+  const [entry] = await db.insert(financials).values({
     organizationId,
-    transactionDate: new Date(body.date || Date.now()),
+    date: body.date || new Date().toISOString().split('T')[0],
     amount: String(body.amount),
-    type: body.type, // 'CREDIT' | 'DEBIT'
+    type: body.type, // 'income' | 'expense'
     category: body.category,
     description: body.description,
-    refType: body.refType,
-    refId: body.refId ? String(body.refId) : null,
+    patientId: body.patientId ? Number(body.patientId) : null,
     createdBy: String(user.id)
   }).returning();
 
   logTimelineEvent({
     organizationId,
-    patientId: body.patientId, // Optional
+    patientId: body.patientId,
     eventType: 'financial',
-    refType: 'payment', // or generic
+    refType: 'payment',
     refId: String(entry.id),
-    title: `Financeiro: ${body.type === 'CREDIT' ? 'Entrada' : 'Saída'}`,
+    title: `Financeiro: ${body.type === 'income' ? 'Entrada' : 'Saída'}`,
     summary: `${body.description} - R$ ${body.amount}`,
     createdBy: String(user.id)
   });
@@ -61,12 +57,15 @@ app.post('/transaction', async (c) => {
   return c.json(entry);
 });
 
-// GET /api/finance/receivables
+// GET /api/finance/receivables (Unified financials view)
 app.get('/receivables', async (c) => {
   const organizationId = c.get('organizationId');
-  const items = await db.select().from(accountsReceivable)
-    .where(eq(accountsReceivable.organizationId, organizationId))
-    .orderBy(desc(accountsReceivable.dueDate));
+  const items = await db.select().from(financials)
+    .where(and(
+      eq(financials.organizationId, organizationId),
+      eq(financials.status, 'pending')
+    ))
+    .orderBy(desc(financials.date));
   return c.json(items);
 });
 
