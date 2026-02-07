@@ -483,7 +483,7 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
 export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
   user: one(users, {
     fields: [organizationMembers.userId],
-    references: [users.id],
+    references: [users.clerkId],
   }),
   organization: one(organizations, {
     fields: [organizationMembers.organizationId],

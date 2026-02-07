@@ -29,9 +29,9 @@ export const securityHeaders = async (c: Context, next: Next) => {
     // Migrated from server/index.ts
     const cspDirectives = {
         "default-src": ["'self'"],
-        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://js.stripe.com", "https://challenges.cloudflare.com"],
-        "connect-src": ["'self'", "https://api.clerk.io", "https://api.clerk.com", "https://charming-clam-17.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://api.stripe.com", "https://challenges.cloudflare.com"],
-        "img-src": ["'self'", "data:", "https:", "https://img.clerk.com"],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://*.clerk.com", "https://js.stripe.com", "https://challenges.cloudflare.com"],
+        "connect-src": ["'self'", "https://api.clerk.io", "https://api.clerk.com", "https://*.clerk.accounts.dev", "https://clerk.dentis.com.br", "https://api.stripe.com", "https://challenges.cloudflare.com"],
+        "img-src": ["'self'", "data:", "https:", "https://img.clerk.com", "https://*.clerk.com"],
         "frame-src": ["'self'", "https://js.stripe.com", "https://hooks.stripe.com", "https://challenges.cloudflare.com"],
         "style-src": ["'self'", "'unsafe-inline'"],
         "worker-src": ["'self'", "blob:"],
@@ -66,6 +66,8 @@ export const secureCors = async (c: Context, next: Next) => {
     // Allowed origins
     const allowedOrigins = [
         'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3006',
         'http://localhost:5173',
         'https://dentis.com.br',
         'https://app.dentis.com.br'

@@ -5,7 +5,7 @@ import { createClerkClient } from '@clerk/backend';
 import { db } from '../db';
 import { users, organizationMembers, organizations } from '../db/schema';
 import { seedDefaultData } from '../services/seedData';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 // Initialize Clerk client with environment variables
 const clerkClient = createClerkClient({
@@ -101,24 +101,19 @@ export const authMiddleware = async (c: Context, next: Next) => {
       // Resolver Organization ID
       // Resolver Organization ID via Members Table
       const memberRel = await db.query.organizationMembers.findFirst({
-        where: eq(organizationMembers.userId, dbUser.id.toString()), // Convert to string if needed
+        where: eq(organizationMembers.userId, clerkId),
         with: {
           organization: true
         }
       });
 
       if (memberRel && memberRel.organization) {
-        contextOrgId = memberRel.organization.id; // Corrected: use .id not .clerkOrgId
+        contextOrgId = memberRel.organization.id;
       } else {
         // Se for dentista sem org e sem membro, tenta buscar ou criar workspace pessoal
         if (dbUser.role === 'dentist') {
-          const personalId = `personal-${dbUser.clerkId}`;
-          console.log(`🔧 Resolving personal workspace ${personalId} for user ${dbUser.id}`);
-
-          // Não atualiza users com organizationId pois a coluna não existe mais.
-          // Apenas define o contexto para uso na sessão.
-          // Idealmente, deveria criar o membro se não existir aqui?
-          // Sim, se for self-healing, deve garantir que o membro exista.
+          const personalId = `personal-${clerkId}`;
+          console.log(`🔧 Resolving personal workspace ${personalId} for user ${clerkId}`);
 
           const orgExists = await db.query.organizations.findFirst({
             where: eq(organizations.id, personalId)
@@ -134,14 +129,17 @@ export const authMiddleware = async (c: Context, next: Next) => {
 
           // Criar membro se não existir
           const memberExists = await db.query.organizationMembers.findFirst({
-            where: eq(organizationMembers.organizationId, personalId) // Simplificado
+            where: and(
+              eq(organizationMembers.organizationId, personalId),
+              eq(organizationMembers.userId, clerkId)
+            )
           });
 
           if (!memberExists) {
             await db.insert(organizationMembers).values({
-              userId: dbUser.id.toString(),
+              userId: clerkId,
               organizationId: personalId,
-              role: 'ADMIN' // Dentista dono
+              role: 'ADMIN'
             }).onConflictDoNothing();
           }
 

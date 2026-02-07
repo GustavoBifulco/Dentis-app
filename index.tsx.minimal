@@ -1,0 +1,12 @@
+import React from "react";
+import { createRoot } from 'react-dom/client';
+
+console.log("DEBUG: Minimal index.tsx started");
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+    console.error("No root element found");
+} else {
+    const root = createRoot(rootElement);
+    root.render(<h1 style={{color: 'red', padding: '50px'}}>HELLO DENTIS MINIMAL SUCCESS</h1>);
+    console.log("DEBUG: Minimal render called");
+}

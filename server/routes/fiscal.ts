@@ -130,7 +130,7 @@ app.post('/invoice', zValidator('json', invoiceSchema), async (c) => {
 
   const entry = await db.query.financials.findFirst({
     where: and(eq(financials.organizationId, organizationId), eq(financials.patientId, patient.id)),
-    orderBy: [desc(financials.dueDate)],
+    orderBy: [desc(financials.date)],
   });
 
   if (!entry) {

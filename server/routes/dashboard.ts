@@ -9,7 +9,7 @@ const dashboard = new Hono();
 dashboard.use('*', authMiddleware);
 
 dashboard.get('/stats', async (c) => {
-    const auth = c.get('auth');
+    const auth = c.get('auth') || c.get('user');
     // REMOVED: const scoped = scopedDb(c); -> Causing TypeError: scoped.select(...).from is not a function
 
     try {

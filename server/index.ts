@@ -201,7 +201,7 @@ app.notFound((c) => {
   return c.text('Página não encontrada', 404);
 });
 
-const port = Number(process.env.DEV_PORT || process.env.PORT) || 3000;
+const port = Number(process.env.PORT) || 3006;
 
 console.log(`🚀 Servidor Dentis rodando na porta ${port}`);
 

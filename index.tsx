@@ -4,23 +4,45 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
 import './index.css';
 
-console.log("DEBUG: index.tsx minimal starting...");
+// GLOBAL EMERGENCY LOGGING
+console.log("DEBUG: index.tsx execution started");
+window.onerror = (msg, url, lineNo, columnNo, error) => {
+  console.error("FATAL BUNDLE ERROR:", { msg, url, lineNo, columnNo, error });
+  const root = document.getElementById('root');
+  if (root) root.innerHTML = `<div style="padding:20px; color:red; font-family:sans-serif;"><h1>Fatal UI Error</h1><p>${msg}</p></div>`;
+  return false;
+};
 
-const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY
+window.onunhandledrejection = (event) => {
+  console.error("UNHANDLED REJECTION:", event.reason);
+};
 
-const rootElement = document.getElementById('root');
-if (!rootElement) throw new Error("No root element");
+try {
+  const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY
+  console.log("DEBUG: Publishable Key type:", typeof PUBLISHABLE_KEY);
 
-const root = createRoot(rootElement);
+  const rootElement = document.getElementById('root');
+  if (!rootElement) throw new Error("No root element found");
 
-if (!PUBLISHABLE_KEY) {
-  root.render(<div>NO KEY</div>);
-} else {
-  root.render(
-    <React.StrictMode>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-        <App />
-      </ClerkProvider>
-    </React.StrictMode>
-  );
+  console.log("DEBUG: Creating root...");
+  const root = createRoot(rootElement);
+
+  if (!PUBLISHABLE_KEY) {
+    console.warn("DEBUG: No PUBLISHABLE_KEY found, rendering fallback");
+    root.render(<div style={{ padding: '20px', color: 'orange' }}><h1>DENTIS: NO CLERK KEY</h1><p>VITE_CLERK_PUBLISHABLE_KEY is missing from environment.</p></div>);
+  } else {
+    console.log("DEBUG: Rendering App...");
+    root.render(
+      <React.StrictMode>
+        <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+          <App />
+        </ClerkProvider>
+      </React.StrictMode>
+    );
+    console.log("DEBUG: root.render called successfully");
+  }
+} catch (error) {
+  console.error("CRITICAL INDEX ERROR:", error);
+  const root = document.getElementById('root');
+  if (root) root.innerHTML = `<div style="padding:20px; color:red;"><h1>Critical Boot Error</h1><pre>${error instanceof Error ? error.stack : String(error)}</pre></div>`;
 }

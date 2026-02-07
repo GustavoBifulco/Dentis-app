@@ -44,12 +44,12 @@ app.get('/:patientId/odontogram', async (c) => {
     where: and(
       eq(clinicalRecords.patientId, patientId),
       eq(clinicalRecords.organizationId, organizationId),
-      eq(clinicalRecords.treatment, 'ODONTOGRAM_STATE')
+      eq(clinicalRecords.type, 'ODONTOGRAM_STATE')
     ),
     orderBy: [desc(clinicalRecords.createdAt)]
   });
 
-  return c.json({ ok: true, data: lastState?.notes ? JSON.parse(lastState.notes) : null });
+  return c.json({ ok: true, data: lastState?.description ? JSON.parse(lastState.description) : null });
 });
 
 // POST /api/clinical
@@ -90,8 +90,8 @@ app.post('/', zValidator('json', recordSchema.extend({ signatureToken: z.string(
     organizationId,
     patientId,
     dentistId: String(dentistId),
-    treatment: isSigned ? 'PRESCRIPTION_SIGNED' : type, // Mapped 'type' to 'treatment' or add 'type' to schema
-    notes: JSON.stringify(finalData), // Mapped 'data' to 'notes' or add 'data' to schema
+    type: isSigned ? 'PRESCRIPTION_SIGNED' : type,
+    description: JSON.stringify(finalData),
   }).returning();
 
   return c.json({ ok: true, data: newRecord }, 201);
