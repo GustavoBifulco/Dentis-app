@@ -86,7 +86,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
 
             const data = await res.json();
 
-            if (!res.ok) throw new Error(data.error || 'Failed to send message');
+            // Handle new API response format with ok/error/requestId
+            if (!res.ok || data.ok === false) {
+                const errorMsg = data.error || 'Falha ao enviar mensagem';
+                const requestId = data.requestId || '';
+                const errorContent = requestId
+                    ? `**Erro:** ${errorMsg}\n\n*ID: ${requestId}*`
+                    : `**Erro:** ${errorMsg}`;
+                throw new Error(errorContent);
+            }
 
             if (data.conversationId && !conversationId) {
                 setConversationId(data.conversationId);
@@ -95,7 +103,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
             setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
         } catch (error: any) {
             console.error(error);
-            setMessages(prev => [...prev, { role: 'assistant', content: `**Erro:** ${error.message || 'Falha na conexão.'}` }]);
+            // Display error with potential requestId
+            const errorContent = error.message?.includes('ID:')
+                ? error.message
+                : `**Erro:** ${error.message || 'Falha na conexão. Tente novamente.'}`;
+            setMessages(prev => [...prev, { role: 'assistant', content: errorContent }]);
         } finally {
             setIsLoading(false);
         }
@@ -113,8 +125,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                                ? 'bg-blue-600 text-white rounded-tr-none'
-                                : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
+                            ? 'bg-blue-600 text-white rounded-tr-none'
+                            : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
                             }`}>
                             {msg.role === 'assistant' ? (
                                 <div className="prose prose-sm max-w-none dark:prose-invert">

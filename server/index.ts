@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -164,14 +166,22 @@ app.onError((err, c) => {
 // Primeiro tenta servir arquivos da pasta assets
 app.use('/assets/*', serveStatic({ root: './dist' }));
 
-// Para qualquer outra rota não-API, serve o index.html (SPA)
-app.get('*', serveStatic({
-  path: './dist/index.html',
-  onNotFound: (path, c) => {
-    console.log(`⚠️ Arquivo não encontrado: ${path}`);
-    return undefined; // Continua para o próximo handler
+// SPA Fallback: serve index.html for all non-API routes
+app.get('*', (c) => {
+  // Skip API routes (handled by notFound below)
+  if (c.req.path.startsWith('/api')) {
+    return c.notFound();
   }
-}));
+
+  const indexPath = join(process.cwd(), 'dist', 'index.html');
+  if (!existsSync(indexPath)) {
+    console.error(`❌ index.html not found at: ${indexPath}`);
+    return c.text('Build not found. Please run npm run build.', 500);
+  }
+
+  const html = readFileSync(indexPath, 'utf-8');
+  return c.html(html);
+});
 
 // Fallback final
 app.notFound((c) => {
