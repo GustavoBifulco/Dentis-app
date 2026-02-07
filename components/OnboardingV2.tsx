@@ -241,26 +241,29 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                                             <button
                                                 type="button"
                                                 onClick={() => selectRole('dentist')}
-                                                className="p-4 rounded-2xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-center"
+                                                className="p-4 rounded-2xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-center flex flex-col items-center justify-center h-full"
                                             >
-                                                <Briefcase className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                                                <Briefcase className="w-8 h-8 mb-2 text-blue-600" />
                                                 <div className="font-bold text-sm">Dentista</div>
+                                                <div className="text-xs text-slate-500 mt-1">Para profissionais autônomos</div>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => selectRole('clinic_owner')}
-                                                className="p-4 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all text-center"
+                                                className="p-4 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all text-center flex flex-col items-center justify-center h-full"
                                             >
-                                                <Building2 className="w-8 h-8 mx-auto mb-2 text-emerald-600" />
+                                                <Building2 className="w-8 h-8 mb-2 text-emerald-600" />
                                                 <div className="font-bold text-sm">Dono de Clínica</div>
+                                                <div className="text-xs text-slate-500 mt-1">Para gestores e clínicas</div>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => selectRole('patient')}
-                                                className="p-4 rounded-2xl border-2 border-slate-200 hover:border-violet-500 hover:bg-violet-50 transition-all text-center"
+                                                className="p-4 rounded-2xl border-2 border-slate-200 hover:border-violet-500 hover:bg-violet-50 transition-all text-center flex flex-col items-center justify-center h-full"
                                             >
-                                                <User className="w-8 h-8 mx-auto mb-2 text-violet-600" />
+                                                <User className="w-8 h-8 mb-2 text-violet-600" />
                                                 <div className="font-bold text-sm">Paciente</div>
+                                                <div className="text-xs text-slate-500 mt-1">Acesso ao portal pessoal</div>
                                             </button>
                                         </div>
                                     </div>

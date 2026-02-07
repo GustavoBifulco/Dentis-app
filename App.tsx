@@ -172,7 +172,7 @@ const AppContent: React.FC = () => {
 
       // Fallback
       setSession({
-        user: { id: user.id, email: user.primaryEmailAddress?.emailAddress || '', name: user.fullName || '', role: (user.publicMetadata?.role as string) || UserRole.DENTIST },
+        user: { id: user.id, email: user.primaryEmailAddress?.emailAddress || '', name: user.fullName || '', role: (user.publicMetadata?.role as string) || '' },
         activeContext: null,
         availableContexts: [],
         onboardingComplete: !!user.publicMetadata?.onboardingComplete,
@@ -279,6 +279,7 @@ const AppContent: React.FC = () => {
               activeContext={session?.activeContext || null}
               onContextSwitch={switchContext}
               onLogout={() => signOut()}
+              orgRole={session?.orgRole}
             />
             <main className="flex-1 flex flex-col pt-16 h-full overflow-hidden relative">
               <div className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar">

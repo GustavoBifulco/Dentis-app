@@ -17,6 +17,7 @@ interface TopbarProps {
     activeContext: AppContext | null;
     onContextSwitch: (context: AppContext) => void;
     onLogout: () => void;
+    orgRole?: string | null;
 }
 
 const Topbar: React.FC<TopbarProps> = ({
@@ -25,7 +26,8 @@ const Topbar: React.FC<TopbarProps> = ({
     availableContexts,
     activeContext,
     onContextSwitch,
-    onLogout
+    onLogout,
+    orgRole
 }) => {
     const { signOut, openUserProfile } = useClerk();
     const { user } = useUser();
@@ -58,7 +60,7 @@ const Topbar: React.FC<TopbarProps> = ({
                             { type: ViewType.SCHEDULE, label: 'Agenda', icon: Calendar },
                             { type: ViewType.PATIENTS, label: 'Pacientes', icon: Users },
                             { type: ViewType.FINANCE, label: 'Financeiro', icon: DollarSign },
-                            ...(activeContext.isPersonal ? [] : [{ type: ViewType.MANAGE_CLINIC, label: 'Gerenciar', icon: SettingsIcon }]),
+                            ...(activeContext.isPersonal || orgRole !== 'admin' ? [] : [{ type: ViewType.MANAGE_CLINIC, label: 'Gerenciar', icon: SettingsIcon }]),
                         ]
                     },
                     {

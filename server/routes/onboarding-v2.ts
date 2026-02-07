@@ -103,7 +103,7 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                     await tx.insert(organizationMembers).values({
                         userId: userRecord.id.toString(),
                         organizationId: org.id,
-                        role: 'ADMIN',
+                        role: 'admin',
                     });
 
                     console.log(`✅ Organização criada: ${clerkOrg.id}`);
@@ -133,7 +133,7 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
                 await tx.insert(organizationMembers).values({
                     userId: userRecord.id.toString(),
                     organizationId: personalOrgId,
-                    role: 'ADMIN',
+                    role: 'admin',
                 });
 
                 console.log(`✅ Personal Workspace criado para dentista: ${personalOrgId}`);
@@ -160,17 +160,21 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
         // Determina se precisa de pagamento (lógica simplificada)
         const needsPayment = data.role !== 'patient';
 
-        // Se for paciente, já marca como completo no Clerk
+
+        // Atualizar Clerk metadata para todos (persistir role)
+        const metadataUpdate: any = {
+            role: data.role,
+            dbUserId: result.userId,
+        };
+
         if (data.role === 'patient') {
-            await clerkClient.users.updateUser(data.userId, {
-                publicMetadata: {
-                    onboardingComplete: true,
-                    role: data.role,
-                    dbUserId: result.userId,
-                },
-            });
-            console.log(`✅ Clerk atualizado para paciente`);
+            metadataUpdate.onboardingComplete = true;
         }
+
+        await clerkClient.users.updateUser(data.userId, {
+            publicMetadata: metadataUpdate,
+        });
+        console.log(`✅ Clerk metadata atualizado (role: ${data.role})`);
 
         return c.json({
             success: true,
