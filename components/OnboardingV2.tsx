@@ -375,71 +375,149 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                             <div>
                                 <div className="mb-8">
                                     <h2 className="text-3xl font-black mb-2">Escolha seu plano</h2>
-                                    <p className="text-slate-600">Comece grátis ou desbloqueie recursos avançados</p>
+                                    <p className="text-slate-600">
+                                        {formData.role === 'clinic_owner'
+                                            ? 'Gerencie sua clínica com recursos corporativos'
+                                            : 'Comece grátis ou desbloqueie recursos avançados'
+                                        }
+                                    </p>
                                 </div>
 
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    {/* FREE Plan */}
-                                    <div className="p-6 rounded-2xl border-2 border-slate-200 hover:border-slate-300 transition-all">
-                                        <div className="text-sm font-bold text-slate-600 mb-2">GRATUITO</div>
-                                        <div className="text-4xl font-black mb-4">R$ 0</div>
-                                        <ul className="space-y-2 mb-6 text-sm">
-                                            <li className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                Agenda básica
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                Prontuário digital
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                Até 50 pacientes
-                                            </li>
-                                        </ul>
-                                        <button
-                                            onClick={() => handlePlanSelect('FREE')}
-                                            disabled={loading}
-                                            className="w-full py-3 rounded-xl border-2 border-slate-900 text-slate-900 font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
-                                        >
-                                            {loading ? 'Processando...' : 'Começar Grátis'}
-                                        </button>
-                                    </div>
-
-                                    {/* PRO Plan */}
-                                    <div className="p-6 rounded-2xl border-2 border-blue-500 bg-blue-50 relative">
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                                            RECOMENDADO
+                                {/* DENTIST PLANS - Dentis ID */}
+                                {formData.role === 'dentist' && (
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        {/* FREE Plan */}
+                                        <div className="p-6 rounded-2xl border-2 border-slate-200 hover:border-slate-300 transition-all">
+                                            <div className="text-sm font-bold text-slate-600 mb-2">DENTIS ID</div>
+                                            <div className="text-4xl font-black mb-4">R$ 0</div>
+                                            <ul className="space-y-2 mb-6 text-sm">
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Agenda básica
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Prontuário digital
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Até 50 pacientes
+                                                </li>
+                                            </ul>
+                                            <button
+                                                onClick={() => handlePlanSelect('FREE')}
+                                                disabled={loading}
+                                                className="w-full py-3 rounded-xl border-2 border-slate-900 text-slate-900 font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
+                                            >
+                                                {loading ? 'Processando...' : 'Começar Grátis'}
+                                            </button>
                                         </div>
-                                        <div className="text-sm font-bold text-blue-600 mb-2">PRO</div>
-                                        <div className="text-4xl font-black mb-4">R$ 97<span className="text-lg">/mês</span></div>
-                                        <ul className="space-y-2 mb-6 text-sm">
-                                            <li className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                Tudo do FREE +
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                Pacientes ilimitados
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                IA Assistente
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                Relatórios avançados
-                                            </li>
-                                        </ul>
-                                        <button
-                                            onClick={() => handlePlanSelect('PRO')}
-                                            disabled={loading}
-                                            className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg disabled:opacity-50"
-                                        >
-                                            {loading ? 'Redirecionando...' : 'Assinar PRO'}
-                                        </button>
+
+                                        {/* PRO Plan */}
+                                        <div className="p-6 rounded-2xl border-2 border-blue-500 bg-blue-50 relative">
+                                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                                                RECOMENDADO
+                                            </div>
+                                            <div className="text-sm font-bold text-blue-600 mb-2">DENTIS ID PRO</div>
+                                            <div className="text-4xl font-black mb-4">R$ 97<span className="text-lg">/mês</span></div>
+                                            <ul className="space-y-2 mb-6 text-sm">
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Tudo do FREE +
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Pacientes ilimitados
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    IA Assistente
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Relatórios avançados
+                                                </li>
+                                            </ul>
+                                            <button
+                                                onClick={() => handlePlanSelect('PRO')}
+                                                disabled={loading}
+                                                className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg disabled:opacity-50"
+                                            >
+                                                {loading ? 'Redirecionando...' : 'Assinar PRO'}
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {/* CLINIC OWNER PLANS - Clinic ID */}
+                                {formData.role === 'clinic_owner' && (
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        {/* STARTER Plan */}
+                                        <div className="p-6 rounded-2xl border-2 border-slate-200 hover:border-slate-300 transition-all">
+                                            <div className="text-sm font-bold text-slate-600 mb-2">CLINIC ID STARTER</div>
+                                            <div className="text-4xl font-black mb-4">R$ 197<span className="text-lg">/mês</span></div>
+                                            <ul className="space-y-2 mb-6 text-sm">
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Até 3 profissionais
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Pacientes ilimitados
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Gestão de equipe
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Relatórios financeiros
+                                                </li>
+                                            </ul>
+                                            <button
+                                                onClick={() => handlePlanSelect('FREE')}
+                                                disabled={loading}
+                                                className="w-full py-3 rounded-xl border-2 border-slate-900 text-slate-900 font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
+                                            >
+                                                {loading ? 'Processando...' : 'Começar com Starter'}
+                                            </button>
+                                        </div>
+
+                                        {/* BUSINESS Plan */}
+                                        <div className="p-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50 relative">
+                                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                                                RECOMENDADO
+                                            </div>
+                                            <div className="text-sm font-bold text-emerald-600 mb-2">CLINIC ID BUSINESS</div>
+                                            <div className="text-4xl font-black mb-4">R$ 397<span className="text-lg">/mês</span></div>
+                                            <ul className="space-y-2 mb-6 text-sm">
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Profissionais ilimitados
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Múltiplas unidades
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    IA Assistente
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                    Suporte prioritário
+                                                </li>
+                                            </ul>
+                                            <button
+                                                onClick={() => handlePlanSelect('PRO')}
+                                                disabled={loading}
+                                                className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50"
+                                            >
+                                                {loading ? 'Redirecionando...' : 'Assinar Business'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <button
                                     onClick={() => setStep(1)}
