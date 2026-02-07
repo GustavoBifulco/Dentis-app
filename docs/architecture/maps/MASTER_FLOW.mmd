@@ -1,0 +1,64 @@
+graph TD
+    %% Entry Points
+    Start((Start)) --> AuthCheck{Authenticated?}
+    AuthCheck -->|No| Landing[Landing Page / Login]
+    Landing -->|Login/Register| AuthCheck
+    
+    AuthCheck -->|Yes| OnboardingCheck{Onboarding Complete?}
+    
+    %% Onboarding Flow
+    OnboardingCheck -->|No| SelectRole[Select Role: Dentist/Owner/Patient]
+    SelectRole -->|Dentist| SetupProfile[Setup Personal Profile]
+    SelectRole -->|Clinic Owner| SetupClinic[Setup Clinic & Plan]
+    SelectRole -->|Patient| SetupPatient[Confirm Details]
+    
+    SetupProfile --> CompleteOnboarding
+    SetupClinic --> CompleteOnboarding
+    SetupPatient --> CompleteOnboarding
+    CompleteOnboarding --> InitSession[Init Session]
+    
+    %% Main Application Flow
+    OnboardingCheck -->|Yes| ContextLoad[Load User Context]
+    ContextLoad -->|Type: CLINIC/PERSONAL| Dashboard[Dashboard View]
+    ContextLoad -->|Type: PATIENT| PatientPortal[Patient Portal]
+    ContextLoad -->|Type: LAB| LabDashboard[Lab Dashboard]
+    
+    %% Dashboard Branches
+    Dashboard --> Nav{Navigation}
+    
+    %% Clinical/Admin Modules
+    Nav -->|Patients| PatientList[Patient List]
+    PatientList -->|Select| PatientRecord[Patient Record / Prontuário]
+    PatientRecord --> Odontogram
+    PatientRecord --> Anamnesis
+    PatientRecord --> Documents
+    
+    Nav -->|Schedule| Agenda[Agenda / Calendar]
+    Agenda -->|Click Slot| AppointmentModal[Appointment Details]
+    
+    Nav -->|Finance| FinanceDash[Financial Dashboard]
+    FinanceDash --> Transactions
+    FinanceDash --> Split[Financial Split]
+    
+    Nav -->|Inventory| Stock[Inventory Management]
+    
+    Nav -->|Intelligence| AI[Dentist AI Assistant]
+    
+    Nav -->|Communication| CommDash[Communication Hub]
+    CommDash --> WhatsApp
+    CommDash --> Campaigns
+    
+    %% Settings & Admin
+    Nav -->|Settings| SettingsMenu[Settings]
+    SettingsMenu --> TeamConfig[Team Config]
+    SettingsMenu --> ClinicConfig[Manage Clinic]
+    
+    %% Access Control Gates
+    ClinicConfig -->|Check| AdminCheck{Is Admin?}
+    AdminCheck -->|No| AccessDenied
+    AdminCheck -->|Yes| AllowedConfig
+    
+    %% Patient Portal Flow
+    PatientPortal --> P_Appointments[My Appointments]
+    PatientPortal --> P_Profile[My Profile]
+    PatientPortal --> P_Timeline[Treatment Timeline]

@@ -1,0 +1,71 @@
+erDiagram
+
+    %% --- IDENTITY & AUTH ---
+    USERS ||--o| PROFESSIONAL_PROFILES : has
+    USERS ||--o| PATIENT_PROFILES : has
+    USERS ||--o| ORGANIZATION_MEMBERS : "belongs to"
+
+    ORGANIZATIONS ||--|{ ORGANIZATION_MEMBERS : "has members"
+    ORGANIZATIONS ||--o{ PATIENTS : "owns records"
+
+    %% --- CLINICAL CORE ---
+    PATIENTS ||--o{ APPOINTMENTS : "has"
+    PATIENTS ||--o{ ENCOUNTERS : "has clinical history"
+    PATIENTS ||--o{ TIMELINE_EVENTS : "history feed"
+    PATIENTS ||--o{ LAB_CASES : "lab orders"
+
+    APPOINTMENTS ||--o| ENCOUNTERS : "generates"
+    APPOINTMENTS }|--|| PROCEDURES : "for"
+    
+    ENCOUNTERS ||--o{ DOCUMENTS : "attachments"
+
+    %% --- CLINICAL DETAILS ---
+    PATIENTS ||--o{ ODONTOGRAM : "tooth status"
+    PATIENTS ||--o{ PRESCRIPTIONS : "drugs"
+    PATIENTS ||--o{ EXAM_ORDERS : "requests"
+    PATIENTS ||--o{ TREATMENT_PLANS : "plans"
+
+    TREATMENT_PLANS ||--|{ PLAN_ITEMS : "details"
+
+    %% --- OPERATIONS ---
+    ORGANIZATIONS ||--o{ INVENTORY : "stocks"
+    ORGANIZATIONS ||--o{ FINANCIAL_LEDGER : "transactions"
+    
+    INVENTORY ||--o{ INVENTORY_MOVEMENTS : "history"
+    APPOINTMENTS ||--o{ INVENTORY_MOVEMENTS : "consumes"
+
+    %% --- COMMUNICATION & AI ---
+    USERS ||--o{ AI_CONVERSATIONS : "chats"
+    AI_CONVERSATIONS ||--|{ AI_MESSAGES : "messages"
+
+    %% --- ENTITY DEFINITIONS ---
+    USERS {
+        string id PK
+        string email
+        string role
+    }
+
+    ORGANIZATIONS {
+        string id PK
+        string type "CLINIC|LAB"
+        string name
+    }
+
+    PATIENTS {
+        int id PK
+        string organizationId FK
+        string name
+        string cpf
+    }
+
+    APPOINTMENTS {
+        int id PK
+        date scheduledDate
+        string status
+    }
+
+    ENCOUNTERS {
+        int id PK
+        string type "SOAP"
+        string status "DRAFT|SIGNED"
+    }
