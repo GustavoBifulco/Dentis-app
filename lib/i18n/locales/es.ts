@@ -1,0 +1,71 @@
+import { Translations } from '../types';
+
+const es: Translations = {
+    common: {
+        loading: "Cargando...",
+        error: "Error inesperado",
+        save: "Guardar",
+        cancel: "Cancelar",
+        back: "Volver",
+        next: "Siguiente",
+        confirm: "Confirmar",
+        delete: "Eliminar",
+        edit: "Editar",
+        view: "Ver",
+        search: "Buscar...",
+        filter: "Filtrar",
+        actions: "Acciones",
+    },
+    menu: {
+        dashboard: "Inicio",
+        patients: "Pacientes",
+        schedule: "Agenda",
+        finance: "Financiero",
+        procedures: "Procedimientos",
+        stock: "Inventario",
+        marketing: "Marketing",
+        reports: "Informes",
+        settings: "Configuración",
+        logout: "Cerrar sesión",
+        profile: "Mi Perfil",
+        help: "Ayuda",
+        terms: "Términos de Uso",
+        privacy: "Privacidad",
+    },
+    dashboard: {
+        greeting: "Buenos días, {title} {name}.",
+        greetingFallback: "Buenos días, {name}.",
+        daySummary: "Aquí tienes el resumen de tu día y los próximos pasos.",
+        emptyState: "Todo tranquilo por ahora.",
+        quickActions: "Acciones Rápidas",
+        stats: "Indicadores",
+    },
+    patients: {
+        title: "Pacientes",
+        newPatient: "Agregar paciente",
+        importCsv: "Importar CSV",
+        emptyTitle: "Tu base de pacientes empieza aquí.",
+        emptyBody: "Agrega un paciente o importa una lista CSV.",
+        searchPlaceholder: "Buscar por nombre, documento o teléfono...",
+        table: {
+            name: "Nombre",
+            contact: "Contacto",
+            lastVisit: "Última consulta",
+            status: "Estado",
+        },
+    },
+    settings: {
+        title: "Configuración",
+        language: "Idioma",
+        languageDesc: "Elige el idioma de la interfaz.",
+        theme: "Tema",
+        security: "Seguridad",
+    },
+    errors: {
+        generic: "No pudimos completar esto ahora. Inténtalo de nuevo en un momento.",
+        unauthorized: "Acceso no autorizado.",
+        notFound: "Recurso no encontrado.",
+    },
+};
+
+export default es;

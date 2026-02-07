@@ -11,7 +11,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 
 const checkout = new Hono<{ Variables: { userId: string } }>();
 
-checkout.use('*', authMiddleware);
+// checkout.use('*', authMiddleware); // REMOVED: Blocks webhook
 
 const sessionSchema = z.object({
   priceId: z.string(),
@@ -60,7 +60,7 @@ checkout.post('/webhook', async (c) => {
   return c.json({ received: true });
 });
 
-checkout.post('/create-session', zValidator('json', sessionSchema), async (c) => {
+checkout.post('/create-session', authMiddleware, zValidator('json', sessionSchema), async (c) => {
   const { priceId } = c.req.valid('json');
   const userId = c.get('userId');
 

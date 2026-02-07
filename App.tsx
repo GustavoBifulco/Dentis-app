@@ -2,6 +2,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { SignedIn, SignedOut, useUser, useClerk, useAuth } from "@clerk/clerk-react";
 import { ViewType, ThemeConfig, Patient, UserRole } from './types';
 import { AppContextProvider, useAppContext } from './lib/useAppContext';
+import { I18nProvider } from './lib/i18n';
 import { useNavigation } from './lib/navigation';
 import Topbar from './components/Topbar';
 import { Toast } from './components/Shared';
@@ -323,67 +324,69 @@ const App: React.FC = () => {
 
   return (
     <AppContextProvider>
-      <AppContent />
-      <CookieConsent
-        location="bottom"
-        buttonText="Aceitar"
-        declineButtonText="Recusar"
-        enableDeclineButton
-        cookieName="dentis-cookie-consent"
-        style={{
-          background: "rgba(15, 23, 42, 0.95)",
-          backdropFilter: "blur(10px)",
-          borderTop: "1px solid rgba(99, 102, 241, 0.3)",
-          padding: "20px",
-          alignItems: "center",
-        }}
-        buttonStyle={{
-          background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-          color: "#ffffff",
-          fontSize: "14px",
-          fontWeight: "600",
-          padding: "10px 24px",
-          borderRadius: "8px",
-          border: "none",
-          cursor: "pointer",
-        }}
-        declineButtonStyle={{
-          background: "transparent",
-          color: "#94a3b8",
-          fontSize: "14px",
-          padding: "10px 24px",
-          borderRadius: "8px",
-          border: "1px solid #334155",
-          cursor: "pointer",
-        }}
-        expires={365}
-      >
-        <span style={{ fontSize: "14px", color: "#e2e8f0" }}>
-          🍪 Usamos cookies essenciais para autenticação e funcionais para melhorar sua experiência.
-          Ao continuar navegando, você concorda com nossa{" "}
-          <a
-            href="/privacy"
-            style={{ color: "#818cf8", textDecoration: "underline" }}
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = "/privacy";
-            }}
-          >
-            Política de Privacidade
-          </a>
-          {" "}e{" "}
-          <a
-            href="/terms"
-            style={{ color: "#818cf8", textDecoration: "underline" }}
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = "/terms";
-            }}
-          >
-            Termos de Serviço
-          </a>.
-        </span>
-      </CookieConsent>
+      <I18nProvider>
+        <AppContent />
+        <CookieConsent
+          location="bottom"
+          buttonText="Aceitar"
+          declineButtonText="Recusar"
+          enableDeclineButton
+          cookieName="dentis-cookie-consent"
+          style={{
+            background: "rgba(15, 23, 42, 0.95)",
+            backdropFilter: "blur(10px)",
+            borderTop: "1px solid rgba(99, 102, 241, 0.3)",
+            padding: "20px",
+            alignItems: "center",
+          }}
+          buttonStyle={{
+            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+            color: "#ffffff",
+            fontSize: "14px",
+            fontWeight: "600",
+            padding: "10px 24px",
+            borderRadius: "8px",
+            border: "none",
+            cursor: "pointer",
+          }}
+          declineButtonStyle={{
+            background: "transparent",
+            color: "#94a3b8",
+            fontSize: "14px",
+            padding: "10px 24px",
+            borderRadius: "8px",
+            border: "1px solid #334155",
+            cursor: "pointer",
+          }}
+          expires={365}
+        >
+          <span style={{ fontSize: "14px", color: "#e2e8f0" }}>
+            🍪 Usamos cookies essenciais para autenticação e funcionais para melhorar sua experiência.
+            Ao continuar navegando, você concorda com nossa{" "}
+            <a
+              href="/privacy"
+              style={{ color: "#818cf8", textDecoration: "underline" }}
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.href = "/privacy";
+              }}
+            >
+              Política de Privacidade
+            </a>
+            {" "}e{" "}
+            <a
+              href="/terms"
+              style={{ color: "#818cf8", textDecoration: "underline" }}
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.href = "/terms";
+              }}
+            >
+              Termos de Serviço
+            </a>.
+          </span>
+        </CookieConsent>
+      </I18nProvider>
     </AppContextProvider>
   );
 };

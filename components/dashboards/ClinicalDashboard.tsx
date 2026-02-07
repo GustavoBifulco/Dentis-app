@@ -4,6 +4,17 @@ import { ArrowUpRight, ArrowRight, Calendar, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { IslandCard, LuxButton } from '../Shared';
 import { BarChart, Bar, ResponsiveContainer, Cell, Tooltip } from 'recharts';
+const { user } = useUser();
+const { t, formatMoney, locale } = useI18n();
+const { getSalutation } = useI18n() as any; // Temporary cast until I export it from hook or use helper
+// Actually getSalutation is not in hook return type in prior step, I should use the helper directly or add it to hook
+// Let's use the helper directly or update hook. 
+// Update hook is better but let's import helper for now to avoid breaking changes if hook not updated yet
+// Wait, I defined getSalutation in types but didn't return it in hook. 
+// Let's import it from format.ts 
+
+import { useI18n } from '../../lib/i18n';
+import { getSalutation } from '../../lib/i18n/format';
 import { useAuth, useUser } from '@clerk/clerk-react';
 
 const ClinicalDashboard: React.FC = () => {
@@ -55,28 +66,33 @@ const ClinicalDashboard: React.FC = () => {
             <div className="lg:col-span-7 space-y-6">
                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
                   <h2 className="text-5xl md:text-6xl font-editorial font-medium text-lux-text leading-[1.1]">
-                     Bom dia, <br />
-                     <span className="italic text-lux-accent">{user?.firstName ? `Dr. ${user.firstName}` : user?.fullName || 'Doutor'}.</span>
+                     {t('dashboard.greeting', {
+                        title: getSalutation(locale, user?.publicMetadata?.gender as string, null),
+                        name: user?.firstName || user?.fullName || ''
+                     }).split(',')[0]}, <br />
+                     <span className="italic text-lux-accent">
+                        {t('dashboard.greeting', {
+                           title: getSalutation(locale, user?.publicMetadata?.gender as string, null),
+                           name: user?.firstName || user?.fullName || ''
+                        }).split(',')[1]}
+                     </span>
                   </h2>
                </motion.div>
 
                <div className="border-l-2 border-lux-accent/30 pl-6 py-1">
                   <p className="text-lg text-lux-text-secondary font-light leading-relaxed max-w-lg">
-                     Você tem <strong className="font-semibold text-lux-text">{stats.appointmentsToday} consultas</strong> hoje.
-                     {stats.nextPatient ? (
-                        <> O próximo paciente é <span className="underline decoration-lux-accent decoration-2 underline-offset-4">{stats.nextPatient}</span> às {stats.nextTime}.</>
-                     ) : (
-                        <> Não há mais pacientes agendados para hoje.</>
-                     )}
+                     {t('dashboard.daySummary')}
+                     <br />
+                     <strong className="font-semibold text-lux-text">{stats.appointmentsToday} {t('menu.schedule')}</strong>.
                   </p>
                </div>
 
                <div className="flex gap-4 pt-2">
                   <LuxButton icon={<Calendar size={18} />}>
-                     Ver Agenda
+                     {t('common.view')} {t('menu.schedule')}
                   </LuxButton>
                   <LuxButton variant="outline">
-                     Buscar Paciente
+                     {t('common.search')}
                   </LuxButton>
                </div>
             </div>
@@ -104,8 +120,8 @@ const ClinicalDashboard: React.FC = () => {
 
                      <div>
                         <h3 className="text-4xl font-light tracking-tight mb-2">
-                           <span className="text-lux-accent text-2xl align-top mr-1">R$</span>
-                           {stats.revenueMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                           <span className="text-2xl align-top mr-1"></span>
+                           {formatMoney(stats.revenueMonth)}
                         </h3>
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                            <span className="text-xs text-emerald-400 font-bold uppercase tracking-wide">Atualizado Agora</span>

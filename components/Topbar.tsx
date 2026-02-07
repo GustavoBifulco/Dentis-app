@@ -9,6 +9,7 @@ import {
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
+import { useI18n } from '../lib/i18n';
 
 interface TopbarProps {
     currentView: ViewType;
@@ -33,7 +34,7 @@ const Topbar: React.FC<TopbarProps> = ({
     const { user } = useUser();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-    const [showUserPlanModal, setShowUserPlanModal] = useState(false);
+    const { t } = useI18n();
 
     // -- Helpers --
     const getContextIcon = (type?: ContextType) => {
@@ -54,35 +55,33 @@ const Topbar: React.FC<TopbarProps> = ({
             case 'CLINIC':
                 return [
                     {
-                        title: 'Gestão',
+                        title: t('menu.management', { defaultValue: 'Gestão' }),
                         items: [
-                            { type: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
-                            { type: ViewType.SCHEDULE, label: 'Agenda', icon: Calendar },
-                            { type: ViewType.PATIENTS, label: 'Pacientes', icon: Users },
-                            { type: ViewType.FINANCE, label: 'Financeiro', icon: DollarSign },
-                            ...(activeContext.isPersonal || orgRole !== 'admin' ? [] : [{ type: ViewType.MANAGE_CLINIC, label: 'Gerenciar', icon: SettingsIcon }]),
+                            { type: ViewType.DASHBOARD, label: t('menu.dashboard'), icon: LayoutDashboard },
+                            { type: ViewType.SCHEDULE, label: t('menu.schedule'), icon: Calendar },
+                            { type: ViewType.PATIENTS, label: t('menu.patients'), icon: Users },
+                            { type: ViewType.FINANCE, label: t('menu.finance'), icon: DollarSign },
+                            ...(activeContext.isPersonal || orgRole !== 'admin' ? [] : [{ type: ViewType.MANAGE_CLINIC, label: t('menu.settings'), icon: SettingsIcon }]),
                         ]
                     },
                     {
-                        title: 'Operacional',
+                        title: t('menu.operational', { defaultValue: 'Operacional' }),
                         items: [
-                            { type: ViewType.MANAGEMENT_HUB, label: 'Central', icon: Layers },
-                            { type: ViewType.COMMUNICATION, label: 'Comunicação', icon: Sparkles }, // Using Sparkles as temp placeholder if MessageSquare not imp
+                            { type: ViewType.MANAGEMENT_HUB, label: t('menu.central', { defaultValue: 'Central' }), icon: Layers },
+                            { type: ViewType.COMMUNICATION, label: t('menu.communication', { defaultValue: 'Comunicação' }), icon: Sparkles },
                         ]
                     },
                     {
-                        title: 'Inteligência',
+                        title: t('menu.intelligence', { defaultValue: 'Inteligência' }),
                         items: [
                             { type: ViewType.AI_ASSISTANT, label: 'Dentis AI', icon: Sparkles },
                         ]
                     },
-                    // For desktop topbar, we might want to group these differently if there are too many
-                    // But for now keeping structure similar
                     {
-                        title: 'Conexões',
+                        title: t('menu.connections', { defaultValue: 'Conexões' }),
                         items: [
-                            { type: ViewType.LABS, label: 'Lab', icon: TestTube },
-                            { type: ViewType.MARKETPLACE, label: 'Shop', icon: ShoppingBag },
+                            { type: ViewType.LABS, label: t('menu.labs', { defaultValue: 'Lab' }), icon: TestTube },
+                            { type: ViewType.MARKETPLACE, label: t('menu.shop', { defaultValue: 'Shop' }), icon: ShoppingBag },
                         ]
                     }
                 ];
@@ -94,7 +93,7 @@ const Topbar: React.FC<TopbarProps> = ({
                 ];
             case 'PATIENT':
                 return [
-                    { title: 'Portal', items: [{ type: ViewType.DASHBOARD, label: 'Início', icon: LayoutDashboard }, { type: ViewType.SCHEDULE, label: 'Agendar', icon: Calendar }, { type: ViewType.TREATMENT_JOURNEY, label: 'Tratamento', icon: Smile }, { type: ViewType.ANAMNESIS, label: 'Ficha', icon: FileText }, { type: ViewType.PROFILE, label: 'Dados', icon: Users }] }
+                    { title: t('menu.portal', { defaultValue: 'Portal' }), items: [{ type: ViewType.DASHBOARD, label: t('menu.dashboard'), icon: LayoutDashboard }, { type: ViewType.SCHEDULE, label: t('menu.schedule'), icon: Calendar }, { type: ViewType.TREATMENT_JOURNEY, label: t('menu.treatment', { defaultValue: 'Tratamento' }), icon: Smile }, { type: ViewType.ANAMNESIS, label: t('menu.records', { defaultValue: 'Ficha' }), icon: FileText }, { type: ViewType.PROFILE, label: t('menu.profile'), icon: Users }] }
                 ];
             case 'COURIER':
                 return [{ title: 'Entregas', items: [{ type: ViewType.DASHBOARD, label: 'Corridas', icon: Truck }, { type: ViewType.FINANCE, label: 'Ganhos', icon: DollarSign }] }];
@@ -274,7 +273,7 @@ const Topbar: React.FC<TopbarProps> = ({
                                         {/* Contexts */}
                                         <div className="p-2 border-b border-border max-h-[250px] overflow-y-auto">
                                             {availableContexts.length > 0 && (
-                                                <p className="px-2 py-1 text-[10px] font-bold text-text-muted uppercase">Trocar Contexto</p>
+                                                <p className="px-2 py-1 text-[10px] font-bold text-text-muted uppercase">{t('menu.switchContext', { defaultValue: 'Trocar Contexto' })}</p>
                                             )}
                                             {availableContexts.map(ctx => (
                                                 <button
@@ -298,20 +297,20 @@ const Topbar: React.FC<TopbarProps> = ({
                                         {/* System Items */}
                                         <div className="p-2 border-b border-border">
                                             <button onClick={() => { setView(ViewType.SETTINGS); setIsAccountMenuOpen(false); }} className="w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-surface-hover text-text-main">
-                                                <SettingsIcon size={14} /> Ajustes
+                                                <SettingsIcon size={14} /> {t('menu.settings')}
                                             </button>
                                             <button onClick={() => { setView(ViewType.HELP); setIsAccountMenuOpen(false); }} className="w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-surface-hover text-text-main">
-                                                <HelpCircle size={14} /> Ajuda
+                                                <HelpCircle size={14} /> {t('menu.help')}
                                             </button>
                                         </div>
 
                                         {/* Footer Items */}
                                         <div className="p-2">
                                             <button onClick={() => { openUserProfile(); setIsAccountMenuOpen(false); }} className="w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-surface-hover text-text-main">
-                                                <SettingsIcon size={14} /> Gerenciar Conta
+                                                <SettingsIcon size={14} /> {t('menu.manageAccount', { defaultValue: 'Gerenciar Conta' })}
                                             </button>
                                             <button onClick={() => { signOut(); setIsAccountMenuOpen(false); }} className="w-full text-left px-2 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-destructive/10 text-destructive">
-                                                <LogOut size={14} /> Sair
+                                                <LogOut size={14} /> {t('menu.logout')}
                                             </button>
                                         </div>
                                     </motion.div>

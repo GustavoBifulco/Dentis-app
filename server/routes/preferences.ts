@@ -10,7 +10,7 @@ app.use('*', authMiddleware);
 
 app.patch('/', async (c) => {
     const auth = c.get('auth');
-    const { theme, primaryColor } = await c.req.json();
+    const { theme, primaryColor, locale } = await c.req.json();
 
     if (!auth.userId) {
         return c.json({ error: 'Unauthorized' }, 401);
@@ -32,7 +32,8 @@ app.patch('/', async (c) => {
     const newPrefs = {
         ...currentPrefs,
         ...(theme ? { theme } : {}),
-        ...(primaryColor ? { primaryColor } : {})
+        ...(primaryColor ? { primaryColor } : {}),
+        ...(locale ? { locale } : {})
     };
 
     await db.update(users)

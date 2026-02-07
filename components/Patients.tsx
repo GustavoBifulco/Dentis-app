@@ -7,6 +7,7 @@ import { Search, Plus, Filter, ArrowRight, Upload, ArrowUpDown, ArrowUp, ArrowDo
 import PatientImport from './PatientImport';
 import NewPatientModal from './NewPatientModal';
 import PatientInviteButton from './PatientInviteButton';
+import { useI18n } from '../lib/i18n';
 
 interface PatientsProps {
   onSelectPatient?: (patient: Patient) => void;
@@ -24,6 +25,7 @@ interface Filters {
 const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
+  const { t, formatDate } = useI18n();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,15 +187,15 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
     return sortOrder === 'asc' ? <ArrowUp size={14} className="text-blue-600" /> : <ArrowDown size={14} className="text-blue-600" />;
   };
 
-  if (!isLoaded) return <LoadingState message="Carregando perfil..." />;
-  if (loading) return <LoadingState message="Buscando prontuários..." />;
-  if (error) return <ErrorState message={error} onRetry={loadPatients} />;
+  if (!isLoaded) return <LoadingState message={t('common.loading')} />;
+  if (loading) return <LoadingState message={t('common.loading')} />;
+  if (error) return <ErrorState message={t('common.error')} onRetry={loadPatients} />;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <SectionHeader
-        title="Pacientes"
-        subtitle="Gestão completa de prontuários e históricos."
+        title={t('patients.title')}
+        subtitle={t('patients.emptyTitle')}
         action={
           <div className="flex gap-3">
             <button
@@ -201,14 +203,14 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
               className="px-4 py-2 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition flex items-center gap-2"
             >
               <Upload size={18} />
-              Importar
+              {t('patients.importCsv')}
             </button>
             <button
               onClick={() => setShowNewPatient(true)}
               className="px-4 py-2 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition flex items-center gap-2 shadow-lg shadow-blue-600/30"
             >
               <Plus size={18} />
-              Novo Paciente
+              {t('patients.newPatient')}
             </button>
           </div>
         }
@@ -223,7 +225,7 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
               <Search className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
               <input
                 type="text"
-                placeholder="Buscar por nome, telefone ou email..."
+                placeholder={t('patients.searchPlaceholder')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium shadow-sm"
@@ -235,8 +237,8 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`relative px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm ${showFilters || activeFiltersCount > 0
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
               >
                 <Filter size={18} />
@@ -321,9 +323,9 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
         {/* Table */}
         {filteredAndSorted.length === 0 ? (
           <EmptyState
-            title="Nenhum paciente encontrado"
-            description={search || activeFiltersCount > 0 ? "Tente ajustar os filtros ou busca." : "Sua base de dados está vazia."}
-            actionLabel="Cadastrar"
+            title={t('patients.emptyTitle')}
+            description={search || activeFiltersCount > 0 ? t('patients.emptyBody') : t('patients.emptyBody')}
+            actionLabel={t('patients.newPatient')}
             onAction={() => setShowNewPatient(true)}
           />
         ) : (
@@ -336,17 +338,17 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
                     onClick={() => handleSort('name')}
                   >
                     <div className="flex items-center gap-2">
-                      Paciente
+                      {t('patients.table.name')}
                       <SortIcon field="name" />
                     </div>
                   </th>
-                  <th className="px-8 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-8 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">{t('patients.table.status')}</th>
                   <th
                     className="px-8 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest cursor-pointer hover:text-blue-600 transition-colors group"
                     onClick={() => handleSort('lastVisit')}
                   >
                     <div className="flex items-center gap-2">
-                      Última Visita
+                      {t('patients.table.lastVisit')}
                       <SortIcon field="lastVisit" />
                     </div>
                   </th>
@@ -359,7 +361,7 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
                       <SortIcon field="createdAt" />
                     </div>
                   </th>
-                  <th className="px-8 py-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-widest">Ações</th>
+                  <th className="px-8 py-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-widest">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -382,8 +384,8 @@ const Patients: React.FC<PatientsProps> = ({ onSelectPatient }) => {
                     </td>
                     <td className="px-8 py-5">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm ${patient.status === 'active' || !patient.status
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
                         }`}>
                         {patient.status === 'active' || !patient.status ? (
                           <><CheckCircle2 size={12} /> Ativo</>

@@ -1,0 +1,71 @@
+import { Translations } from '../types';
+
+const en: Translations = {
+    common: {
+        loading: "Loading...",
+        error: "Unexpected error",
+        save: "Save",
+        cancel: "Cancel",
+        back: "Back",
+        next: "Next",
+        confirm: "Confirm",
+        delete: "Delete",
+        edit: "Edit",
+        view: "View",
+        search: "Search...",
+        filter: "Filter",
+        actions: "Actions",
+    },
+    menu: {
+        dashboard: "Home",
+        patients: "Patients",
+        schedule: "Schedule",
+        finance: "Finance",
+        procedures: "Procedures",
+        stock: "Inventory",
+        marketing: "Marketing",
+        reports: "Reports",
+        settings: "Settings",
+        logout: "Log out",
+        profile: "My Profile",
+        help: "Help",
+        terms: "Terms of Service",
+        privacy: "Privacy Policy",
+    },
+    dashboard: {
+        greeting: "Good morning, {title} {name}.",
+        greetingFallback: "Good morning, {name}.",
+        daySummary: "Here's your day summary and next steps.",
+        emptyState: "All quiet for now.",
+        quickActions: "Quick Actions",
+        stats: "Metrics",
+    },
+    patients: {
+        title: "Patients",
+        newPatient: "Add patient",
+        importCsv: "Import CSV",
+        emptyTitle: "Your patient list starts here.",
+        emptyBody: "Add a patient now or import a CSV list.",
+        searchPlaceholder: "Search by name, ID or phone...",
+        table: {
+            name: "Name",
+            contact: "Contact",
+            lastVisit: "Last visit",
+            status: "Status",
+        },
+    },
+    settings: {
+        title: "Settings",
+        language: "Language",
+        languageDesc: "Choose interface language.",
+        theme: "Theme",
+        security: "Security",
+    },
+    errors: {
+        generic: "We couldn't complete this right now. Please try again in a moment.",
+        unauthorized: "Unauthorized access.",
+        notFound: "Resource not found.",
+    },
+};
+
+export default en;

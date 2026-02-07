@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import whatsappService from '../services/whatsapp';
 import { checkWhatsAppQuota, logWhatsAppUsage } from '../lib/usageTracking';
+import { authMiddleware } from '../middleware/auth';
 
 const app = new Hono();
 
@@ -64,7 +65,7 @@ app.post('/webhook', async (c) => {
 /**
  * Send a message (with quota check)
  */
-app.post('/send', async (c) => {
+app.post('/send', authMiddleware, async (c) => {
     try {
         const { to, text, organizationId, userId } = await c.req.json();
 
@@ -99,7 +100,7 @@ app.post('/send', async (c) => {
 /**
  * Send a template message (with quota check)
  */
-app.post('/send-template', async (c) => {
+app.post('/send-template', authMiddleware, async (c) => {
     try {
         const { to, templateName, vars, organizationId, userId } = await c.req.json();
 
