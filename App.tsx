@@ -15,6 +15,9 @@ const Schedule = lazy(() => import('./components/Schedule'));
 const Finance = lazy(() => import('./components/Finance'));
 const Profile = lazy(() => import('./components/Profile'));
 const Labs = lazy(() => import('./components/Labs'));
+const Marketplace = lazy(() => import('./components/Marketplace'));
+const ManageClinic = lazy(() => import('./components/ManageClinic'));
+const Settings = lazy(() => import('./components/Settings'));
 
 
 // Internal component to use the hook context
@@ -71,6 +74,9 @@ const AppContent = () => {
               {currentView === ViewType.SCHEDULE && <Schedule />}
               {currentView === ViewType.FINANCE && <Finance userRole={userRole} />}
               {currentView === ViewType.LABS && <Labs />}
+              {currentView === ViewType.MARKETPLACE && <Marketplace />}
+              {currentView === ViewType.MANAGE_CLINIC && <ManageClinic />}
+              {currentView === ViewType.SETTINGS && <Settings onNavigate={setCurrentView} />}
               {currentView === ViewType.PROFILE && (
                 <Profile
                   userRole={userRole}
