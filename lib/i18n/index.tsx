@@ -48,8 +48,17 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('dentis-locale', newLocale);
     };
 
+
     const { getToken } = useAuth();
-    const { session } = useAppContext();
+
+    // AppContext is optional - may not be available on landing/public pages
+    let session: any = null;
+    try {
+        const appContext = useAppContext();
+        session = appContext?.session;
+    } catch (e) {
+        // Landing page doesn't have AppContext - that's fine
+    }
 
     // Sync FROM backend (Cloud > Local)
     useEffect(() => {

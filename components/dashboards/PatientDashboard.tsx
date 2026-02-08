@@ -21,6 +21,7 @@ import { useAppContext } from '../../lib/useAppContext';
 import { useAppointments } from '../../lib/hooks/useAppointments';
 import { useFinancials } from '../../lib/hooks/useFinancials';
 import { usePrescriptions } from '../../lib/hooks/usePrescriptions';
+import { useI18n } from '../../lib/i18n';
 import AvailableSlotsViewer from '../AvailableSlotsViewer';
 import ContextSwitcher from '../ContextSwitcher';
 
@@ -30,6 +31,7 @@ interface PatientDashboardProps {
 
 const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
     const { session, switchContext } = useAppContext();
+    const { t, locale } = useI18n();
     const patientId = session?.activeContext?.type === 'PATIENT' ? session.activeContext.id : null;
 
     const { nextAppointment, isLoading: appointmentsLoading } = useAppointments({ patientId });
@@ -39,14 +41,22 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
     const [showPrescriptionsModal, setShowPrescriptionsModal] = useState(false);
     const [showBookingModal, setShowBookingModal] = useState(false);
 
+    // Time-based greeting
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return t('patientDashboard.goodMorning');
+        if (hour < 18) return t('patientDashboard.goodAfternoon');
+        return t('patientDashboard.goodEvening');
+    };
+
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        return date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
     };
 
     const formatTime = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
     };
 
     const handleWazeNavigation = () => {
@@ -65,7 +75,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
             <div className="bg-white/40 backdrop-blur-md rounded-3xl border border-white shadow-xl overflow-hidden mb-6">
                 <div className="px-5 pt-4 flex items-center gap-2">
                     <Users size={14} className="text-lux-accent" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Perfil Familiar</span>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{t('patientDashboard.familyProfile')}</span>
                 </div>
                 <ContextSwitcher
                     availableContexts={patientContexts}
@@ -74,11 +84,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                 />
             </div>
 
-            {/* Welcome Header */}
             <div className="px-2">
                 <h2 className="text-5xl font-editorial font-medium text-lux-text leading-tight">
-                    Bom dia, <br />
-                    <span className="italic text-lux-accent">{session?.user?.name?.split(' ')[0] || 'Paciente'}.</span>
+                    {getGreeting()} <br />
+                    <span className="italic text-lux-accent">{session?.user?.name?.split(' ')[0] || t('patientPortal.fallbackName')}.</span>
                 </h2>
             </div>
 
@@ -96,7 +105,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                             <div className="relative z-10">
                                 <div className="flex justify-between items-center mb-8">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-lux-accent mb-1">Próxima Visita</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-lux-accent mb-1">{t('patientDashboard.nextVisit')}</span>
                                         <span className="text-2xl font-bold">{formatDate(String(nextAppointment.startTime))} às {formatTime(String(nextAppointment.startTime))}</span>
                                     </div>
                                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10">
@@ -110,7 +119,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold">Dr. Ricardo Silveira</p>
-                                        <p className="text-[10px] opacity-60 uppercase tracking-widest">Ortodontista</p>
+                                        <p className="text-[10px] opacity-60 uppercase tracking-widest">{t('patientDashboard.orthodontist')}</p>
                                     </div>
                                 </div>
 
@@ -119,10 +128,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                                         onClick={handleWazeNavigation}
                                         className="flex-1 bg-white text-lux-text py-4 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 hover:bg-lux-accent hover:text-white transition-all"
                                     >
-                                        <MapPin size={14} /> Abrir Mapa
+                                        <MapPin size={14} /> {t('patientDashboard.openMap')}
                                     </button>
                                     <button className="flex-1 bg-lux-accent text-white py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-lux-accent/30">
-                                        Confirmar
+                                        {t('patientDashboard.confirm')}
                                     </button>
                                 </div>
                             </div>
@@ -137,13 +146,13 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                             className="bg-white border-2 border-dashed border-slate-200 rounded-[40px] p-8 text-center group hover:border-lux-accent transition-colors"
                         >
                             <Calendar className="mx-auto text-slate-300 mb-4 group-hover:text-lux-accent transition-colors" size={48} />
-                            <h3 className="text-xl font-black text-slate-800 mb-2">Sem visitas agendadas</h3>
-                            <p className="text-sm text-slate-400 mb-6 font-medium">É hora de cuidar do seu sorriso?</p>
+                            <h3 className="text-xl font-black text-slate-800 mb-2">{t('patientDashboard.noAppointments')}</h3>
+                            <p className="text-sm text-slate-400 mb-6 font-medium">{t('patientDashboard.careForSmile')}</p>
                             <button
                                 onClick={() => setShowBookingModal(true)}
                                 className="w-full bg-lux-accent text-white py-4 rounded-2xl font-black text-xs uppercase hover:scale-105 transition-transform shadow-lg shadow-lux-accent/30"
                             >
-                                Agendar Consulta Agora
+                                {t('patientDashboard.bookNow')}
                             </button>
                         </motion.div>
                     )}
@@ -164,12 +173,12 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                                     <DollarSign className="text-amber-600 group-hover:text-white" size={32} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest group-hover:text-white/60">Pagamento Pendente</p>
+                                    <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest group-hover:text-white/60">{t('patientDashboard.pendingPayment')}</p>
                                     <h3 className="text-2xl font-black text-slate-800 group-hover:text-white">R$ {outstandingBalance.toLocaleString('pt-BR')}</h3>
                                 </div>
                             </div>
                             <div className="bg-lux-accent text-white group-hover:bg-white group-hover:text-lux-accent px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-tighter transition-all">
-                                Pagar Agora
+                                {t('patientDashboard.payNow')}
                             </div>
                         </motion.div>
                     )}
@@ -185,10 +194,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                     <div className="w-16 h-16 bg-white rounded-3xl shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                         <Star className="text-emerald-500 fill-emerald-500" size={32} />
                     </div>
-                    <h3 className="text-xl font-black text-emerald-900 mb-2">Seu sorriso brilha!</h3>
-                    <p className="text-sm text-emerald-700/80 font-medium mb-6">Que tal compartilhar seu resultado com o mundo?</p>
+                    <h3 className="text-xl font-black text-emerald-900 mb-2">{t('patientDashboard.smileShines')}</h3>
+                    <p className="text-sm text-emerald-700/80 font-medium mb-6">{t('patientDashboard.shareResult')}</p>
                     <button className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-200">
-                        Deixar um Review no Google
+                        {t('patientDashboard.leaveReview')}
                     </button>
                 </motion.div>
             </div>
@@ -202,8 +211,8 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                     <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition-all">
                         <Smile size={24} />
                     </div>
-                    <h4 className="font-bold text-slate-800 text-sm">Jornada</h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Evolução 3D</p>
+                    <h4 className="font-bold text-slate-800 text-sm">{t('patientDashboard.journey')}</h4>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{t('patientDashboard.evolution3d')}</p>
                 </button>
 
                 <button
@@ -213,8 +222,8 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all">
                         <Pill size={24} />
                     </div>
-                    <h4 className="font-bold text-slate-800 text-sm">Receitas</h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Ativas</p>
+                    <h4 className="font-bold text-slate-800 text-sm">{t('patientDashboard.prescriptions')}</h4>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{t('patientDashboard.activePrescriptions')}</p>
                 </button>
             </div>
 
@@ -225,8 +234,8 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                         <AlertCircle size={28} />
                     </div>
                     <div className="text-left">
-                        <h4 className="font-bold text-red-900 text-sm">SOS Dentário</h4>
-                        <p className="text-[10px] text-red-700 font-bold uppercase tracking-widest">Contato de Emergência</p>
+                        <h4 className="font-bold text-red-900 text-sm">{t('patientDashboard.sosDental')}</h4>
+                        <p className="text-[10px] text-red-700 font-bold uppercase tracking-widest">{t('patientDashboard.emergencyContact')}</p>
                     </div>
                 </div>
                 <ChevronRight className="text-red-300 group-hover:translate-x-1 transition-transform" />
@@ -251,7 +260,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ onNavigate }) => {
                             className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl z-10"
                         >
                             <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                                <h3 className="font-bold text-slate-800">Agendar Consulta</h3>
+                                <h3 className="font-bold text-slate-800">{t('patientDashboard.bookAppointment')}</h3>
                                 <button
                                     onClick={() => setShowBookingModal(false)}
                                     className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition"

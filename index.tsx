@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { I18nProvider } from './lib/i18n';
 import App from './App';
 import './index.css';
 import Preview from './Preview';
@@ -31,7 +32,11 @@ try {
   console.log("DEBUG: Rendering App...");
   root.render(
     <React.StrictMode>
-      <Preview />
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+        <I18nProvider>
+          <Preview />
+        </I18nProvider>
+      </ClerkProvider>
     </React.StrictMode>
   );
   console.log("DEBUG: root.render called successfully");
@@ -40,3 +45,4 @@ try {
   const root = document.getElementById('root');
   if (root) root.innerHTML = `<div style="padding:20px; color:red;"><h1>Critical Boot Error</h1><pre>${error instanceof Error ? error.stack : String(error)}</pre></div>`;
 }
+
