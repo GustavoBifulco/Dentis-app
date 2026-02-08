@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { User, Building2, Briefcase, ArrowRight, CheckCircle2, Loader2, LogOut } from 'lucide-react';
 import { formatCPF, formatPhone, unformat } from '../lib/formatters';
+import { useI18n } from '../lib/i18n';
 
 interface OnboardingV2Props {
     onComplete: () => void;
@@ -12,6 +13,7 @@ type Role = 'dentist' | 'clinic_owner' | 'patient';
 export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
     const { user } = useUser();
     const { getToken, signOut } = useAuth();
+    const { t } = useI18n();
 
     const [step, setStep] = useState<1 | 2>(1);
     const [loading, setLoading] = useState(false);
@@ -146,6 +148,7 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                     body: JSON.stringify({
                         userId: user!.id,
                         dbUserId,
+                        role: formData.role
                     }),
                 });
 
@@ -227,15 +230,15 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                         {step === 1 && (
                             <form onSubmit={handleStep1Submit} className="space-y-6" noValidate autoComplete="off">
                                 <div>
-                                    <h2 className="text-3xl font-black mb-2">Bem-vindo!</h2>
-                                    <p className="text-slate-600">Vamos configurar sua conta em poucos passos.</p>
+                                    <h2 className="text-3xl font-black mb-2">{t('greetings.welcomeNew')}</h2>
+                                    <p className="text-slate-600">{t('onboarding.subtitle')}</p>
                                 </div>
 
                                 {/* Role Selection */}
                                 {!formData.role && (
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-3">
-                                            Quem é você?
+                                            {t('onboarding.whoAreYou')}
                                         </label>
                                         <div className="grid grid-cols-3 gap-3">
                                             <button
@@ -244,8 +247,8 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                                                 className="p-4 rounded-2xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-center flex flex-col items-center justify-center h-full"
                                             >
                                                 <Briefcase className="w-8 h-8 mb-2 text-blue-600" />
-                                                <div className="font-bold text-sm">Dentista</div>
-                                                <div className="text-xs text-slate-500 mt-1">Para profissionais autônomos</div>
+                                                <div className="font-bold text-sm">{t('onboarding.roleDentist')}</div>
+                                                <div className="text-xs text-slate-500 mt-1">{t('onboarding.roleDentistDesc')}</div>
                                             </button>
                                             <button
                                                 type="button"
@@ -253,8 +256,8 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                                                 className="p-4 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all text-center flex flex-col items-center justify-center h-full"
                                             >
                                                 <Building2 className="w-8 h-8 mb-2 text-emerald-600" />
-                                                <div className="font-bold text-sm">Dono de Clínica</div>
-                                                <div className="text-xs text-slate-500 mt-1">Para gestores e clínicas</div>
+                                                <div className="font-bold text-sm">{t('onboarding.roleClinicOwner')}</div>
+                                                <div className="text-xs text-slate-500 mt-1">{t('onboarding.roleClinicOwnerDesc')}</div>
                                             </button>
                                             <button
                                                 type="button"
@@ -262,8 +265,8 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                                                 className="p-4 rounded-2xl border-2 border-slate-200 hover:border-violet-500 hover:bg-violet-50 transition-all text-center flex flex-col items-center justify-center h-full"
                                             >
                                                 <User className="w-8 h-8 mb-2 text-violet-600" />
-                                                <div className="font-bold text-sm">Paciente</div>
-                                                <div className="text-xs text-slate-500 mt-1">Acesso ao portal pessoal</div>
+                                                <div className="font-bold text-sm">{t('onboarding.rolePatient')}</div>
+                                                <div className="text-xs text-slate-500 mt-1">{t('onboarding.rolePatientDesc')}</div>
                                             </button>
                                         </div>
                                     </div>
@@ -273,22 +276,22 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                                     <>
                                         <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                                             <CheckCircle2 size={16} className="text-green-500" />
-                                            {formData.role === 'dentist' && 'Dentista'}
-                                            {formData.role === 'clinic_owner' && 'Dono de Clínica'}
-                                            {formData.role === 'patient' && 'Paciente'}
+                                            {formData.role === 'dentist' && t('onboarding.roleDentist')}
+                                            {formData.role === 'clinic_owner' && t('onboarding.roleClinicOwner')}
+                                            {formData.role === 'patient' && t('onboarding.rolePatient')}
                                             <button
                                                 type="button"
                                                 onClick={() => setFormData(prev => ({ ...prev, role: '' }))}
                                                 className="ml-auto text-blue-600 hover:underline"
                                             >
-                                                Alterar
+                                                {t('onboarding.changingRole')}
                                             </button>
                                         </div>
 
                                         {formData.role === 'clinic_owner' && (
                                             <div>
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                                                    Nome da Clínica *
+                                                    {t('onboarding.clinicName')} *
                                                 </label>
                                                 <input
                                                     required
@@ -374,11 +377,11 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                         {step === 2 && (
                             <div>
                                 <div className="mb-8">
-                                    <h2 className="text-3xl font-black mb-2">Escolha seu plano</h2>
+                                    <h2 className="text-3xl font-black mb-2">{t('onboarding.planTitle')}</h2>
                                     <p className="text-slate-600">
                                         {formData.role === 'clinic_owner'
-                                            ? 'Gerencie sua clínica com recursos corporativos'
-                                            : 'Comece grátis ou desbloqueie recursos avançados'
+                                            ? t('onboarding.planSubtitleClinic')
+                                            : t('onboarding.planSubtitleDentist')
                                         }
                                     </p>
                                 </div>
@@ -409,7 +412,7 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                                                 disabled={loading}
                                                 className="w-full py-3 rounded-xl border-2 border-slate-900 text-slate-900 font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
                                             >
-                                                {loading ? 'Processando...' : 'Começar Grátis'}
+                                                {loading ? t('onboarding.processing') : t('onboarding.startFree')}
                                             </button>
                                         </div>
 

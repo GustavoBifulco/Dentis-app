@@ -11,8 +11,24 @@ import {
   Layers,
   Activity,
   Database,
+  Search,
+  Lock,
+  FileText,
+  Truck,
+  Building2,
+  ArrowDown
 } from "lucide-react";
 import AuthModal from "./AuthModal";
+import { Canvas, useFrame } from "@react-three/fiber";
+import {
+  Float,
+  MeshDistortMaterial,
+  PerspectiveCamera,
+  Environment,
+  ContactShadows,
+} from "@react-three/drei";
+import { EffectComposer, Bloom, Noise } from "@react-three/postprocessing";
+import * as THREE from "three";
 
 function cx(...s: Array<string | false | undefined | null>) {
   return s.filter(Boolean).join(" ");
@@ -28,12 +44,83 @@ function Panel({ children, className }: { children: React.ReactNode; className?:
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/70 px-4 py-2 backdrop-blur">
-      <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-      <span className="text-[11px] font-extrabold uppercase tracking-[0.32em] text-[var(--muted)]">{children}</span>
+    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-xl">
+      <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse" />
+      <span className="text-[11px] font-extrabold uppercase tracking-[0.32em] text-white/70">{children}</span>
     </div>
   );
 }
+
+// --- CORE 3D COMPONENT: SENTIENT FLUID ---
+const DentisFluidCore = ({ scrollProgress }: { scrollProgress: any }) => {
+  const meshRef = useRef<any>(null);
+  const [hovered, setHovered] = useState(false);
+
+  useFrame((state) => {
+    if (!meshRef.current) return;
+
+    const p = scrollProgress.get(); // Current scroll progress (0 to 1)
+
+    // Organic base rotation
+    meshRef.current.rotation.y += 0.005 + p * 0.02;
+    meshRef.current.rotation.z += 0.002;
+
+    // Reacting to scroll and hover
+    const baseDistort = 0.4 + p * 0.6;
+    const baseSpeed = 2 + p * 3;
+
+    const targetDistort = hovered ? baseDistort + 0.3 : baseDistort;
+    const targetSpeed = hovered ? baseSpeed + 2 : baseSpeed;
+
+    meshRef.current.distort = THREE.MathUtils.lerp(meshRef.current.distort, targetDistort, 0.1);
+    meshRef.current.speed = THREE.MathUtils.lerp(meshRef.current.speed, targetSpeed, 0.1);
+
+    // Morph scale slightly on scroll
+    const s = 1.2 + p * 0.3;
+    meshRef.current.scale.setScalar(THREE.MathUtils.lerp(meshRef.current.scale.x, s, 0.1));
+  });
+
+  return (
+    <Float speed={1.5} rotationIntensity={0.5} floatIntensity={1}>
+      <mesh
+        ref={meshRef}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+        scale={1.2}
+      >
+        <sphereGeometry args={[1, 128, 128]} />
+        <MeshDistortMaterial
+          color="#ffffff"
+          metalness={1}
+          roughness={0.05}
+          distort={0.4}
+          speed={2}
+        />
+      </mesh>
+    </Float>
+  );
+};
+
+const Scene = ({ scrollProgress }: { scrollProgress: any }) => (
+  <div className="fixed inset-0 z-0 bg-slate-950">
+    <Canvas shadows dpr={[1, 2]} gl={{ antialias: true }}>
+      <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={35} />
+
+      <spotLight position={[5, 5, 5]} angle={0.15} penumbra={1} intensity={150} color="#00D1FF" />
+      <spotLight position={[-5, -5, -5]} angle={0.15} penumbra={1} intensity={100} color="#7000FF" />
+      <ambientLight intensity={0.2} />
+
+      <Environment preset="warehouse" />
+      <DentisFluidCore scrollProgress={scrollProgress} />
+      <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
+
+      <EffectComposer enableNormalPass={false}>
+        <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} intensity={1.2} mipmapBlur />
+        <Noise opacity={0.05} />
+      </EffectComposer>
+    </Canvas>
+  </div>
+);
 
 function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
@@ -138,48 +225,71 @@ export default function LandingExperience() {
   const finaleScale = useTransform(p4, [0, 1], reduce ? [1, 1] : [0.985, 1]);
   const finaleOpacity = useTransform(p4, [0, 0.3, 1], reduce ? [1, 1, 1] : [0.7, 1, 1]);
 
-  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  const { scrollYProgress } = useScroll(); // Overall page progress
+
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      const offset = 80;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = el.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+    <div className="min-h-screen bg-slate-950 text-white selection:bg-cyan-400 selection:text-slate-950">
       <AuthModal open={authOpen} mode={authMode} onClose={() => setAuthOpen(false)} onModeChange={setAuthMode} />
 
+      {/* Cinematic 3D Engine */}
+      <Scene scrollProgress={scrollYProgress} />
+
       {/* NAV editorial (Zara/Apple) */}
-      <div className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/70 backdrop-blur">
-        <div className="mx-auto flex w-[min(1100px,92vw)] items-center justify-between py-4">
+      <div className="sticky top-0 z-40 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+        <div className="mx-auto flex w-[min(1200px,92vw)] items-center justify-between py-6">
           <button className="flex items-center gap-3" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <div className="h-10 w-10 rounded-2xl bg-[var(--primary)]" />
+            <div className="w-10 h-10 border-2 border-cyan-400 rounded-full flex items-center justify-center">
+              <div className="w-4 h-4 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_15px_rgba(34,211,238,0.8)]" />
+            </div>
             <div className="leading-none text-left">
-              <div className="text-lg font-black tracking-tight">Dentis</div>
-              <div className="mt-1 text-[11px] font-extrabold uppercase tracking-[0.28em] text-[var(--muted)]">ecossistema odontológico</div>
+              <div className="text-xl font-black tracking-widest uppercase italic">Dentis <span className="text-cyan-400">OS</span></div>
+              <div className="mt-1 text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Sentient Operational Intelligence</div>
             </div>
           </button>
 
           <div className="hidden sm:flex items-center gap-4">
-            <button className="text-[11px] font-extrabold uppercase tracking-[0.32em] text-[var(--muted)] hover:text-[var(--text)] transition" onClick={() => scrollTo("como")}>
-              Como funciona
+            <button className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 hover:text-cyan-400 transition" onClick={() => scrollTo("como")}>
+              Protocolos
             </button>
-            <button className="text-[11px] font-extrabold uppercase tracking-[0.32em] text-[var(--muted)] hover:text-[var(--text)] transition" onClick={() => scrollTo("modulos")}>
+            <button className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 hover:text-cyan-400 transition" onClick={() => scrollTo("modulos")}>
               Módulos
             </button>
-            <button className="text-[11px] font-extrabold uppercase tracking-[0.32em] text-[var(--muted)] hover:text-[var(--text)] transition" onClick={() => scrollTo("faq")}>
-              FAQ
+            <button className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 hover:text-cyan-400 transition" onClick={() => scrollTo("faq")}>
+              Segurança
             </button>
-            <GhostButton onClick={openSignIn}>Entrar</GhostButton>
-            <PrimaryButton onClick={openSignUp}>Criar conta</PrimaryButton>
+            <div className="h-6 w-[1px] bg-white/10 mx-2" />
+            <button className="text-[10px] font-black uppercase tracking-[0.4em] text-white hover:text-cyan-400 transition" onClick={openSignIn}>Entrar</button>
+            <button className="px-8 py-3 bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest hover:bg-cyan-400 hover:text-white transition-all shadow-xl active:scale-95" onClick={openSignUp}>
+              Initialize
+            </button>
           </div>
 
           <div className="sm:hidden flex items-center gap-2">
-            <GhostButton onClick={openSignIn}>Entrar</GhostButton>
-            <PrimaryButton onClick={openSignUp}>Criar</PrimaryButton>
+            <button className="px-5 py-2.5 bg-white text-slate-950 font-black text-[9px] uppercase tracking-widest" onClick={openSignUp}>Initialize</button>
           </div>
         </div>
       </div>
 
       {/* SCENE 1 — HERO CINEMÁTICO */}
-      <section ref={s1Ref as any} className="relative h-[220vh]">
+      <section ref={s1Ref as any} className="relative h-[250vh]">
         <div className="sticky top-0 flex h-screen items-center justify-center px-6">
-          <div className="mx-auto grid w-[min(1100px,92vw)] grid-cols-1 gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+          <div className="mx-auto grid w-[min(1200px,92vw)] grid-cols-1 gap-12 lg:grid-cols-[1.2fr_0.8fr] items-center">
             <motion.div
               style={{
                 y: heroY,
@@ -187,222 +297,223 @@ export default function LandingExperience() {
                 opacity: heroOpacity,
                 filter: useTransform(heroBlur, (v) => `blur(${v}px)`),
               }}
+              className="z-10"
             >
-              <Panel className="relative overflow-hidden p-7 md:p-9">
-                <div className="pointer-events-none absolute -right-32 -top-32 h-[420px] w-[420px] rounded-full opacity-25 blur-[90px]"
-                  style={{ background: "radial-gradient(circle, var(--accent), transparent 60%)" }}
-                />
-                <div className="pointer-events-none absolute -left-36 -bottom-36 h-[520px] w-[520px] rounded-full opacity-20 blur-[110px]"
-                  style={{ background: "radial-gradient(circle, rgba(0,0,0,0.14), transparent 60%)" }}
-                />
+              <div className="relative space-y-10">
+                <Kicker>Sentient Operational Intelligence</Kicker>
 
-                <Kicker>A odontologia, agora em fluxo</Kicker>
-
-                <h1 className="mt-4 text-[clamp(44px,5.8vw,84px)] font-black leading-[0.92] tracking-[-0.04em]">
-                  Tudo em um só lugar.
-                  <br />
-                  <span className="text-[var(--muted)]">Clínica • Lab • Estoque • Compra • IA</span>
+                <h1 className="text-[clamp(44px,8vw,120px)] font-serif font-medium leading-[0.9] tracking-[-0.05em] text-white">
+                  IA <span className="italic text-cyan-400">Líquida.</span>
                 </h1>
 
-                <p className="mt-4 max-w-2xl text-[18px] font-medium leading-relaxed text-[var(--muted)]">
-                  Paciente, dentista, protético e fornecedores conectados por CPF único — com chat contextual, estoque → compra e análises com IA.
+                <p className="max-w-xl text-[20px] font-light leading-relaxed text-slate-400">
+                  Gestão odontológica reimaginada como um organismo vivo.
+                  Predição, automação e expansão clínica em tempo real.
                 </p>
 
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <PrimaryButton onClick={openSignUp}>Criar conta</PrimaryButton>
-                  <GhostButton onClick={openSignIn}>
-                    Entrar <ArrowRight size={16} className="ml-2 inline" />
-                  </GhostButton>
-                  <div className="ml-auto hidden h-1.5 w-24 rounded-full bg-gradient-to-r from-[var(--accent)] to-black/30 lg:block" />
+                <div className="flex flex-wrap items-center gap-6">
+                  <button
+                    onClick={openSignUp}
+                    className="px-12 py-6 bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-[0.5em] hover:bg-white transition-all shadow-[0_0_60px_rgba(34,211,238,0.3)]"
+                  >
+                    Initialize System
+                  </button>
+                  <button
+                    onClick={openSignIn}
+                    className="group flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] text-white hover:text-cyan-400 transition-all"
+                  >
+                    Acessar Terminal <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
+                  </button>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   <Chip icon={ShieldCheck} label="CPF único" />
                   <Chip icon={MessageSquare} label="Chat contextual" />
-                  <Chip icon={Package} label="Estoque" />
-                  <Chip icon={ShoppingBag} label="Marketplace" />
                   <Chip icon={Sparkles} label="IA aplicada" />
                 </div>
-              </Panel>
+              </div>
             </motion.div>
 
-            <motion.div style={{ y: previewY }} className="hidden lg:block">
-              <Panel className="p-7">
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Preview (conceito)</div>
-                <div className="mt-4 space-y-3">
+            <motion.div style={{ y: previewY }} className="hidden lg:block relative z-10">
+              <div className="rounded-[4rem] border border-white/5 bg-white/5 backdrop-blur-3xl p-10 space-y-8 overflow-hidden group">
+                <div className="absolute inset-0 bg-slate-900/50 group-hover:bg-cyan-400/5 transition-colors duration-700" />
+                <div className="relative text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">Fluxo Vital (Live)</div>
+                <div className="relative space-y-4">
                   {[
                     { t: "Caso protético #452", d: "Checklist + anexos + prazos", tag: "Em produção" },
                     { t: "Estoque inteligente", d: "Consumo → alerta → reposição", tag: "Repor" },
-                    { t: "IA útil", d: "prioriza urgência + sugere demanda", tag: "Insights" },
+                    { t: "IA preditiva", d: "Prioriza urgência + sugere demanda", tag: "Insights" },
                   ].map((x) => (
-                    <div key={x.t} className="rounded-2xl border border-[var(--border)] bg-white p-4">
+                    <div key={x.t} className="rounded-3xl border border-white/10 bg-black/40 p-5 group-hover:border-cyan-400/30 transition-all">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="font-black">{x.t}</div>
-                        <div className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.28em] text-[var(--muted)]">
-                          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
+                        <div className="font-bold text-white text-sm tracking-tight">{x.t}</div>
+                        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">
                           {x.tag}
                         </div>
                       </div>
-                      <div className="mt-2 text-sm font-medium text-[var(--muted)]">{x.d}</div>
+                      <div className="mt-2 text-xs font-light text-slate-500">{x.d}</div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 text-sm font-medium text-[var(--muted)]">(Depois você troca isso por prints reais.)</div>
-              </Panel>
+                <div className="relative pt-4 border-t border-white/5 flex justify-center">
+                  <div className="w-[1px] h-10 bg-gradient-to-b from-cyan-400 to-transparent animate-bounce" />
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* SCENE 2 — BEFORE / AFTER (reveal) */}
-      <section id="como" ref={s2Ref as any} className="relative h-[220vh]">
+      <section id="como" ref={s2Ref as any} className="relative h-[250vh] z-20">
         <div className="sticky top-0 flex h-screen items-center justify-center px-6">
-          <div className="mx-auto w-[min(1100px,92vw)]">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-              <div>
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Problema → solução</div>
-                <h2 className="mt-3 text-[clamp(28px,3.4vw,46px)] font-black leading-[1.05] tracking-[-0.03em]">
-                  Antes: caos e retrabalho.
-                  <br />
-                  <span className="text-[var(--muted)]">Depois: fluxo e rastreabilidade.</span>
+          <div className="mx-auto w-[min(1200px,92vw)]">
+            <div className="grid grid-cols-1 gap-16 lg:grid-cols-[1fr_1fr] lg:items-center">
+              <div className="space-y-10">
+                <div className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-400">Automação Orgânica</div>
+                <h2 className="text-[clamp(32px,4vw,64px)] font-serif font-medium leading-[1.05] tracking-[-0.04em] text-white">
+                  O Prontuário que <span className="italic">respira.</span>
                 </h2>
-                <p className="mt-3 max-w-xl text-[18px] font-medium leading-relaxed text-[var(--muted)]">
-                  O Dentis não é “mais um sistema”. É um ecossistema onde cada ação (caso, mensagem, compra) fica no contexto certo.
+                <p className="max-w-xl text-[20px] font-light leading-relaxed text-slate-400">
+                  Sua voz se torna registro clínico imediato. Nossa IA processa consultas em tempo real, gerando orçamentos e guias sem intervenção humana.
                 </p>
 
-                <div className="mt-6 grid gap-3">
+                <div className="grid gap-4">
                   {[
                     "WhatsApp solto → conversa no contexto do caso",
                     "Planilha → estoque conectado ao consumo",
                     "Pedido manual → recompra rápida no marketplace",
                     "Desorganização → histórico por identidade (CPF)",
                   ].map((t) => (
-                    <div key={t} className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-white/70 p-4 backdrop-blur">
-                      <CheckCircle2 size={18} className="mt-0.5 text-[var(--accent)]" />
-                      <div className="text-sm font-semibold text-[var(--muted)] leading-relaxed">{t}</div>
+                    <div key={t} className="flex items-start gap-4 p-5 rounded-3xl border border-white/5 bg-white/5 backdrop-blur-3xl hover:border-cyan-400/30 transition-all cursor-default">
+                      <CheckCircle2 size={20} className="mt-0.5 text-cyan-400" />
+                      <div className="text-sm font-medium text-slate-400 leading-relaxed">{t}</div>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <PrimaryButton onClick={openSignUp}>Criar conta</PrimaryButton>
-                  <GhostButton onClick={openSignIn}>Entrar</GhostButton>
+                <div className="pt-4">
+                  <button onClick={openSignUp} className="group flex items-center gap-6 text-xs font-black uppercase tracking-[0.4em] text-white">
+                    <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-cyan-400 group-hover:border-cyan-400 group-hover:text-slate-950 transition-all duration-500">
+                      →
+                    </div>
+                    Initialize System
+                  </button>
                 </div>
               </div>
 
-              <Panel className="relative overflow-hidden p-0">
+              <div className="relative rounded-[4rem] border border-white/5 bg-white/5 backdrop-blur-3xl overflow-hidden aspect-square lg:aspect-auto lg:h-[600px] group">
+                <div className="absolute inset-0 bg-slate-900/50" />
                 {/* reveal line */}
                 <motion.div
                   style={{ left: divider }}
-                  className="pointer-events-none absolute top-0 z-20 h-full w-[2px] bg-[var(--accent)]"
+                  className="pointer-events-none absolute top-0 z-20 h-full w-[1px] bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)]"
                 />
-                <div className="grid grid-cols-1 md:grid-cols-2">
-                  <motion.div style={{ x: beforeX }} className="p-6 md:p-7 border-b md:border-b-0 md:border-r border-[var(--border)]">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Antes</div>
-                    <div className="mt-2 text-xl font-black">Fragmentado</div>
-                    <div className="mt-3 space-y-3">
-                      {["WhatsApp perdido", "Planilhas", "Sistemas isolados", "Pedido manual"].map((t) => (
-                        <div key={t} className="rounded-2xl border border-[var(--border)] bg-white p-4">
-                          <div className="font-black">{t}</div>
-                          <div className="mt-1 text-sm font-medium text-[var(--muted)]">Sem contexto, sem histórico.</div>
-                        </div>
-                      ))}
+                <div className="h-full grid grid-cols-2 relative h-full">
+                  <div className="p-8 md:p-10 border-r border-white/5 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-600 mb-4">Fragmentado</div>
+                      <div className="text-2xl font-serif text-slate-300">Antes</div>
+                      <div className="mt-8 space-y-4 opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700">
+                        {["WhatsApp perdido", "Planilhas", "Sistemas isolados"].map((t) => (
+                          <div key={t} className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                            <div className="font-bold text-xs text-white uppercase tracking-widest">{t}</div>
+                            <div className="mt-1 text-[10px] font-light text-slate-500">Sem contexto.</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </motion.div>
+                  </div>
 
-                  <motion.div style={{ x: afterX }} className="p-6 md:p-7">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Depois</div>
-                    <div className="mt-2 text-xl font-black">Conectado</div>
-                    <div className="mt-3 space-y-3">
-                      {["Caso com chat", "Lab por etapas", "Estoque conectado", "Compra tipo delivery"].map((t) => (
-                        <div key={t} className="rounded-2xl border border-[var(--border)] bg-white p-4">
-                          <div className="font-black">{t}</div>
-                          <div className="mt-1 text-sm font-medium text-[var(--muted)]">Tudo no fluxo.</div>
-                        </div>
-                      ))}
+                  <div className="p-8 md:p-10 flex flex-col justify-between">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400 mb-4">Conectado</div>
+                      <div className="text-2xl font-serif text-white italic">Depois</div>
+                      <div className="mt-8 space-y-4">
+                        {["Caso com chat", "Lab por etapas", "Estoque conectado"].map((t) => (
+                          <div key={t} className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+                            <div className="font-bold text-xs text-white uppercase tracking-widest">{t}</div>
+                            <div className="mt-1 text-[10px] font-light text-cyan-400/60">Tudo no fluxo.</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
-              </Panel>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* SCENE 3 — STACK (módulos) */}
-      <section id="modulos" ref={s3Ref as any} className="relative h-[240vh]">
+      <section id="modulos" ref={s3Ref as any} className="relative h-[280vh] z-30">
         <div className="sticky top-0 flex h-screen items-center justify-center px-6">
-          <div className="mx-auto w-[min(1100px,92vw)]">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-              <div>
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Módulos</div>
-                <h2 className="mt-3 text-[clamp(28px,3.4vw,46px)] font-black leading-[1.05] tracking-[-0.03em]">
-                  Um super app modular —
-                  <br />
-                  <span className="text-[var(--muted)]">do consultório ao fornecedor.</span>
+          <div className="mx-auto w-[min(1200px,92vw)]">
+            <div className="grid grid-cols-1 gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+              <div className="space-y-10">
+                <div className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-400">Hiper-Rentabilidade</div>
+                <h2 className="text-[clamp(32px,4vw,64px)] font-serif font-medium leading-[1.05] tracking-[-0.04em] text-white">
+                  Dashboard de <br /><span className="italic">Fluxo Vital.</span>
                 </h2>
-                <p className="mt-3 max-w-xl text-[18px] font-medium leading-relaxed text-[var(--muted)]">
-                  Começa com o essencial e evolui para o ecossistema completo. O importante: tudo fala com tudo.
+                <p className="max-w-xl text-[20px] font-light leading-relaxed text-slate-400">
+                  Dashboards reativos que mostram a saúde financeira da sua rede com precisão absoluta. Previna cancelamentos e otimize o giro clínico.
                 </p>
 
-                <div className="mt-6 grid gap-3">
+                <div className="space-y-6">
                   {[
                     { icon: Database, t: "Clínica", d: "Agenda, prontuário e financeiro no contexto do CPF/caso." },
                     { icon: Activity, t: "Laboratório", d: "Casos protéticos com etapas, prazos e status." },
                     { icon: Layers, t: "Estoque + Marketplace", d: "Consumo baixa estoque e sugere reposição." },
                   ].map(({ icon: Icon, t, d }) => (
-                    <div key={t} className="rounded-2xl border border-[var(--border)] bg-white/70 p-4 backdrop-blur">
-                      <div className="flex items-start gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-2xl border border-[var(--border)] bg-white">
-                          <Icon size={18} className="text-[var(--accent)]" />
+                    <div key={t} className="group relative rounded-[2rem] border border-white/5 bg-white/5 p-6 backdrop-blur-3xl hover:border-cyan-400/30 transition-all cursor-default overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 to-cyan-400/0 group-hover:to-cyan-400/5 transition-all duration-700" />
+                      <div className="relative flex items-center gap-6">
+                        <div className="grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-black/40 group-hover:bg-cyan-400 group-hover:text-slate-950 transition-all duration-500">
+                          <Icon size={24} strokeWidth={1.5} />
                         </div>
                         <div>
-                          <div className="font-black">{t}</div>
-                          <div className="mt-1 text-sm font-medium text-[var(--muted)]">{d}</div>
+                          <div className="font-bold text-white uppercase tracking-widest text-xs mb-1">{t}</div>
+                          <div className="text-sm font-light text-slate-500 leading-relaxed">{d}</div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <PrimaryButton onClick={openSignUp}>Criar conta</PrimaryButton>
-                  <GhostButton onClick={openSignIn}>Entrar</GhostButton>
-                </div>
               </div>
 
-              <div className="relative mt-6 lg:mt-0">
-                <motion.div style={{ y: stack3Y, rotate: stack3R }} className="absolute right-0 top-14 w-[min(520px,92vw)]">
-                  <Panel className="p-6">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Marketplace</div>
-                    <div className="mt-2 text-xl font-black">Recompra rápida</div>
-                    <div className="mt-2 text-sm font-medium text-[var(--muted)]">Favoritos, recorrência e entrega com status.</div>
-                  </Panel>
+              <div className="relative mt-20 lg:mt-0 h-[500px] lg:h-[700px]">
+                <motion.div style={{ y: stack3Y, rotate: stack3R }} className="absolute right-0 top-32 w-[min(520px,92vw)] z-30">
+                  <div className="rounded-[3rem] border border-white/10 bg-white/5 backdrop-blur-3xl p-10 space-y-4 shadow-2xl">
+                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">Marketplace</div>
+                    <div className="text-3xl font-serif text-white italic">Recompra rápida</div>
+                    <div className="text-sm font-light text-slate-500 leading-relaxed">Favoritos, recorrência e entrega com status estilo delivery.</div>
+                  </div>
                 </motion.div>
 
-                <motion.div style={{ y: stack2Y, rotate: stack2R }} className="absolute left-6 top-6 w-[min(560px,92vw)]">
-                  <Panel className="p-6">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Laboratório</div>
-                    <div className="mt-2 text-xl font-black">Casos por etapa</div>
-                    <div className="mt-2 text-sm font-medium text-[var(--muted)]">Checklist, prazos e conversa dentro do caso.</div>
-                  </Panel>
+                <motion.div style={{ y: stack2Y, rotate: stack2R }} className="absolute left-10 top-16 w-[min(560px,92vw)] z-20">
+                  <div className="rounded-[3rem] border border-white/10 bg-slate-900/80 backdrop-blur-3xl p-10 space-y-4 shadow-xl">
+                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">Laboratório</div>
+                    <div className="text-3xl font-serif text-white">Casos por etapa</div>
+                    <div className="text-sm font-light text-slate-500 leading-relaxed">Checklist, prazos e conversa dentro do caso. Padronização absoluta.</div>
+                  </div>
                 </motion.div>
 
-                <motion.div style={{ y: stack1Y, rotate: stack1R }} className="relative">
-                  <Panel className="p-7">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">Clínica</div>
-                    <div className="mt-2 text-2xl font-black">Agenda • Prontuário • Financeiro</div>
-                    <div className="mt-2 text-sm font-medium text-[var(--muted)]">Tudo conectado ao CPF e ao caso.</div>
+                <motion.div style={{ y: stack1Y, rotate: stack1R }} className="relative z-10">
+                  <div className="rounded-[4rem] border border-white/20 bg-black/60 backdrop-blur-3xl p-12 space-y-6 shadow-lg border-b-cyan-400/30">
+                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">Ecossistema Central</div>
+                    <div className="text-4xl font-serif text-white">Agenda • Prontuário</div>
+                    <div className="text-lg font-light text-slate-500 leading-relaxed">O início de tudo. Onde o paciente se torna parte do fluxo.</div>
 
-                    <div className="mt-5 flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-3 pt-4">
                       {["contexto", "rastreabilidade", "previsibilidade"].map((t) => (
-                        <div key={t} className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.28em] text-[var(--muted)]">
-                          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
+                        <div key={t} className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                          <span className="mr-3 inline-block h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
                           {t}
                         </div>
                       ))}
                     </div>
-                  </Panel>
+                  </div>
                 </motion.div>
               </div>
             </div>
@@ -410,34 +521,63 @@ export default function LandingExperience() {
         </div>
       </section>
 
-      {/* SCENE 4 — FAQ + CTA */}
-      <section id="faq" ref={s4Ref as any} className="relative h-[200vh]">
+      {/* SCENE 4 — FINALE / FAQ */}
+      <section id="faq" ref={s4Ref as any} className="relative h-[220vh] z-40">
         <div className="sticky top-0 flex h-screen items-center justify-center px-6">
-          <motion.div style={{ y: finaleY, scale: finaleScale, opacity: finaleOpacity }} className="w-[min(980px,92vw)]">
-            <Panel className="relative overflow-hidden p-8 md:p-10">
-              <div className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full opacity-20 blur-[120px]"
-                style={{ background: "radial-gradient(circle, var(--accent), transparent 60%)" }}
-              />
+          <motion.div style={{ y: finaleY, scale: finaleScale, opacity: finaleOpacity }} className="w-[min(1100px,92vw)]">
+            <div className="rounded-[4rem] border border-white/10 bg-black/40 backdrop-blur-3xl overflow-hidden relative shadow-2xl">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-purple-500/5" />
+              <div className="relative p-12 md:p-16 grid lg:grid-cols-2 gap-20">
+                <div className="space-y-12">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-400 mb-6">Suporte & Segurança</div>
+                    <h3 className="text-[clamp(32px,4vw,56px)] font-serif font-medium leading-[1.05] tracking-[-0.04em] text-white">
+                      Junte-se ao <br /><span className="italic text-cyan-400">Organismo.</span>
+                    </h3>
+                    <p className="mt-6 text-xl font-light leading-relaxed text-slate-400">
+                      Pare de gerenciar softwares. Comece a orquestrar uma inteligência.
+                    </p>
+                  </div>
 
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">FAQ</div>
-              <h3 className="mt-3 text-[clamp(26px,3vw,42px)] font-black tracking-[-0.03em] leading-[1.05]">
-                Perguntas rápidas. Respostas diretas.
-              </h3>
-              <div className="mt-4">
-                <FAQItem q="O que é CPF único?" a="Uma identidade central. Assim seu histórico e vínculos ficam conectados e rastreáveis ao longo do tempo." />
-                <FAQItem q="Posso começar pequeno?" a="Sim. O Dentis é modular: começa com clínica e evolui para lab/estoque/marketplace conforme fizer sentido." />
-                <FAQItem q="A IA faz o quê?" a="Insights operacionais, previsão de demanda/estoque e organização por contexto — IA prática, sem hype." />
+                  <div className="space-y-4">
+                    <button
+                      onClick={openSignUp}
+                      className="w-full px-12 py-8 bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-[0.5em] hover:bg-white transition-all shadow-xl"
+                    >
+                      Initialize System
+                    </button>
+                    <div className="flex gap-4">
+                      <button onClick={openSignIn} className="flex-1 py-6 border border-white/10 text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/5 transition-all">Acessar Terminal</button>
+                      <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="p-6 border border-white/10 text-white hover:bg-white/5 transition-all"><ArrowDown className="rotate-180" size={20} /></button>
+                    </div>
+                  </div>
+
+                  <div className="pt-8 flex flex-wrap gap-8 text-[9px] font-black uppercase tracking-[0.4em] text-slate-600">
+                    <div className="flex items-center gap-3"><ShieldCheck size={14} className="text-cyan-400" /> Projetado para Conformidade</div>
+                    <div className="flex items-center gap-3"><Lock size={14} className="text-cyan-400" /> Dados Protegidos</div>
+                    <div className="flex items-center gap-3"><Building2 size={14} className="text-cyan-400" /> Cloud Native</div>
+                  </div>
+                </div>
+
+                <div className="space-y-8 border-l border-white/5 pl-20 hidden lg:block">
+                  <div className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500">FAQ Protocol</div>
+                  <div className="space-y-2">
+                    <FAQItem q="O que é CPF único?" a="Uma identidade central. Assim seu histórico e vínculos ficam conectados e rastreáveis ao longo do tempo em todos os papéis do sistema." />
+                    <FAQItem q="Posso começar pequeno?" a="Sim. O Dentis é modular: começa com clínica e evolui para lab/estoque/marketplace conforme fizer sentido para sua operação." />
+                    <FAQItem q="IA substitui o profissional?" a="Não. Nossas IAs são operacionais: organizam dados, preveem demanda e automatizam registros para liberar você para o que importa." />
+                    <FAQItem q="A implementação é lenta?" a="Não. Em 60 segundos sua conta está ativa e o terminal disponível para as primeiras configurações e cadastros." />
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <PrimaryButton onClick={openSignUp}>Criar conta</PrimaryButton>
-                <GhostButton onClick={openSignIn}>Entrar</GhostButton>
-                <GhostButton onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Voltar ao topo</GhostButton>
+            <div className="mt-12 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.5em] text-slate-700">
+              <div>© {new Date().getFullYear()} DENTIS OS • Sentient Edition</div>
+              <div className="flex gap-8">
+                <a href="#" className="hover:text-cyan-400 transition-colors">Awwwards 2026</a>
+                <a href="#" className="hover:text-cyan-400 transition-colors">Twitter</a>
+                <a href="#" className="hover:text-cyan-400 transition-colors">LinkedIn</a>
               </div>
-            </Panel>
-
-            <div className="mt-6 text-center text-[11px] font-extrabold uppercase tracking-[0.35em] text-[var(--muted)]">
-              © {new Date().getFullYear()} Dentis • Privacidade • Termos
             </div>
           </motion.div>
         </div>

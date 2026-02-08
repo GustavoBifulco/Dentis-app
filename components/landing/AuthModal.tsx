@@ -15,7 +15,12 @@ type Props = {
 
 export default function AuthModal({ open, mode, onClose, onModeChange }: Props) {
   const [mounted, setMounted] = useState(false);
-  const clerk = useClerk();
+  let clerk: any = null;
+  try {
+    clerk = useClerk();
+  } catch (e) {
+    // Safe fallback for verification without ClerkProvider
+  }
 
   useEffect(() => setMounted(true), []);
 

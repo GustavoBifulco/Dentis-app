@@ -1,0 +1,102 @@
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#00D1FF', 'edgeLabelBackground':'#1e293b', 'tertiaryColor': '#0f172a'}}}%%
+flowchart TB
+    subgraph PUBLIC["🌐 Público"]
+        LANDING["Landing Page<br/>Initialize System"]
+        TERMS["Termos de Uso"]
+        PRIVACY["Privacidade"]
+    end
+
+    subgraph AUTH["🔐 Autenticação (Clerk)"]
+        LOGIN["Login<br/>Email/Senha/SSO"]
+        REGISTER["Registro<br/>Criar Conta"]
+        RESET["Reset Senha"]
+    end
+
+    subgraph ONBOARDING["📋 Onboarding"]
+        ROLE["Seleção de Tipo<br/>Dentista | Clínica | Paciente"]
+        DATA["Dados Básicos<br/>CPF, Telefone, CRO"]
+        PLANS["Escolha de Plano<br/>FREE | PRO | STARTER | BUSINESS"]
+    end
+
+    subgraph BILLING["💳 Billing (Stripe)"]
+        CHECKOUT["Stripe Checkout"]
+        SUCCESS["Sucesso"]
+        PORTAL["Portal Cliente"]
+    end
+
+    subgraph DASHBOARDS["📊 Dashboards"]
+        DASH_DENTIST["Dashboard Dentista<br/>Agenda + Pacientes"]
+        DASH_CLINIC["Dashboard Gestor<br/>Equipe + Financeiro"]
+        DASH_PATIENT["Dashboard Paciente<br/>Timeline + Docs"]
+    end
+
+    subgraph CLINICAL["🏥 Fluxos Clínicos"]
+        PATIENTS["Pacientes<br/>Lista + Busca"]
+        RECORD["Prontuário<br/>Tabs + Timeline"]
+        SCHEDULE["Agenda<br/>Consultas"]
+        FINANCE["Financeiro<br/>Cobranças"]
+        DOCS["Documentos<br/>Upload S3"]
+    end
+
+    subgraph NAVIGATION["🧭 Navegação"]
+        MENU["Menu Principal<br/>AuroraHub"]
+        PROFILE["Perfil<br/>Editar Dados"]
+        SETTINGS["Configurações<br/>i18n + Tema"]
+    end
+
+    %% Fluxo Principal
+    LANDING --> LOGIN
+    LANDING --> REGISTER
+    LOGIN --> ROLE
+    REGISTER --> ROLE
+    
+    ROLE -->|"Dentista"| DATA
+    ROLE -->|"Clínica"| DATA
+    ROLE -->|"Paciente"| DATA
+    
+    DATA -->|"Paciente"| DASH_PATIENT
+    DATA -->|"Profissional"| PLANS
+    
+    PLANS -->|"FREE"| DASH_DENTIST
+    PLANS -->|"PRO"| CHECKOUT
+    CHECKOUT --> SUCCESS
+    SUCCESS --> DASH_DENTIST
+    
+    %% Dashboards por Role
+    DASH_DENTIST --> MENU
+    DASH_CLINIC --> MENU
+    DASH_PATIENT --> MENU
+    
+    %% Navegação
+    MENU --> PATIENTS
+    MENU --> SCHEDULE
+    MENU --> FINANCE
+    MENU --> PROFILE
+    MENU --> SETTINGS
+    
+    %% Fluxos Clínicos
+    PATIENTS --> RECORD
+    RECORD --> DOCS
+    RECORD --> FINANCE
+    SCHEDULE --> RECORD
+    
+    %% Links Auxiliares
+    LANDING -.-> TERMS
+    LANDING -.-> PRIVACY
+    PROFILE --> PORTAL
+    LOGIN -.-> RESET
+    
+    %% Styling
+    classDef public fill:#1e293b,stroke:#00D1FF,color:#fff
+    classDef auth fill:#1e1e3f,stroke:#7c3aed,color:#fff
+    classDef onboard fill:#1e3a2f,stroke:#10b981,color:#fff
+    classDef billing fill:#3f1e1e,stroke:#f59e0b,color:#fff
+    classDef dash fill:#1e293b,stroke:#00D1FF,color:#fff
+    classDef clinical fill:#1e293b,stroke:#06b6d4,color:#fff
+    
+    class LANDING,TERMS,PRIVACY public
+    class LOGIN,REGISTER,RESET auth
+    class ROLE,DATA,PLANS onboard
+    class CHECKOUT,SUCCESS,PORTAL billing
+    class DASH_DENTIST,DASH_CLINIC,DASH_PATIENT dash
+    class PATIENTS,RECORD,SCHEDULE,FINANCE,DOCS clinical

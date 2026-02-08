@@ -4,14 +4,6 @@ import { ArrowUpRight, ArrowRight, Calendar, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { IslandCard, LuxButton } from '../Shared';
 import { BarChart, Bar, ResponsiveContainer, Cell, Tooltip } from 'recharts';
-const { user } = useUser();
-const { t, formatMoney, locale } = useI18n();
-// Actually getSalutation is not in hook return type in prior step, I should use the helper directly or add it to hook
-// Let's use the helper directly or update hook. 
-// Update hook is better but let's import helper for now to avoid breaking changes if hook not updated yet
-// Wait, I defined getSalutation in types but didn't return it in hook. 
-// Let's import it from format.ts 
-
 import { useI18n } from '../../lib/i18n';
 import { getSalutation } from '../../lib/i18n/format';
 import { useAuth, useUser } from '@clerk/clerk-react';
@@ -19,6 +11,7 @@ import { useAuth, useUser } from '@clerk/clerk-react';
 const ClinicalDashboard: React.FC = () => {
    const { getToken } = useAuth();
    const { user } = useUser();
+   const { t, formatMoney, locale } = useI18n();
 
    const [stats, setStats] = useState({
       userName: '',

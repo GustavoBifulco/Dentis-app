@@ -13,7 +13,8 @@
     "server:dev": "npm run dev:server",
     "db:push": "drizzle-kit push",
     "db:seed": "npx tsx server/db/seed.ts",
-    "db:reset": "npx tsx server/db/reset.ts"
+    "db:reset": "npx tsx server/db/reset.ts",
+    "i18n:check": "npx tsx scripts/i18n-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.980.0a",
@@ -23,6 +24,7 @@
     "@hono/zod-validator": "^0.2.1",
     "@react-three/drei": "^9.0.0",
     "@react-three/fiber": "^8.18.0",
+    "@react-three/postprocessing": "^2.19.1",
     "@stripe/react-stripe-js": "^2.7.3",
     "@stripe/stripe-js": "^4.1.0",
     "@types/nodemailer": "^7.0.9",
@@ -39,11 +41,13 @@
     "papaparse": "^5.5.3",
     "pg": "^8.12.0",
     "postgres": "^3.4.8",
+    "postprocessing": "^6.38.2",
     "react": "18.3.1",
     "react-colorful": "^5.6.1",
     "react-cookie-consent": "^10.0.1",
     "react-dom": "18.3.1",
     "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.13.0",
     "recharts": "^2.12.7",
     "stripe": "^14.0.0",
     "three": "^0.182.0",

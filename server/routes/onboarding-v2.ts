@@ -198,13 +198,14 @@ onboardingV2.post('/quick-setup', zValidator('json', quickSetupSchema), async (c
  * Marca onboarding como completo no Clerk
  */
 onboardingV2.post('/mark-complete', async (c) => {
-    const { userId, dbUserId } = await c.req.json();
+    const { userId, dbUserId, role } = await c.req.json();
 
     try {
         await clerkClient.users.updateUser(userId, {
             publicMetadata: {
                 onboardingComplete: true,
                 dbUserId: dbUserId, // Salva o ID do nosso DB no Clerk
+                role: role // Persist role to avoid overwrites/loss
             },
         });
 

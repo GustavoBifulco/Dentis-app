@@ -3,6 +3,7 @@ import { useSignIn, useSignUp, useClerk } from "@clerk/clerk-react";
 import { ArrowLeft, Mail, Lock, User, Loader2, FileBadge, CheckCircle, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
 import { formatCPF, unformat } from '../lib/formatters';
+import { useI18n } from '../lib/i18n';
 
 interface AuthProps {
   mode: 'login' | 'register';
@@ -13,12 +14,13 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
   const { isLoaded: isSignInLoaded, signIn, setActive: setSignInActive } = useSignIn();
   const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [breachedPasswordWarning, setBreachedPasswordWarning] = useState(false);
-  const [verifying, setVerifying] = useState(false); // Para mostrar a tela de código
-  const [code, setCode] = useState(""); // Código de verificação do email
+  const [verifying, setVerifying] = useState(false);
+  const [code, setCode] = useState("");
 
   // Dados do formulário
   const [email, setEmail] = useState("");
@@ -173,7 +175,7 @@ const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
       <div className="w-full lg:w-1/2 p-8 lg:p-24 flex flex-col justify-center overflow-y-auto relative">
         <button onClick={onBack} className="absolute top-8 left-8 lg:left-auto text-slate-400 hover:text-slate-900 transition flex items-center gap-2 font-bold text-sm">
           <ArrowLeft size={18} />
-          Voltar
+          {t('common.back')}
         </button>
 
         <div className="max-w-sm w-full mx-auto">
@@ -219,7 +221,7 @@ const Auth: React.FC<AuthProps> = ({ mode, onSwitchMode, onBack }) => {
             /* TELA NORMAL DE LOGIN/CADASTRO */
             <div className="animate-in fade-in slide-in-from-left-8 duration-500">
               <h2 className="text-3xl font-black text-slate-900 mb-2">
-                {mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}
+                {mode === 'login' ? t('greetings.welcomeBack') : t('auth.createAccount')}
               </h2>
               <p className="text-slate-500 mb-8">
                 {mode === 'login' ? 'Entre com suas credenciais para acessar.' : 'Preencha seus dados básicos para começar.'}

@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Send, Sparkles } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import ReactMarkdown from 'react-markdown';
 import { ViewType } from '../../types';
+import { useAuroraAI } from '../../lib/AuroraOps';
 
 interface ChatInterfaceProps {
     mode: 'floating' | 'page';
@@ -58,6 +58,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
         }
     }, [messages, isLoading]);
 
+    const { startThinking, startWorking, finishSuccess, finishError } = useAuroraAI();
+
     const handleSend = async () => {
         if (!input.trim() || isLoading) return;
 
@@ -65,9 +67,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
         setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         setInput('');
         setIsLoading(true);
+        startThinking();
 
         try {
             const token = await getToken();
+            startWorking();
             const res = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: {
@@ -93,6 +97,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
                 const errorContent = requestId
                     ? `**Erro:** ${errorMsg}\n\n*ID: ${requestId}*`
                     : `**Erro:** ${errorMsg}`;
+                finishError(requestId);
                 throw new Error(errorContent);
             }
 
@@ -101,6 +106,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
             }
 
             setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+            finishSuccess();
         } catch (error: any) {
             console.error(error);
             // Display error with potential requestId
@@ -108,6 +114,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ mode, conversation
                 ? error.message
                 : `**Erro:** ${error.message || 'Falha na conexão. Tente novamente.'}`;
             setMessages(prev => [...prev, { role: 'assistant', content: errorContent }]);
+            // finishError is already called if it was a fetch error, but if it was something else:
+            if (!error.message?.includes('ID:')) finishError();
         } finally {
             setIsLoading(false);
         }

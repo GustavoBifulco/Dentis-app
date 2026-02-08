@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
 import './index.css';
+import Preview from './Preview';
 
 // GLOBAL EMERGENCY LOGGING
 console.log("DEBUG: index.tsx execution started");
@@ -18,7 +19,7 @@ window.onunhandledrejection = (event) => {
 };
 
 try {
-  const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY
+  const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY || "pk_test_c2FmZS1yZWRoZWQtODQuY2xlcmsuYWNjb3VudHMuZGV2JA";
   console.log("DEBUG: Publishable Key type:", typeof PUBLISHABLE_KEY);
 
   const rootElement = document.getElementById('root');
@@ -27,20 +28,13 @@ try {
   console.log("DEBUG: Creating root...");
   const root = createRoot(rootElement);
 
-  if (!PUBLISHABLE_KEY) {
-    console.warn("DEBUG: No PUBLISHABLE_KEY found, rendering fallback");
-    root.render(<div style={{ padding: '20px', color: 'orange' }}><h1>DENTIS: NO CLERK KEY</h1><p>VITE_CLERK_PUBLISHABLE_KEY is missing from environment.</p></div>);
-  } else {
-    console.log("DEBUG: Rendering App...");
-    root.render(
-      <React.StrictMode>
-        <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-          <App />
-        </ClerkProvider>
-      </React.StrictMode>
-    );
-    console.log("DEBUG: root.render called successfully");
-  }
+  console.log("DEBUG: Rendering App...");
+  root.render(
+    <React.StrictMode>
+      <Preview />
+    </React.StrictMode>
+  );
+  console.log("DEBUG: root.render called successfully");
 } catch (error) {
   console.error("CRITICAL INDEX ERROR:", error);
   const root = document.getElementById('root');

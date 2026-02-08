@@ -1,394 +1,109 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { SignedIn, SignedOut, useUser, useClerk, useAuth } from "@clerk/clerk-react";
-import { ViewType, ThemeConfig, Patient, UserRole } from './types';
-import { AppContextProvider, useAppContext } from './lib/useAppContext';
-import { I18nProvider } from './lib/i18n';
-import { useNavigation } from './lib/navigation';
-import Topbar from './components/Topbar';
-import { Toast } from './components/Shared';
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useState, Suspense, lazy } from 'react';
+import { useAuth, useUser } from '@clerk/clerk-react';
+import { AnimatePresence } from 'framer-motion';
+import { AuroraProvider, useAurora } from './lib/AuroraOps';
+import { AuroraHub } from './components/aurora/AuroraHub';
+import { ViewType } from './types';
+import { useI18n } from './lib/i18n';
 
-// Static Imports for stability
-import Dashboard from './components/Dashboard';
-import Patients from './components/Patients';
-import PatientRecord from './components/PatientRecord';
-import Schedule from './components/Schedule';
-import Finance from './components/Finance';
-import Landing from './components/Landing';
-import Auth from './components/Auth';
-import Onboarding from './components/Onboarding';
-import OnboardingV2 from './components/OnboardingV2';
-import Profile from './components/Profile';
-import Settings from './components/Settings';
-import TreatmentJourney from './components/TreatmentJourney';
-import Anamnesis from './components/Anamnesis';
-import ManagementHub from './components/ManagementHub';
-import Inventory from './components/Inventory';
-import Procedures from './components/Procedures';
-import ProcedureEngineer from './components/ProcedureEngineer';
-import FinancialSplit from './components/FinancialSplit';
-import Odontogram from './components/Odontogram';
-import SmartPrescription from './components/SmartPrescription';
-import TeamConfig from './components/TeamConfig';
-import ManageClinic from './components/ManageClinic';
-import Labs from './components/Labs';
-import Marketplace from './components/Marketplace';
-import KioskMode from './components/KioskMode';
-import PatientWallet from './components/PatientWallet';
-import PatientRegister from './pages/PatientRegister';
-import CommunicationDashboard from './components/dashboards/CommunicationDashboard';
-import AddClinicWizard from './components/AddClinic/AddClinicWizard';
-import Storefront from './pages/Storefront';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+// --- COMPONENTS ---
+const LandingExperience = lazy(() => import('./components/landing/LandingExperience'));
+const OnboardingV2 = lazy(() => import('./components/OnboardingV2'));
+const Patients = lazy(() => import('./components/Patients'));
+const PatientRecord = lazy(() => import('./components/PatientRecord'));
+const Schedule = lazy(() => import('./components/Schedule'));
+const Finance = lazy(() => import('./components/Finance'));
+const Profile = lazy(() => import('./components/Profile'));
+const Labs = lazy(() => import('./components/Labs'));
 
-import { Terms, Help, Backup } from './components/BasePages';
-import { AIAssistant } from './components/AIAssistant';
-import AssistantPage from './components/AssistantPage';
-import { TermsOfService } from './components/legal/TermsOfService';
-import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
-import CookieConsent from 'react-cookie-consent';
 
-// Componente de Loading leve
-const LoadingFallback = () => (
-  <div className="flex h-screen items-center justify-center bg-lux-background text-lux-accent">
-    <div className="animate-pulse font-medium">Carregando Dentis OS...</div>
-  </div>
-);
+// Internal component to use the hook context
+const AppContent = () => {
+  const { isSignedIn, signOut } = useAuth();
+  const { user } = useUser();
+  const { currentView, setCurrentView } = useAurora();
+  const { t } = useI18n();
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
 
-// Polling Component for Success
-const BillingSuccessView = ({ onComplete }: { onComplete: () => void }) => {
-  const [status, setStatus] = useState('provisioning');
-  const { getToken } = useAuth();
-  // const { initSession } = useAppContext(); // Not available in context, relying on hard reload
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const provisioningId = params.get('provisioning_id');
-
-    if (!provisioningId) {
-      setStatus('error');
-      return;
-    }
-
-    const poll = async () => {
-      try {
-        const token = await getToken();
-        const res = await fetch(`/api/billing-provisioning/provisioning/${provisioningId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === 'provisioned') {
-            setStatus('complete');
-            // Clear URL params
-            window.history.pushState({}, '', '/');
-            setTimeout(() => {
-              window.location.href = '/'; // Hard reload to clear state and re-init session
-            }, 2000);
-          }
-        }
-      } catch (e) { console.error(e); }
-    };
-
-    const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  if (status === 'complete') {
+  // --- PUBLIC LANDING ---
+  if (!isSignedIn) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-bounce">
-          <CheckCircle2 size={40} />
-        </div>
-        <h2 className="text-3xl font-bold text-slate-800">Tudo Pronto!</h2>
-        <p className="text-slate-500 max-w-md">Sua clínica foi criada com sucesso. Redirecionando...</p>
-      </div>
+      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+        <LandingExperience />
+      </Suspense>
     );
   }
 
+  // --- ONBOARDING CHECK ---
+  const onboardingComplete = user?.publicMetadata?.onboardingComplete;
+  if (!onboardingComplete) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+        <OnboardingV2 onComplete={() => user?.reload()} />
+      </Suspense>
+    );
+  }
+
+  // --- DASHBOARD APP ---
+  const userRole = (user?.publicMetadata?.role as any) || 'dentist';
+
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
-      <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center animate-pulse">
-        <Loader2 size={40} className="animate-spin" />
-      </div>
-      <h2 className="text-3xl font-bold text-slate-800">Preparando sua Clínica...</h2>
-      <p className="text-slate-500 max-w-md">Estamos configurando seu ambiente seguro. Isso pode levar alguns segundos.</p>
+    <main className="min-h-screen bg-slate-900 text-white flex flex-col">
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-screen">
+          <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
+        {selectedPatient ? (
+          <PatientRecord
+            patient={selectedPatient}
+            onBack={() => setSelectedPatient(null)}
+          />
+        ) : (
+          <>
+            {/* NEW AURORA HUB NAVIGATION */}
+            <AuroraHub />
+
+            <div className="flex-1 p-6 overflow-y-auto">
+              {currentView === ViewType.PATIENTS && (
+                <Patients onSelectPatient={(p: any) => setSelectedPatient(p)} />
+              )}
+              {currentView === ViewType.SCHEDULE && <Schedule />}
+              {currentView === ViewType.FINANCE && <Finance userRole={userRole} />}
+              {currentView === ViewType.LABS && <Labs />}
+              {currentView === ViewType.PROFILE && (
+                <Profile
+                  userRole={userRole}
+                  onLogout={() => signOut()}
+                />
+              )}
+              {/* Fallback for Dashboard or unmatched views */}
+              {(currentView === ViewType.DASHBOARD || !currentView) && (
+                <div className="text-center py-20">
+                  <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-200">{t('greetings.welcomeBack')}</h2>
+                  <p className="text-slate-500">{t('menu.dashboard')}</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </Suspense>
+    </main>
+  );
+};
+
+export default function App() {
+  const { isLoaded } = useAuth();
+
+  if (!isLoaded) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
     </div>
   );
-};
-
-const AppContent: React.FC = () => {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
-  const { session, setSession, switchContext, toast } = useAppContext();
-  const { getToken } = useAuth();
-
-  const [currentView, setCurrentView] = useState<ViewType>(() => {
-    if (window.location.pathname === '/billing/success') return ViewType.BILLING_SUCCESS;
-    return ViewType.DASHBOARD;
-  });
-  const [history, setHistory] = useState<ViewType[]>([]);
-  const { navigate, goBack } = useNavigation(currentView, setCurrentView, history, setHistory);
-
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-
-  // Estado para controlar a visualização de autenticação
-  const [authView, setAuthView] = useState<'login' | 'register' | null>(() => {
-    const path = window.location.pathname;
-    if (path === '/login') return 'login';
-    if (path === '/register') return 'register';
-    return null;
-  });
-
-  // Funções de navegação para autenticação
-  const handleStartAuth = () => {
-    setAuthView('register');
-    window.history.pushState({}, '', '/register');
-  };
-
-  const handleLogin = () => {
-    setAuthView('login');
-    window.history.pushState({}, '', '/login');
-  };
-
-  const handleBackToLanding = () => {
-    setAuthView(null);
-    window.history.pushState({}, '', '/');
-  };
-
-  // Inicialização de Sessão
-  const initSession = async (force = false) => {
-    if (!user || (session && !force)) return;
-    try {
-      const token = await getToken();
-      try {
-        const res = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-          const data = await res.json();
-          setSession(data.session);
-          return;
-        }
-      } catch (e) { console.warn("Backend offline or error, using fallback"); }
-
-      // Fallback
-      setSession({
-        user: { id: user.id, email: user.primaryEmailAddress?.emailAddress || '', name: user.fullName || '', role: (user.publicMetadata?.role as string) || '' },
-        activeContext: null,
-        availableContexts: [],
-        onboardingComplete: !!user.publicMetadata?.onboardingComplete,
-        capabilities: { isOrgAdmin: true, isHealthProfessional: true, isCourier: false, isPatient: false },
-        activeOrganization: null, orgRole: 'admin'
-      });
-    } catch (e) { console.error("Session Init Fatal Error:", e); }
-  };
-
-  useEffect(() => {
-    if (isLoaded && user) initSession();
-  }, [user, isLoaded]);
-
-  const handlePatientSelect = (patient: Patient) => {
-    setSelectedPatient(patient);
-    navigate(ViewType.PATIENT_RECORD);
-  };
-
-  // Renderização
-  const renderContent = () => {
-    switch (currentView) {
-      case ViewType.DASHBOARD: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
-      case ViewType.PATIENTS: return <Patients onSelectPatient={handlePatientSelect} />;
-      case ViewType.PATIENT_RECORD: return selectedPatient ? <PatientRecord patient={selectedPatient} onBack={() => setCurrentView(ViewType.PATIENTS)} /> : <Patients onSelectPatient={handlePatientSelect} />;
-      case ViewType.SCHEDULE: return <Schedule />;
-      case ViewType.FINANCE: return <Finance userRole={UserRole.DENTIST} />;
-      case ViewType.PROFILE: return <Profile userRole={UserRole.DENTIST} onLogout={() => signOut()} />;
-      case ViewType.SETTINGS: return <Settings onNavigate={setCurrentView} />;
-      case ViewType.TREATMENT_JOURNEY: return <TreatmentJourney />;
-      case ViewType.ANAMNESIS: return <Anamnesis patientId={selectedPatient?.id || session?.activeContext?.id || 0} />;
-      case ViewType.MANAGEMENT_HUB: return <ManagementHub onNavigate={setCurrentView} />;
-      case ViewType.INVENTORY: return <Inventory />;
-      case ViewType.LABS: return <Labs />;
-      case ViewType.MARKETPLACE: return <Marketplace />;
-      case ViewType.PROCEDURES: return <Procedures />;
-      case ViewType.PROCEDURE_ENGINEER: return <ProcedureEngineer />;
-      case ViewType.FINANCIAL_SPLIT: return <FinancialSplit />;
-      case ViewType.TEAM_SETTINGS: return <TeamConfig />;
-      case ViewType.MANAGE_CLINIC: return <ManageClinic />;
-      case ViewType.CLINICAL_EXECUTION: return <Odontogram patientId={selectedPatient?.id || 0} />;
-      case ViewType.DOCUMENTS: return <SmartPrescription />;
-      case ViewType.PATIENT_WALLET: return <PatientWallet onBack={() => setCurrentView(ViewType.DASHBOARD)} />;
-      case ViewType.TERMS: return <TermsOfService />;
-      case ViewType.PRIVACY: return <PrivacyPolicy />;
-      case ViewType.HELP: return <Help />;
-      case ViewType.BACKUP: return <Backup />;
-      case ViewType.COMMUNICATION: return <CommunicationDashboard />;
-      case ViewType.AI_ASSISTANT: return <AssistantPage />;
-      case ViewType.ADD_CLINIC: return <AddClinicWizard onCancel={() => setCurrentView(ViewType.DASHBOARD)} />;
-      case ViewType.BILLING_SUCCESS: return <BillingSuccessView onComplete={() => window.location.href = '/'} />;
-      case ViewType.STOREFRONT: return <Storefront />;
-      default: return <Dashboard activeContextType={session?.activeContext?.type || null} onNavigate={setCurrentView} />;
-    }
-  };
-
-  if (!isLoaded) return <LoadingFallback />;
 
   return (
-    <>
-      <SignedOut>
-        <AnimatePresence mode="wait">
-          {authView ? (
-            <motion.div
-              key={authView}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <Auth
-                mode={authView}
-                onSwitchMode={(mode) => setAuthView(mode)}
-                onBack={handleBackToLanding}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="landing"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <Landing onStart={handleStartAuth} onLogin={handleLogin} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </SignedOut>
-
-      <SignedIn>
-        {!(user?.publicMetadata?.onboardingComplete || session?.onboardingComplete) ? (
-          <OnboardingV2 onComplete={() => {
-            // Reload session after onboarding
-            initSession(true);
-          }} />
-        ) : (
-          <div className="flex flex-col h-screen bg-bg text-text-main">
-            <Topbar
-              currentView={currentView}
-              setView={setCurrentView}
-              availableContexts={session?.availableContexts || []}
-              activeContext={session?.activeContext || null}
-              onContextSwitch={switchContext}
-              onLogout={() => signOut()}
-              orgRole={session?.orgRole}
-            />
-            <main className="flex-1 flex flex-col pt-16 h-full overflow-hidden relative">
-              <div className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar">
-                <div className="max-w-[1600px] mx-auto pb-20">
-                  <AnimatePresence mode='wait'>
-                    <motion.div
-                      key={currentView}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      variants={{
-                        initial: { opacity: 0, y: 20, scale: 0.99 },
-                        animate: { opacity: 1, y: 0, scale: 1 },
-                        exit: { opacity: 0, y: -20, scale: 0.99 }
-                      }}
-                      transition={{ duration: 0.3, ease: [0.25, 0.8, 0.25, 1] }}
-                      className="h-full"
-                    >
-                      {renderContent()}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-              </div>
-            </main>
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => { }} />}
-            <AIAssistant onNavigate={setCurrentView} />
-          </div>
-        )}
-      </SignedIn>
-    </>
+    <AuroraProvider>
+      <AppContent />
+    </AuroraProvider>
   );
-};
-
-const App: React.FC = () => {
-  // Public routes that don't require authentication
-  if (window.location.pathname === '/kiosk') return <Suspense fallback={<LoadingFallback />}><KioskMode /></Suspense>;
-  if (window.location.pathname.startsWith('/register/')) return <PatientRegister />;
-
-  // Handler for billing success polling
-  // UseEffect inside AppContent will handle view state if URL matches
-
-  return (
-    <AppContextProvider>
-      <I18nProvider>
-        <AppContent />
-        <CookieConsent
-          location="bottom"
-          buttonText="Aceitar"
-          declineButtonText="Recusar"
-          enableDeclineButton
-          cookieName="dentis-cookie-consent"
-          style={{
-            background: "rgba(15, 23, 42, 0.95)",
-            backdropFilter: "blur(10px)",
-            borderTop: "1px solid rgba(99, 102, 241, 0.3)",
-            padding: "20px",
-            alignItems: "center",
-          }}
-          buttonStyle={{
-            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-            color: "#ffffff",
-            fontSize: "14px",
-            fontWeight: "600",
-            padding: "10px 24px",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
-          }}
-          declineButtonStyle={{
-            background: "transparent",
-            color: "#94a3b8",
-            fontSize: "14px",
-            padding: "10px 24px",
-            borderRadius: "8px",
-            border: "1px solid #334155",
-            cursor: "pointer",
-          }}
-          expires={365}
-        >
-          <span style={{ fontSize: "14px", color: "#e2e8f0" }}>
-            🍪 Usamos cookies essenciais para autenticação e funcionais para melhorar sua experiência.
-            Ao continuar navegando, você concorda com nossa{" "}
-            <a
-              href="/privacy"
-              style={{ color: "#818cf8", textDecoration: "underline" }}
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.href = "/privacy";
-              }}
-            >
-              Política de Privacidade
-            </a>
-            {" "}e{" "}
-            <a
-              href="/terms"
-              style={{ color: "#818cf8", textDecoration: "underline" }}
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.href = "/terms";
-              }}
-            >
-              Termos de Serviço
-            </a>.
-          </span>
-        </CookieConsent>
-      </I18nProvider>
-    </AppContextProvider>
-  );
-};
-
-export default App;
+}
