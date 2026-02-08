@@ -19,9 +19,10 @@ import {
     Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es } from 'date-fns/locale';
 import { TimelineItem, UnifiedTimelineEvent } from '../types';
 import { LuxButton } from './Shared';
+import { useI18n } from '../lib/i18n';
 
 interface PatientTimelineProps {
     events: TimelineItem[];
@@ -31,6 +32,14 @@ interface PatientTimelineProps {
     onEdit?: (event: TimelineItem) => void;
     onAddNote?: (event: TimelineItem) => void;
 }
+
+const getDateLocale = (locale: string) => {
+    switch (locale) {
+        case 'en': return enUS;
+        case 'es': return es;
+        default: return ptBR;
+    }
+};
 
 const EventIcon = ({ type, subType }: { type: string, subType?: string }) => {
     const iconProps = { size: 20 };
@@ -65,16 +74,22 @@ const EventCard = ({
     onClick,
     viewType = 'dentist',
     onEdit,
-    onAddNote
+    onAddNote,
+    t,
+    locale
 }: {
     event: TimelineItem;
     onClick?: () => void;
     viewType?: 'dentist' | 'patient';
     onEdit?: (event: TimelineItem) => void;
     onAddNote?: (event: TimelineItem) => void;
+    t: (key: string) => string;
+    locale: string;
 }) => {
     const { type, date, data } = event;
-    const formattedDate = format(new Date(date), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR });
+    const dateLocale = getDateLocale(locale);
+    const formattedDate = format(new Date(date), "dd 'de' MMMM", { locale: dateLocale }) +
+        ` ${t('timeline.at')} ` + format(new Date(date), "HH:mm", { locale: dateLocale });
 
     let title = 'Evento';
     let details = '';
@@ -83,19 +98,19 @@ const EventCard = ({
     let attachments: any[] = [];
 
     if (type === 'encounter') {
-        title = `Atendimento (${data.type || 'Consulta'})`;
-        details = data.subjective || data.description || 'Sem descrição';
+        title = `${t('timeline.encounter')} (${data.type || t('timeline.consultation')})`;
+        details = data.subjective || data.description || t('timeline.noDescription');
         attachments = data.attachments || [];
     } else if (type === 'prescription') {
-        title = 'Prescrição Receitada';
-        details = `${(data.medications || []).length} medicamentos`;
+        title = t('timeline.prescription');
+        details = `${(data.medications || []).length} ${t('timeline.medications')}`;
         attachments = data.attachments || [];
     } else if (type === 'exam_order') {
-        title = 'Pedido de Exame';
+        title = t('timeline.examOrder');
         details = (data.exams || []).join(', ');
         attachments = data.attachments || [];
     } else if (type === 'document_emitted') {
-        title = data.title || 'Documento';
+        title = data.title || t('timeline.document');
         details = data.type;
         attachments = data.url ? [{ name: data.title, url: data.url }] : [];
     } else if (type === 'timeline_event') {
@@ -164,7 +179,7 @@ const EventCard = ({
                             onClick={(e) => e.stopPropagation()}
                         >
                             <Paperclip size={12} />
-                            {att.name || 'Anexo'}
+                            {att.name || t('timeline.attachment')}
                             <Download size={12} />
                         </a>
                     ))}
@@ -179,7 +194,7 @@ const EventCard = ({
                     style={{ color: 'hsl(var(--primary))' }}
                 >
                     <Eye size={12} />
-                    Ver detalhes
+                    {t('timeline.viewDetails')}
                 </button>
 
                 {viewType === 'dentist' && (
@@ -194,7 +209,7 @@ const EventCard = ({
                                     onEdit(event);
                                 }}
                             >
-                                Editar
+                                {t('timeline.edit')}
                             </LuxButton>
                         )}
                         {onAddNote && (
@@ -207,7 +222,7 @@ const EventCard = ({
                                     onAddNote(event);
                                 }}
                             >
-                                Nota
+                                {t('timeline.addNote')}
                             </LuxButton>
                         )}
                     </div>
@@ -225,6 +240,7 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({
     onEdit,
     onAddNote
 }) => {
+    const { t, locale } = useI18n();
     const [filter, setFilter] = useState('all');
 
     const filteredEvents = filter === 'all'
@@ -236,10 +252,18 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({
             return e.type === filter;
         });
 
+    const filterLabels: Record<string, string> = {
+        all: t('timeline.all'),
+        encounter: t('timeline.clinical'),
+        lab: t('timeline.laboratory'),
+        logistic: t('timeline.logistics'),
+        financial: t('timeline.financial'),
+    };
+
     if (loading) {
         return (
             <div className="p-8 text-center" style={{ color: 'hsl(var(--text-muted))' }}>
-                Carregando histórico...
+                {t('timeline.loading')}
             </div>
         );
     }
@@ -254,10 +278,10 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({
                     <Activity size={32} style={{ color: 'hsl(var(--text-muted))' }} />
                 </div>
                 <h3 className="text-lg font-bold" style={{ color: 'hsl(var(--text-main))' }}>
-                    Nenhum registro encontrado
+                    {t('timeline.empty')}
                 </h3>
                 <p className="text-sm mt-1" style={{ color: 'hsl(var(--text-muted))' }}>
-                    O histórico deste paciente está vazio.
+                    {t('timeline.emptyDescription')}
                 </p>
             </div>
         );
@@ -277,10 +301,7 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({
                             boxShadow: filter === f ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                         }}
                     >
-                        {f === 'all' ? 'Tudo' :
-                            f === 'encounter' ? 'Clínico' :
-                                f === 'lab' ? 'Laboratório' :
-                                    f === 'logistic' ? 'Logística' : 'Financeiro'}
+                        {filterLabels[f]}
                     </button>
                 ))}
             </div>
@@ -298,6 +319,8 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({
                             viewType={viewType}
                             onEdit={onEdit}
                             onAddNote={onAddNote}
+                            t={t}
+                            locale={locale}
                         />
                     </div>
                 ))}
@@ -307,3 +330,4 @@ const PatientTimeline: React.FC<PatientTimelineProps> = ({
 };
 
 export default PatientTimeline;
+
