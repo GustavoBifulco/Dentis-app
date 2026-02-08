@@ -1,9 +1,11 @@
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useEffect, useState } from 'react';
+import { useI18n } from '../lib/i18n';
 
 export default function PatientPortal() {
   const { user } = useUser();
   const { getToken } = useAuth();
+  const { t, locale } = useI18n();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [finance, setFinance] = useState({ balance: 0 });
@@ -27,31 +29,35 @@ export default function PatientPortal() {
         setRecords(await resRec.json());
         setFinance(await resFin.json());
       } catch (err) {
-        console.error('Erro ao carregar dados do paciente:', err);
+        console.error(t('patientPortal.errorLoading'), err);
       }
     };
 
     fetchData();
-  }, [user, getToken]);
+  }, [user, getToken, t]);
 
-  if (!user) return <div className="p-6">Carregando...</div>;
+  if (!user) return <div className="p-6">{t('patientPortal.loadingData')}</div>;
+
+  const userName = (user.publicMetadata?.name as string) || t('patientPortal.fallbackName');
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Bem-vindo, {(user.publicMetadata?.name as string) || 'Paciente'}</h1>
+      <h1 className="text-3xl font-bold mb-6">
+        {t('patientPortal.welcome', { name: userName })}
+      </h1>
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Próximos Agendamentos</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('patientPortal.upcomingAppointments')}</h2>
         {appointments.length === 0 ? (
-          <p className="text-gray-600">Nenhum agendamento futuro.</p>
+          <p className="text-gray-600">{t('patientPortal.noAppointments')}</p>
         ) : (
           <ul className="space-y-3">
             {appointments.map(a => (
               <li key={a.id} className="border p-4 rounded-lg bg-white shadow-sm">
                 <div className="font-medium">
-                  {new Date(a.startTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                  {new Date(a.startTime).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })}
                 </div>
-                <div className="text-sm text-gray-600">Status: {a.status}</div>
+                <div className="text-sm text-gray-600">{t('patientPortal.status', { status: a.status })}</div>
                 {a.notes && <p className="text-sm mt-1">{a.notes}</p>}
               </li>
             ))}
@@ -60,15 +66,15 @@ export default function PatientPortal() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Histórico de Tratamentos</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('patientPortal.treatmentHistory')}</h2>
         {records.length === 0 ? (
-          <p className="text-gray-600">Nenhum registro ainda.</p>
+          <p className="text-gray-600">{t('patientPortal.noRecords')}</p>
         ) : (
           <ul className="space-y-3">
             {records.map(r => (
               <li key={r.id} className="border p-4 rounded-lg bg-white shadow-sm">
                 <div className="font-medium">
-                  {new Date(r.date).toLocaleDateString('pt-BR')}
+                  {new Date(r.date).toLocaleDateString(locale)}
                 </div>
                 <div className="text-sm">{r.treatment}</div>
                 {r.notes && <p className="text-sm text-gray-600 mt-1">{r.notes}</p>}
@@ -79,10 +85,10 @@ export default function PatientPortal() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold mb-4">Financeiro</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('patientPortal.financial')}</h2>
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <p className="text-lg font-medium">
-            Saldo pendente: R$ {(finance.balance / 100).toFixed(2)}
+            {t('patientPortal.pendingBalance', { amount: (finance.balance / 100).toFixed(2) })}
           </p>
         </div>
       </section>

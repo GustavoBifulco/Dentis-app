@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import PasswordInput from '../components/PasswordInput';
+import { useI18n } from '../lib/i18n';
 
 const PatientRegister: React.FC = () => {
+    const { t } = useI18n();
     // Extract token from URL path
     const token = window.location.pathname.split('/register/')[1];
 
@@ -24,13 +26,13 @@ const PatientRegister: React.FC = () => {
 
     useEffect(() => {
         if (!token) {
-            setError('Token de convite inválido');
+            setError(t('patientRegister.invalidToken'));
             setLoading(false);
             return;
         }
 
         validateToken();
-    }, [token]);
+    }, [token, t]);
 
     const validateToken = async () => {
         try {
@@ -39,11 +41,11 @@ const PatientRegister: React.FC = () => {
 
             if (!response.ok) {
                 if (data.expired) {
-                    setError('Este convite expirou. Solicite um novo convite ao seu dentista.');
+                    setError(t('patientRegister.expiredInvite'));
                 } else if (data.used) {
-                    setError('Este convite já foi utilizado.');
+                    setError(t('patientRegister.usedInvite'));
                 } else {
-                    setError(data.error || 'Convite inválido');
+                    setError(data.error || t('patientRegister.genericInvalid'));
                 }
                 setLoading(false);
                 return;
@@ -61,7 +63,7 @@ const PatientRegister: React.FC = () => {
             setLoading(false);
 
         } catch (err: any) {
-            setError('Erro ao validar convite. Tente novamente.');
+            setError(t('patientRegister.errorValidating'));
             setLoading(false);
         }
     };
@@ -70,27 +72,27 @@ const PatientRegister: React.FC = () => {
         const errors: Record<string, string> = {};
 
         if (!formData.name.trim()) {
-            errors.name = 'Nome é obrigatório';
+            errors.name = t('patientRegister.nameRequired');
         }
 
         if (!formData.email.trim()) {
-            errors.email = 'Email é obrigatório';
+            errors.email = t('patientRegister.emailRequired');
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            errors.email = 'Email inválido';
+            errors.email = t('patientRegister.emailInvalid');
         }
 
         if (!formData.password) {
-            errors.password = 'Senha é obrigatória';
+            errors.password = t('patientRegister.passwordRequired');
         } else if (formData.password.length < 8) {
-            errors.password = 'Senha deve ter no mínimo 8 caracteres';
+            errors.password = t('patientRegister.passwordMinLength');
         }
 
         if (formData.password !== formData.confirmPassword) {
-            errors.confirmPassword = 'As senhas não coincidem';
+            errors.confirmPassword = t('patientRegister.passwordMismatch');
         }
 
         if (!formData.acceptedTerms) {
-            errors.terms = 'Você deve aceitar os termos de uso';
+            errors.terms = t('patientRegister.termsRequired');
         }
 
         setFormErrors(errors);

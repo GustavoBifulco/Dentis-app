@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Package, CheckCircle2, ShieldCheck, DollarSign, Power, History } from 'lucide-react';
 import { UserSession } from '../types';
+import { useI18n } from '../lib/i18n';
 
 interface Job {
     id: number;
@@ -14,6 +15,7 @@ interface Job {
 }
 
 const CourierApp: React.FC = () => {
+    const { t } = useI18n();
     const [isOnline, setIsOnline] = useState(false);
     const [activeJob, setActiveJob] = useState<Job | null>(null);
     const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
@@ -126,8 +128,8 @@ const CourierApp: React.FC = () => {
         return (
             <div className="min-h-screen bg-green-600 flex flex-col items-center justify-center text-white p-6">
                 <CheckCircle2 size={80} className="mb-4" />
-                <h1 className="text-4xl font-black uppercase mb-2">Sucesso!</h1>
-                <p className="text-xl">Corrida finalizada.</p>
+                <h1 className="text-4xl font-black uppercase mb-2">{t('courier.success')}</h1>
+                <p className="text-xl">{t('courier.rideComplete')}</p>
                 <p className="text-3xl font-bold mt-4">+ R$ {activeJob.price.toFixed(2)}</p>
                 {/* Added the new h1 tag, ensuring 'user' is checked for existence */}
                 {user && <h1 className="text-3xl font-bold mb-6">Bem-vindo, {(user.publicMetadata?.name as string) || 'Paciente'}</h1>}
@@ -142,14 +144,14 @@ const CourierApp: React.FC = () => {
             <div className={`p-6 pb-8 rounded-b-3xl shadow-xl transition-colors duration-500 ${isOnline ? 'bg-indigo-600' : 'bg-slate-800'}`}>
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h2 className="text-xl font-bold opacity-80">Olá, Motoboy</h2>
+                        <h2 className="text-xl font-bold opacity-80">{t('courier.welcome')}</h2>
                         <div className="flex items-center gap-2 mt-1">
                             <span className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`}></span>
-                            <span className="font-bold tracking-wide">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                            <span className="font-bold tracking-wide">{isOnline ? t('courier.online') : t('courier.offline')}</span>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs uppercase tracking-wider opacity-70">Ganhos Hoje</p>
+                        <p className="text-xs uppercase tracking-wider opacity-70">{t('courier.earningsToday')}</p>
                         <p className="text-2xl font-black text-green-400">R$ {earnings.toFixed(2)}</p>
                     </div>
                 </div>
@@ -164,7 +166,7 @@ const CourierApp: React.FC = () => {
                             }`}
                     >
                         <Power size={24} strokeWidth={3} />
-                        {isOnline ? 'Ficar Offline' : 'Ficar Online'}
+                        {isOnline ? t('courier.goOffline') : t('courier.goOnline')}
                     </button>
                 )}
             </div>
@@ -177,7 +179,7 @@ const CourierApp: React.FC = () => {
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">
-                                    {activeJob.status === 'ACCEPTED' ? 'Busca em Andamento' : 'Entrega em Andamento'}
+                                    {activeJob.status === 'ACCEPTED' ? t('courier.pickupInProgress') : t('courier.deliveryInProgress')}
                                 </p>
                                 <h3 className="text-2xl font-black">
                                     {activeJob.status === 'ACCEPTED' ? activeJob.clinicName : activeJob.labName}
@@ -198,7 +200,7 @@ const CourierApp: React.FC = () => {
                             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-xl text-lg flex items-center justify-center gap-2 mb-3 shadow-lg active:translate-y-1"
                         >
                             <Navigation size={20} />
-                            Abrir no Maps
+                            {t('courier.openMaps')}
                         </button>
                     </div>
 
@@ -209,12 +211,12 @@ const CourierApp: React.FC = () => {
                                 onClick={handleStatusUpdate}
                                 className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-5 rounded-xl text-xl shadow-lg shadow-indigo-900/50 active:scale-95"
                             >
-                                Cheguei na Coleta
+                                {t('courier.arrivedPickup')}
                             </button>
                         ) : (
                             <div className="space-y-4">
                                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-600">
-                                    <label className="text-xs uppercase text-slate-400 font-bold mb-2 block">Código de Segurança (Pedir ao Lab)</label>
+                                    <label className="text-xs uppercase text-slate-400 font-bold mb-2 block">{t('courier.securityCode')}</label>
                                     <div className="flex items-center gap-3">
                                         <ShieldCheck className="text-green-400" size={32} />
                                         <input
@@ -231,7 +233,7 @@ const CourierApp: React.FC = () => {
                                     disabled={validationCode.length < 4}
                                     className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black py-5 rounded-xl text-xl shadow-lg shadow-green-900/20 active:scale-95 transition-all"
                                 >
-                                    Validar & Finalizar
+                                    {t('courier.validateFinish')}
                                 </button>
                             </div>
                         )}
@@ -242,7 +244,7 @@ const CourierApp: React.FC = () => {
             {/* JOB LIST (ONLY IF ONLINE & NO ACTIVE JOB) */}
             {isOnline && !activeJob && (
                 <div className="p-4 space-y-4">
-                    <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider ml-2">Disponíveis ({availableJobs.length})</h3>
+                    <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider ml-2">{t('courier.available', { count: availableJobs.length })}</h3>
 
                     {availableJobs.map(job => (
                         <div key={job.id} className="bg-slate-800 rounded-2xl p-5 border border-slate-700 hover:border-indigo-500 transition-colors relative overflow-hidden">
@@ -272,7 +274,7 @@ const CourierApp: React.FC = () => {
                                 onClick={() => handleAcceptJob(job)}
                                 className="w-full bg-white hover:bg-indigo-50 text-slate-900 font-bold py-3 rounded-xl uppercase tracking-wider text-sm shadow-lg active:translate-y-1 transition-all"
                             >
-                                Aceitar Corrida
+                                {t('courier.acceptRide')}
                             </button>
                         </div>
                     ))}
@@ -280,7 +282,7 @@ const CourierApp: React.FC = () => {
                     {availableJobs.length === 0 && (
                         <div className="text-center py-10 opacity-50">
                             <MapPin className="mx-auto mb-3" size={40} />
-                            <p>Procurando corridas próximas...</p>
+                            <p>{t('courier.searchingRides')}</p>
                         </div>
                     )}
                 </div>
@@ -290,15 +292,15 @@ const CourierApp: React.FC = () => {
             <div className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur border-t border-slate-800 p-4 flex justify-around">
                 <button className="flex flex-col items-center gap-1 text-indigo-400">
                     <Navigation size={24} />
-                    <span className="text-[10px] font-bold">Corridas</span>
+                    <span className="text-[10px] font-bold">{t('courier.rides')}</span>
                 </button>
                 <button className="flex flex-col items-center gap-1 text-slate-500">
                     <History size={24} />
-                    <span className="text-[10px] font-bold">Histórico</span>
+                    <span className="text-[10px] font-bold">{t('courier.history')}</span>
                 </button>
                 <button className="flex flex-col items-center gap-1 text-slate-500">
                     <Package size={24} />
-                    <span className="text-[10px] font-bold">Entregas</span>
+                    <span className="text-[10px] font-bold">{t('courier.deliveries')}</span>
                 </button>
             </div>
 
