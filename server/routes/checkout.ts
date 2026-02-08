@@ -60,25 +60,34 @@ checkout.post('/webhook', async (c) => {
   return c.json({ received: true });
 });
 
+const PRICE_MAPPING: Record<string, string | undefined> = {
+  'price_PRO_M': process.env.STRIPE_PRICE_DENTIS_PRO_MONTHLY,
+  'price_CP_M': process.env.STRIPE_PRICE_TEAM_MONTHLY, // Clinic ID Business -> Team Monthly
+  'price_CP_S': process.env.STRIPE_PRICE_SOLO_MONTHLY, // Clinic ID Starter -> Solo Monthly
+};
+
 checkout.post('/create-session', authMiddleware, zValidator('json', sessionSchema), async (c) => {
   const { priceId } = c.req.valid('json');
   const userId = c.get('userId');
 
+  // Mapeia o ID amigável do front para o ID real do Stripe
+  const realPriceId = PRICE_MAPPING[priceId] || priceId;
+
   try {
     const session = await stripe.checkout.sessions.create({
-      ui_mode: 'embedded',
       line_items: [
         {
-          price: priceId,
+          price: realPriceId,
           quantity: 1,
         },
       ],
       mode: 'subscription',
-      return_url: `${c.req.header('origin')}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${c.req.header('origin')}/dashboard?success=true`,
+      cancel_url: `${c.req.header('origin')}/onboarding?canceled=true`,
       client_reference_id: userId,
     });
 
-    return c.json({ clientSecret: session.client_secret });
+    return c.json({ url: session.url });
   } catch (error: any) {
     console.error("Erro Stripe:", error);
     return c.json({ error: error.message }, 500);

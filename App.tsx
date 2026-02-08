@@ -48,7 +48,7 @@ const AppContent = () => {
   const userRole = (user?.publicMetadata?.role as any) || 'dentist';
 
   return (
-    <main className="min-h-screen bg-slate-900 text-white flex flex-col">
+    <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <Suspense fallback={
         <div className="flex items-center justify-center h-screen">
           <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />

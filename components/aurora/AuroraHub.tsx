@@ -26,14 +26,14 @@ const HubNode = ({ icon: Icon, label, isActive, onClick }: Omit<HubNodeProps, 'a
             onClick={onClick}
             className={`
                 group relative flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300
-                ${isActive ? 'bg-cyan-500/10' : 'hover:bg-slate-800/50'}
+                ${isActive ? 'bg-cyan-500/10' : 'hover:bg-slate-100'}
             `}
         >
             <div className={`
                 w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all
                 ${isActive
-                    ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.5)] scale-110'
-                    : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-cyan-400'
+                    ? 'bg-cyan-500 text-white shadow-[0_4_12px_rgba(6,182,212,0.3)] scale-110'
+                    : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-cyan-600'
                 }
             `}>
                 <Icon size={20} className={isActive ? 'stroke-[2.5px]' : ''} />
@@ -82,12 +82,12 @@ export const AuroraHub: React.FC = () => {
     const nodes = allNodes.filter(node => node.roles.includes(role));
 
     return (
-        <div className="w-full bg-slate-950/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
+        <div className="w-full bg-white/80 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50">
             <div className="max-w-[1600px] mx-auto px-4">
                 <div className="flex items-center justify-between h-20">
 
                     {/* Left: Branding/Context (Placeholder for now) */}
-                    <div className="hidden md:flex items-center gap-4 border-r border-white/5 pr-6 mr-2">
+                    <div className="hidden md:flex items-center gap-4 border-r border-slate-200 pr-6 mr-2">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                             <span className="font-black text-white text-xs">D</span>
                         </div>
@@ -106,7 +106,7 @@ export const AuroraHub: React.FC = () => {
                     </nav>
 
                     {/* Right: Language Switcher & User */}
-                    <div className="hidden md:flex items-center gap-4 border-l border-white/5 pl-6 ml-2">
+                    <div className="hidden md:flex items-center gap-4 border-l border-slate-200 pl-6 ml-2">
                         <LanguageSwitcher variant="header" />
                     </div>
                 </div>

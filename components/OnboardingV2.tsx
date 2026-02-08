@@ -168,7 +168,7 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                         'Authorization': `Bearer ${token}`,
                     },
                     body: JSON.stringify({
-                        priceId: formData.role === 'dentist' ? 'price_PRO_M' : 'price_CP_M',
+                        priceId: formData.role === 'dentist' ? 'price_PRO_M' : planType === 'PRO' ? 'price_CP_M' : 'price_CP_S',
                         userId: user!.id,
                     }),
                 });
@@ -194,8 +194,8 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
             <div className="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
                 <div className="grid md:grid-cols-[300px_1fr]">
                     {/* Sidebar */}
-                    <div className="bg-slate-900 text-white p-8">
-                        <h1 className="text-2xl font-black mb-8">Dentis</h1>
+                    <div className="bg-slate-50 border-r border-slate-200 p-8">
+                        <h1 className="text-2xl font-black mb-8 text-slate-900">Dentis</h1>
 
                         <div className="space-y-4">
                             <StepIndicator current={step} step={1} label="Seus Dados" />
@@ -204,7 +204,7 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                             )}
                         </div>
 
-                        <div className="mt-12 text-sm text-slate-400">
+                        <div className="mt-12 text-sm text-slate-500">
                             <p>✓ Configuração rápida</p>
                             <p>✓ Dados seguros</p>
                             <p>✓ Suporte dedicado</p>
@@ -212,7 +212,7 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
 
                         <button
                             onClick={() => signOut()}
-                            className="mt-8 flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors border-t border-slate-800 w-full pt-6"
+                            className="mt-8 flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors border-t border-slate-200 w-full pt-6"
                         >
                             <LogOut size={16} />
                             Sair e continuar depois
@@ -478,7 +478,7 @@ export default function OnboardingV2({ onComplete }: OnboardingV2Props) {
                                                 </li>
                                             </ul>
                                             <button
-                                                onClick={() => handlePlanSelect('FREE')}
+                                                onClick={() => handlePlanSelect('FREE')} // FREE in frontend mapping to price_CP_S starter
                                                 disabled={loading}
                                                 className="w-full py-3 rounded-xl border-2 border-slate-900 text-slate-900 font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
                                             >
@@ -543,18 +543,18 @@ function StepIndicator({ current, step, label }: { current: number; step: number
     const isComplete = current > step;
 
     return (
-        <div className={`flex items-center gap-3 ${isActive ? 'opacity-100' : 'opacity-50'}`}>
+        <div className={`flex items-center gap-3 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
             <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isComplete
                     ? 'bg-green-500 text-white'
                     : isActive
-                        ? 'bg-white text-slate-900'
-                        : 'bg-slate-700 text-slate-400'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-200 text-slate-500'
                     }`}
             >
                 {isComplete ? <CheckCircle2 size={16} /> : step}
             </div>
-            <span className={`font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>{label}</span>
+            <span className={`font-bold ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>{label}</span>
         </div>
     );
 }
