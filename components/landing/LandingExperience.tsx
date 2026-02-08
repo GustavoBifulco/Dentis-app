@@ -18,7 +18,7 @@ import {
   Building2,
   ArrowDown
 } from "lucide-react";
-import AuthModal from "./AuthModal";
+import { useNavigate } from "react-router-dom";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
   Float,
@@ -177,17 +177,10 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 
 export default function LandingExperience() {
   const reduce = useReducedMotion();
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const navigate = useNavigate();
 
-  const openSignIn = () => {
-    setAuthMode("signin");
-    setAuthOpen(true);
-  };
-  const openSignUp = () => {
-    setAuthMode("signup");
-    setAuthOpen(true);
-  };
+  const openSignIn = () => navigate('/sign-in');
+  const openSignUp = () => navigate('/sign-up');
 
   const s1Ref = useRef<HTMLElement>(null);
   const s2Ref = useRef<HTMLElement>(null);
@@ -245,7 +238,6 @@ export default function LandingExperience() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-cyan-400 selection:text-slate-950">
-      <AuthModal open={authOpen} mode={authMode} onClose={() => setAuthOpen(false)} onModeChange={setAuthMode} />
 
       {/* Cinematic 3D Engine */}
       <Scene scrollProgress={scrollYProgress} />
